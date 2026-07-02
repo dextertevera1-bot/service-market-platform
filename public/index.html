@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Service Market Zimbabwe</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#customer" data-view-link="customer">
+        <span class="brand-mark">SM</span>
+        <span>
+          <strong>Service Market</strong>
+          <small>Zimbabwe</small>
+        </span>
+      </a>
+      <nav class="role-tabs" aria-label="Role portals">
+        <button class="tab is-active" type="button" data-view-link="customer">Customer</button>
+        <button class="tab" type="button" data-view-link="technician">Technician</button>
+        <button class="tab" type="button" data-view-link="admin">Admin</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="customer-view" class="view is-active">
+        <div class="hero">
+          <div>
+            <p class="eyebrow">Verified local technicians</p>
+            <h1>Find trusted help, call directly, and request a quote.</h1>
+            <p class="hero-copy">Built for practical service work in Zimbabwe: WhatsApp-first communication, admin verified technicians, and manual payment tracking.</p>
+          </div>
+          <a class="urgent-call" href="tel:+263771000000">
+            <span>Urgent job?</span>
+            <strong>Call Service Market</strong>
+          </a>
+        </div>
+
+        <section class="search-panel" aria-label="Search technicians">
+          <label>
+            <span>What service do you need?</span>
+            <input id="search-input" type="search" placeholder="Search plumbing, solar, fridge repair..." autocomplete="off" />
+          </label>
+          <label>
+            <span>Category</span>
+            <select id="category-filter"></select>
+          </label>
+          <label>
+            <span>Service area</span>
+            <select id="area-filter"></select>
+          </label>
+          <label class="check-row">
+            <input id="verified-filter" type="checkbox" checked />
+            <span>Admin verified only</span>
+          </label>
+        </section>
+
+        <section class="stats-row" id="customer-stats" aria-label="Marketplace stats"></section>
+
+        <div class="customer-grid">
+          <section>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Browse technicians</p>
+                <h2>Available professionals</h2>
+              </div>
+              <button class="ghost-button" type="button" id="clear-filters">Clear filters</button>
+            </div>
+            <div id="technician-list" class="technician-list"></div>
+          </section>
+
+          <aside class="booking-card" aria-label="Request quote">
+            <p class="eyebrow">Request Quote</p>
+            <h2>Book a technician</h2>
+            <p id="selected-technician" class="selected-tech">Choose a technician or submit an open request.</p>
+            <form id="booking-form" class="stacked-form">
+              <input type="hidden" id="booking-technician-id" />
+              <label>
+                <span>Your name</span>
+                <input id="customer-name" required placeholder="Full name" />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input id="customer-phone" required placeholder="+263..." inputmode="tel" />
+              </label>
+              <label>
+                <span>WhatsApp</span>
+                <input id="customer-whatsapp" placeholder="+263..." inputmode="tel" />
+              </label>
+              <label>
+                <span>Service area</span>
+                <select id="booking-area" required></select>
+              </label>
+              <label>
+                <span>Address or suburb</span>
+                <input id="booking-address" placeholder="e.g. Avondale, Harare" />
+              </label>
+              <label>
+                <span>Service category</span>
+                <select id="booking-category" required></select>
+              </label>
+              <label>
+                <span>Describe the problem</span>
+                <textarea id="booking-issue" required rows="4" placeholder="Tell the technician what is happening."></textarea>
+              </label>
+              <div class="two-column">
+                <label>
+                  <span>Urgency</span>
+                  <select id="booking-urgency">
+                    <option>Normal</option>
+                    <option>Urgent</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Currency</span>
+                  <select id="booking-currency">
+                    <option>USD</option>
+                    <option>ZWL</option>
+                    <option>Negotiable</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>Preferred time</span>
+                <input id="booking-time" placeholder="Today, tomorrow morning, weekend..." />
+              </label>
+              <label>
+                <span>Payment method</span>
+                <select id="booking-payment-method" required></select>
+              </label>
+              <div class="estimate-box" id="booking-estimate">Estimated price range appears after selecting a technician.</div>
+              <button class="primary-button wide" type="submit">Request Quote</button>
+            </form>
+            <p class="fine-print">Payment is arranged manually: Cash, EcoCash, bank transfer, or another agreed method. Service Market can help track disputes.</p>
+          </aside>
+        </div>
+
+        <section class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Customer tracking</p>
+              <h2>Recent booking requests</h2>
+            </div>
+          </div>
+          <div id="customer-bookings" class="booking-list"></div>
+        </section>
+      </section>
+
+      <section id="technician-view" class="view">
+        <div class="portal-hero">
+          <div>
+            <p class="eyebrow">Technician Portal</p>
+            <h1>Manage assigned jobs and submit credentials.</h1>
+          </div>
+          <div class="summary-card" id="technician-earnings"></div>
+        </div>
+
+        <div class="portal-grid">
+          <section class="panel">
+            <h2>Create or update profile</h2>
+            <form id="technician-form" class="stacked-form">
+              <label><span>Full name</span><input id="tech-name" required /></label>
+              <label><span>Business name</span><input id="tech-business" /></label>
+              <div class="two-column">
+                <label><span>Phone</span><input id="tech-phone" required inputmode="tel" /></label>
+                <label><span>WhatsApp</span><input id="tech-whatsapp" required inputmode="tel" /></label>
+              </div>
+              <label><span>Service area</span><select id="tech-area" required></select></label>
+              <label><span>Trade / specialty</span><select id="tech-trade" required></select></label>
+              <label><span>Years experience</span><input id="tech-years" type="number" min="0" value="1" /></label>
+              <label><span>Credentials</span><textarea id="tech-credentials" rows="3" placeholder="ID, license, certificates, references..."></textarea></label>
+              <label><span>Starting price or range</span><input id="tech-price" placeholder="$25-$90 or Negotiable" /></label>
+              <button class="primary-button" type="submit">Submit for Admin Review</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Demo technician: Tendai Moyo</p>
+                <h2>Assigned jobs only</h2>
+              </div>
+            </div>
+            <div id="technician-jobs" class="booking-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="admin-view" class="view">
+        <div class="portal-hero">
+          <div>
+            <p class="eyebrow">Admin Portal</p>
+            <h1>Approve technicians, assign bookings, track payments.</h1>
+          </div>
+          <a class="secondary-button" href="/api/reports/bookings.csv">Export CSV</a>
+        </div>
+
+        <section class="stats-row" id="admin-metrics"></section>
+
+        <div class="admin-grid">
+          <section class="panel">
+            <h2>Technicians</h2>
+            <div id="admin-technicians" class="admin-list"></div>
+          </section>
+          <section class="panel">
+            <h2>Bookings and payments</h2>
+            <div id="admin-bookings" class="admin-list"></div>
+          </section>
+          <section class="panel">
+            <h2>Customers</h2>
+            <div id="admin-customers" class="admin-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

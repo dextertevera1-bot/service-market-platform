@@ -1,0 +1,17 @@
+{
+  "name": "service-market",
+  "version": "1.0.0",
+  "description": "A trust-first professional services platform connecting customers with verified technicians and mechanics.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "marketplace",
+    "technicians",
+    "mechanics",
+    "services"
+  ],
+  "author": "",
+  "license": "MIT"
+}
