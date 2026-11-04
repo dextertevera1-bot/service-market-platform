@@ -1,10 +1,11 @@
 # Basa seBasa web apps
 
-Two web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
+Three web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
 
 | Folder | What it is | Who uses it |
 | --- | --- | --- |
 | `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
+| `technician-app/` | Technician app (preview): go online, 60-second job requests with earnings shown, live trip map, diagnose and quote on site, job timer, before/after photos, earnings with 24-hour payout tracking, Trust Score profile | Technicians |
 | `ops-desk/` | Operations desk: jobs pipeline with enforced stages, technician verification and Trust Score, money ledger, pricing settings, WhatsApp message templates, 24-hour payout deadlines | Basa seBasa team |
 
 ## Business rules built in
@@ -39,3 +40,7 @@ Keep `PRICING` in sync with the server; the server must recalculate every amount
 ## Planned architecture
 
 WhatsApp Cloud API (Meta) → Basa seBasa server (bot logic, pricing, Paynow EcoCash) → live database → ops desk and customer app.
+
+## The technician app
+
+`technician-app/index.html` runs in preview mode with sample job requests. In the real app, location must come from the phone's GPS while a job is active, job requests arrive from the server, and every button (accept, on my way, arrived, quote, start, complete) sends an update to the server, which forwards it to the customer on WhatsApp. This is the screen set to rebuild as the Android app.
