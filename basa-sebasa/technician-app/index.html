@@ -15,7 +15,7 @@
 /* Layout: a one-hand phone tool for technicians on site. Single centred column (max 480px), status header, large tap targets, bottom tab bar. High contrast for sunlight. */
 :root {
   --bg: #F4F2EC; --card: #FFFFFF; --sunk: #EAE7DF; --ink: #14120D; --muted: #67635A; --line: #DCD8CE;
-  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D; --night: #14120D; --night-fg: #F5F1E6;
+  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D;
   --good: #1F7646; --good-bg: #DFF1E5; --bad: #A3271D; --bad-bg: #F8E0DC; --warn-bg: #FCEECC;
   --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
@@ -23,12 +23,12 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
-  --gold: #F5BA14; --gold-deep: #F5C542; --night: #0A0907; --night-fg: #F5F1E6;
+  --gold: #F5BA14; --gold-deep: #F5C542;
   --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
-  --gold: #F5BA14; --gold-deep: #F5C542; --night: #0A0907; --night-fg: #F5F1E6;
+  --gold: #F5BA14; --gold-deep: #F5C542;
   --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
   color-scheme: dark; }
 * { box-sizing: border-box; }
@@ -42,9 +42,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
+.small { font-size: 13.5px; }
 .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); }
 .shell { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 .demo { background: var(--gold); color: var(--on-gold); font-size: 12.5px; font-weight: 600; text-align: center; padding-block: 5px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.offline { background: #A3271D; color: #fff; font-size: 13.5px; font-weight: 600; text-align: center; padding-block: 6px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
 
 /* header */
 .head { background: #14120D; color: #F5F1E6; padding-block: 14px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; }
@@ -52,6 +54,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .avatar { width: 46px; height: 46px; border-radius: 50%; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 20px; flex: none; }
 .who b { font-size: 18px; display: block; line-height: 1.1; }
 .who small { color: #B9B2A2; font-size: 13.5px; }
+.level { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: #F0AE00; color: #14120D; padding: 1px 6px; border-radius: 4px; vertical-align: 2px; margin-left: 4px; }
 .trust { margin-left: auto; text-align: center; }
 .trust b { font-family: var(--display); font-size: 30px; font-weight: 800; color: #F0AE00; line-height: 1; display: block; }
 .trust small { font-size: 10.5px; color: #B9B2A2; text-transform: uppercase; letter-spacing: .08em; }
@@ -67,11 +70,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 main { flex: 1; padding-block: 16px 100px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; align-content: start; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
-.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 2px solid var(--ink); background: transparent; padding: 14px 18px; border-radius: 14px; font-weight: 700; font-size: 17px; cursor: pointer; text-decoration: none; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 2px solid var(--ink); background: transparent; padding: 14px 18px; border-radius: 14px; font-weight: 700; font-size: 17px; cursor: pointer; text-decoration: none; text-align: center; }
 .btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
-.btn.ink { background: var(--ink); color: var(--bg); }
 .btn.quiet { border-color: var(--line); font-weight: 600; }
 .btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { padding: 9px 12px; font-size: 15px; border-radius: 11px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (prefers-reduced-motion: no-preference) { .btn:active { transform: scale(.98); } .btn { transition: transform .1s; } }
@@ -85,49 +88,75 @@ main { flex: 1; padding-block: 16px 100px; padding-left: max(16px, env(safe-area
 .earn { background: var(--good-bg); color: var(--good); border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .earn b { font-family: var(--display); font-size: 32px; font-weight: 800; line-height: 1; }
 .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.facts div { background: var(--sunk); border-radius: 12px; padding: 9px 10px; }
+.facts div { background: var(--sunk); border-radius: 12px; padding: 9px 10px; min-width: 0; }
 .facts b { display: block; font-size: 17px; }
 .facts small { color: var(--muted); font-size: 12.5px; }
 .pill { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--warn-bg); white-space: nowrap; }
 .pill.good { background: var(--good-bg); color: var(--good); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.passport { border-left: 4px solid var(--gold); background: var(--sunk); padding: 10px 12px; border-radius: 0; display: grid; gap: 4px; font-size: 14.5px; }
+.passport b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold-deep); }
 
 /* active job */
 .stagehead { background: #14120D; color: #F5F1E6; border-radius: 18px; padding: 16px; display: grid; gap: 10px; }
 .stagehead .muted { color: #B9B2A2; }
 .stagehead h2 { color: #F5F1E6; }
+.toprow { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.sos { background: #A3271D; color: #fff; border: 0; border-radius: 999px; font-weight: 800; font-size: 13px; letter-spacing: .06em; padding: 6px 12px; cursor: pointer; }
 .map { border-radius: 14px; overflow: hidden; background: #22201A; aspect-ratio: 16 / 10; max-width: 100%; position: relative; }
 .map svg { width: 100%; height: 100%; display: block; }
 .eta { position: absolute; left: 10px; top: 10px; background: #F0AE00; color: #14120D; border-radius: 10px; padding: 5px 10px; font-weight: 700; font-size: 14px; }
-.loc { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #B9B2A2; }
+.loc { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #B9B2A2; }
 .dotlive { width: 9px; height: 9px; border-radius: 50%; background: #2FA463; flex: none; }
+.dotlive.off { background: #E0A13A; }
 @media (prefers-reduced-motion: no-preference) { .dotlive { animation: blink 1.4s ease-in-out infinite; } @keyframes blink { 50% { opacity: .3; } } }
 .field { display: grid; gap: 6px; min-width: 0; }
-.field label { font-weight: 600; font-size: 14.5px; }
+.field label, .lab { font-weight: 600; font-size: 14.5px; }
 input[type=text], input[type=number], textarea, select { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px; font-size: 16px; }
 input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: none; }
-textarea { min-height: 90px; resize: vertical; }
+textarea { min-height: 84px; resize: vertical; }
+.code { font-family: var(--mono); font-size: 30px; letter-spacing: .5em; text-align: center; padding-left: .5em; }
 .split { width: 100%; border-collapse: collapse; font-size: 15px; }
 .split td { padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .split td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .split tr.you td { font-weight: 800; font-size: 18px; border-bottom: 0; color: var(--good); padding-top: 9px; }
-.timer { font-family: var(--display); font-weight: 800; font-size: 64px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
+.timer { font-family: var(--display); font-weight: 800; font-size: 60px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
 .err { color: var(--bad); font-weight: 600; font-size: 14.5px; }
 .wait { display: flex; gap: 12px; align-items: center; background: var(--warn-bg); border-radius: 14px; padding: 12px 14px; }
+.stagehead .wait { background: rgba(255,255,255,.08); }
 .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); flex: none; }
 @media (prefers-reduced-motion: no-preference) { .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
 .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.photo { border: 2px dashed var(--line); border-radius: 14px; padding: 14px 10px; text-align: center; font-size: 14px; display: grid; gap: 4px; cursor: pointer; position: relative; }
+.photo { border: 2px dashed var(--line); border-radius: 14px; padding: 14px 10px; text-align: center; font-size: 14px; display: grid; gap: 4px; cursor: pointer; position: relative; min-width: 0; overflow-wrap: anywhere; }
 .photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .photo.done { border-style: solid; border-color: var(--good); color: var(--good); }
+.checklist { display: grid; gap: 8px; }
+.tick { display: flex; gap: 10px; align-items: center; font-size: 15.5px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+.tick input { width: 22px; height: 22px; accent-color: var(--good); flex: none; }
+.tick:has(input:checked) { border-color: var(--good); background: var(--good-bg); }
+.report { border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; font-size: 14.5px; background: var(--sunk); }
+.report header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.report header b { font-family: var(--display); font-size: 19px; text-transform: uppercase; }
+.report dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.report dt { color: var(--muted); }
+.report dd { margin: 0; overflow-wrap: anywhere; }
+.sheet { border: 2px solid var(--bad); }
+.stars { display: flex; gap: 4px; }
+.stars button { background: none; border: 0; padding: 2px; cursor: pointer; color: var(--line); font-size: 34px; line-height: 1; }
+.stars button.on { color: var(--gold); }
 
 /* lists */
 .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 2px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 2px; min-width: 0; }
 .kpi b { font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
 .kpi.lead { background: #14120D; color: #F5F1E6; border-color: #14120D; }
 .kpi.lead .eyebrow { color: #F0AE00; }
+.kpi.lead .small { color: #B9B2A2; }
+.goal { height: 10px; border-radius: 5px; background: var(--sunk); overflow: hidden; }
+.goal i { display: block; height: 100%; background: var(--good); }
 .row { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: 0; }
+.row > span:first-child { min-width: 0; }
 .row b { display: block; }
 .row small { color: var(--muted); font-size: 13px; }
 .row .amt { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
@@ -135,7 +164,15 @@ textarea { min-height: 90px; resize: vertical; }
 .checks div { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
 .ok { color: var(--good); font-weight: 700; }
 .no { color: var(--muted); }
-.empty { text-align: center; padding: 30px 10px; display: grid; gap: 10px; justify-items: center; }
+.ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ladder div { border-radius: 10px; padding: 8px 6px; text-align: center; background: var(--sunk); font-size: 12.5px; }
+.ladder div b { display: block; font-size: 14px; }
+.ladder div.me { background: #14120D; color: #F0AE00; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: var(--sunk); }
+.chip.hot { background: var(--bad-bg); color: var(--bad); }
+.chip.warm { background: var(--warn-bg); color: var(--gold-deep); }
+.empty { text-align: center; padding: 26px 10px; display: grid; gap: 10px; justify-items: center; }
 .empty svg { width: 54px; height: 54px; color: var(--muted); }
 
 /* tab bar */
@@ -151,8 +188,9 @@ textarea { min-height: 90px; resize: vertical; }
 
 <div class="shell">
   <div class="demo" id="demo">Preview: sample jobs and payments. Nothing real is sent.</div>
+  <div class="offline" id="offline" hidden>No network. Your updates are saved and will send when you're back.</div>
   <header class="head">
-    <div class="who"><span class="avatar">TM</span><span><b>Tendai M.</b><small>Fridge &amp; aircon · Avondale · Verified</small></span><span class="trust"><b id="trust">94</b><small>Trust</small></span></div>
+    <div class="who"><span class="avatar">TM</span><span><b>Tendai M. <span class="level">Gold</span></b><small>Fridge &amp; aircon · Avondale · Verified</small></span><span class="trust"><b>94</b><small>Trust</small></span></div>
     <label class="online" for="online"><span><b id="on-label">You're offline</b><small id="on-sub">Go online to receive jobs near you.</small></span><span class="switch"><input type="checkbox" id="online" aria-label="Available for jobs"><i></i></span></label>
   </header>
   <main id="app"></main>
@@ -169,118 +207,165 @@ textarea { min-height: 90px; resize: vertical; }
 (() => {
 "use strict";
 // ================= CONFIG (same rules as the ops desk) =================
-const P = { commission: 15, callout: 9, calloutPlatform: 1, freeKm: 10, perKm: 0.5, payoutHours: 24, acceptSeconds: 60, diagnosisDays: 30 };
+const P = { commission: 15, callout: 9, calloutPlatform: 1, freeKm: 10, perKm: 0.5, payoutHours: 24, acceptSeconds: 60, diagnosisDays: 30, noShowMinutes: 15, weeklyGoal: 250 };
 const DEMO = true; const SPEED = 1;
-const ME = { name: "Tendai M.", trade: "HVAC/Refrigeration", suburb: "Avondale", trust: 94, rating: 4.9, jobs: 128, years: 7,
-  checks: { "National ID": true, "Trade qualification": true, "References": true, "Offers warranty": true, "Admin inspected": true, "Police clearance": false } };
+const ME = { name: "Tendai M.", suburb: "Avondale", trust: 94, rating: 4.9, jobs: 128, years: 7, level: "Gold",
+  checks: { "National ID": true, "Trade qualification": true, "References": true, "Offers warranty": true, "Admin inspected": true, "Police clearance": false },
+  skills: ["Inverter fridges", "Split aircons", "Cold rooms", "R600a / R290 gas"], languages: ["English", "Shona"], hours: "Mon–Sat, 7am–6pm" };
+const LEVELS = [
+  { name: "Bronze", need: "New, verified", perk: "Standard jobs" },
+  { name: "Silver", need: "25 jobs, 4.6★", perk: "Shown higher in matches" },
+  { name: "Gold", need: "100 jobs, 4.8★, 0 open complaints", perk: "First pick on jobs + Gold badge" },
+  { name: "Master", need: "300 jobs, 4.9★, trains others", perk: "Commercial contracts + training fees" },
+];
+// Trade quality checklist (this is the HVAC/refrigeration one; each trade gets its own)
+const CHECKLIST = ["Isolated power before work", "Leak test done after repair", "Pressures and amps within spec", "Unit cooling at handover", "Work area cleaned", "Showed the customer the result"];
 // Sample requests the preview sends. In the live app these come from the Basa seBasa server.
 const SAMPLES = [
-  { type: "Repair", item: "Fridge not cooling", desc: "Samsung double-door fridge stopped cooling on Sunday. Light comes on, motor clicks.", customer: "Chipo N.", suburb: "Mabelreign", address: "22 Harare Dr, near the shops", km: 5.5 },
-  { type: "Installation", item: "Split aircon installation", desc: "New 12,000 BTU split unit, bedroom on first floor. Unit already bought.", customer: "Farai D.", suburb: "Mount Pleasant", address: "7 Pendennis Rd", km: 4, agreed: 120 },
-  { type: "Repair", item: "Chest freezer tripping power", desc: "Freezer trips the breaker every time it starts. Small shop, urgent.", customer: "Ruvimbo K.", suburb: "Mbare", address: "Mbare Musika, stall 14", km: 13, urgent: true },
-  { type: "Service", item: "Aircon service", desc: "Two wall-mounted units need a full service and gas check.", customer: "Tafadzwa B.", suburb: "Borrowdale", address: "41 Borrowdale Rd", km: 8, agreed: 60 },
+  { type: "Repair", item: "Fridge not cooling", desc: "Samsung double-door fridge stopped cooling on Sunday. Light comes on, motor clicks.", customer: "Chipo N.", custRating: 4.8, custJobs: 3, regular: true, suburb: "Mabelreign", address: "22 Harare Dr, near the shops", km: 5.5,
+    passport: { appliance: "Samsung RT38 fridge", history: [["Mar 2026", "Regassed R600a, replaced thermostat", "Tendai M."]] } },
+  { type: "Installation", item: "Split aircon installation", desc: "New 12,000 BTU split unit, bedroom on first floor. Unit already bought.", customer: "Farai D.", custRating: 5, custJobs: 1, suburb: "Mount Pleasant", address: "7 Pendennis Rd", km: 4, agreed: 120, scheduled: "Sat 9:00" },
+  { type: "Repair", item: "Chest freezer tripping power", desc: "Freezer trips the breaker every time it starts. Small shop, urgent.", customer: "Ruvimbo K.", custRating: 4.6, custJobs: 7, suburb: "Mbare", address: "Mbare Musika, stall 14", km: 13, urgent: true,
+    passport: { appliance: "Defy 300L chest freezer", history: [["Jan 2026", "Replaced fan motor", "Kudzai C."], ["Aug 2025", "Cleaned condenser", "Kudzai C."]] } },
+  { type: "Service", item: "Aircon service (2 units)", desc: "Two wall-mounted units need a full service and gas check.", customer: "Tafadzwa B.", custRating: 4.9, custJobs: 5, regular: true, suburb: "Borrowdale", address: "41 Borrowdale Rd", km: 8, agreed: 60 },
 ];
 
 // ================= STATE =================
-const S = { online: false, request: null, job: null, done: [], tab: "jobs", sampleIx: 0, timers: [] };
-try { const saved = JSON.parse(localStorage.getItem("bsb-pro") || "null"); if (saved && Array.isArray(saved.done)) S.done = saved.done; } catch (e) {}
-const persist = () => { try { localStorage.setItem("bsb-pro", JSON.stringify({ done: S.done.slice(0, 30) })); } catch (e) {} };
+const S = { online: false, net: true, queued: 0, request: null, job: null, done: [], tab: "jobs", sampleIx: 0, sos: false, timers: [] };
+try { const saved = JSON.parse(localStorage.getItem("bsb-pro2") || "null"); if (saved && Array.isArray(saved.done)) S.done = saved.done; } catch (e) {}
+const persist = () => { try { localStorage.setItem("bsb-pro2", JSON.stringify({ done: S.done.slice(0, 30) })); } catch (e) {} };
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const usd = (n) => "$" + r2(n).toFixed(2);
 const later = (ms, fn) => { const t = setTimeout(fn, ms / SPEED); S.timers.push(t); return t; };
-function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3200); }
-const fmt = (ms) => { const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const first = (n) => String(n).split(" ")[0];
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3400); }
+const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const dateIn = (days) => new Date(Date.now() + days * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+// every update goes through here: sent now, or queued until the network is back (power cuts, no signal)
+function send(text) { if (S.net) { if (text) toast(text); } else { S.queued++; toast("Saved offline. It will send when you're connected."); } }
 
 // ================= MONEY: what the technician earns =================
 function earnings(j) {
   const travel = r2(Math.max(0, j.km - P.freeKm) * P.perKm);
   const callout = j.type === "Repair" ? P.callout - P.calloutPlatform : 0;
-  const labour = j.type === "Repair" ? r2(j.quote?.labour || 0) : r2(j.agreed || 0);
-  const parts = j.type === "Repair" ? r2(j.quote?.parts || 0) : 0;
+  const labour = j.calloutOnly ? 0 : j.type === "Repair" ? r2(j.quote?.labour || 0) : r2(j.agreed || 0);
+  const parts = j.calloutOnly ? 0 : j.type === "Repair" ? r2(j.quote?.parts || 0) : 0;
   const fee = r2(labour * P.commission / 100);
   return { travel, callout, labour, parts, fee, total: r2(callout + travel + labour - fee + parts), upfront: r2(callout + travel) };
 }
 
 // ================= SIMULATED SERVER =================
-function scheduleRequest(delay = 4000) { later(delay, () => { if (!S.online || S.request || S.job) return; const s = SAMPLES[S.sampleIx++ % SAMPLES.length]; S.request = { ...s, id: "BSB-" + (1100 + S.sampleIx), at: Date.now(), expires: Date.now() + P.acceptSeconds * 1000 }; buzz(); render(); }); }
-function buzz() { try { navigator.vibrate?.([200, 100, 200]); } catch (e) {} }
-function sim(stage, ms, text) { later(ms, () => { if (!S.job) return; S.job.stage = stage; if (text) toast(text); render(); }); }
+function scheduleRequest(delay = 4000) { later(delay, () => { if (!S.online || S.request || S.job) return; const s = SAMPLES[S.sampleIx++ % SAMPLES.length]; S.request = { ...s, id: "BSB-" + (1100 + S.sampleIx), code: String(1000 + Math.floor(Math.random() * 9000)), at: Date.now(), expires: Date.now() + P.acceptSeconds * 1000 }; try { navigator.vibrate?.([200, 100, 200]); } catch (e) {} render(); }); }
+function sim(stage, ms, text, guard) { later(ms, () => { const j = S.job; if (!j || (guard && j.stage !== guard)) return; j.stage = stage; if (text) toast(text); render(); }); }
 
 // ================= RENDER =================
 function render() {
-  $("#demo").hidden = !DEMO;
+  $("#demo").hidden = !DEMO; $("#offline").hidden = S.net;
   $("#on-label").textContent = S.online ? "You're online" : "You're offline";
   $("#on-sub").textContent = S.job ? "On a job. New requests are paused." : S.online ? "Waiting for jobs near " + ME.suburb + "." : "Go online to receive jobs near you.";
   $("#online").checked = S.online;
   $("#jobs-dot").hidden = !(S.tab !== "jobs" && (S.request || S.job));
   document.querySelectorAll("[data-tab]").forEach((a) => a.dataset.tab === S.tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-  const keep = {}; document.querySelectorAll("#app input[id], #app textarea[id]").forEach((el) => { if (el.type !== "file") keep[el.id] = el.value; });
+  const keep = {}; document.querySelectorAll("#app input[id], #app textarea[id], #app select[id]").forEach((el) => { if (el.type === "checkbox") keep[el.id] = el.checked; else if (el.type !== "file") keep[el.id] = el.value; });
   $("#app").innerHTML = S.tab === "earnings" ? viewEarnings() : S.tab === "history" ? viewHistory() : S.tab === "profile" ? viewProfile() : viewJobs();
-  Object.entries(keep).forEach(([k, v]) => { const el = document.getElementById(k); if (el) el.value = v; });
+  Object.entries(keep).forEach(([k, v]) => { const el = document.getElementById(k); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
   if (S.job?.stage === "travelling") startMap();
 }
 
 function viewJobs() {
   if (S.request) return requestCard(S.request);
   if (S.job) return jobView(S.job);
-  if (!S.online) return `<div class="card empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M18.4 5.6a9 9 0 1 1-12.8 0M12 2v10"/></svg><h3>Go online to start</h3><p class="muted">Flip the switch at the top when you're ready to take jobs. You must share your location while you're on a job.</p><button class="btn gold" type="button" data-go-online>Go online</button></div>${todayStrip()}`;
-  return `<div class="card empty"><div class="spin" aria-hidden="true" style="width:40px;height:40px"></div><h3>Looking for jobs</h3><p class="muted">We send you jobs from customers near ${esc(ME.suburb)} that match your trade. You'll have ${P.acceptSeconds} seconds to accept each one.</p></div>${todayStrip()}`;
+  const demand = `<div class="card"><div class="toprow"><h3>Busy near you</h3><span class="muted small">Last hour</span></div><div class="chips"><span class="chip hot">Mabelreign · very busy</span><span class="chip warm">Avondale · busy</span><span class="chip warm">Mbare · busy</span><span class="chip">Borrowdale · normal</span></div><p class="muted small">Load-shedding nights mean more fridge and freezer call-outs. Stay online after 6pm to catch them.</p></div>`;
+  const next = `<div class="card"><div class="toprow"><span><span class="eyebrow">Next scheduled</span><b style="display:block;font-size:17px">Cold room service · Msasa</b><span class="muted small">Fri 8:00 · booked through Basa seBasa</span></span><span class="pill good">Confirmed</span></div></div>`;
+  if (!S.online) return `<div class="card empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M18.4 5.6a9 9 0 1 1-12.8 0M12 2v10"/></svg><h3>Go online to start</h3><p class="muted">Flip the switch at the top when you're ready. Your location is shared only while you're online or on a job.</p><button class="btn gold" type="button" data-go-online>Go online</button></div>${todayStrip()}${next}`;
+  return `<div class="card empty"><div class="spin" aria-hidden="true" style="width:40px;height:40px"></div><h3>Looking for jobs</h3><p class="muted">Gold Pros get first pick on jobs near ${esc(ME.suburb)}. You'll have ${P.acceptSeconds} seconds to accept each one.</p></div>${todayStrip()}${demand}${next}`;
 }
 function todayStrip() {
-  const today = S.done.filter((d) => new Date(d.at).toDateString() === new Date().toDateString());
-  return `<div class="kpis"><div class="kpi lead"><span class="eyebrow">Today</span><b>${usd(today.reduce((s, d) => s + d.earned, 0))}</b><span style="color:#B9B2A2;font-size:13.5px">${today.length} job${today.length === 1 ? "" : "s"}</span></div><div class="kpi"><span class="eyebrow">Rating</span><b>${ME.rating}</b><span class="muted" style="font-size:13.5px">${ME.jobs + S.done.length} jobs done</span></div></div>`;
+  const week = S.done.filter((d) => Date.now() - d.at < 7 * 864e5); const got = week.reduce((s, d) => s + d.earned, 0);
+  return `<div class="card"><div class="toprow"><span><span class="eyebrow">This week's goal</span><b style="display:block;font-family:var(--display);font-size:28px">${usd(got)} <span class="muted" style="font-size:18px">of ${usd(P.weeklyGoal)}</span></b></span><span class="pill">${week.length} jobs</span></div><div class="goal" aria-hidden="true"><i style="width:${Math.min(100, got / P.weeklyGoal * 100)}%"></i></div></div>`;
 }
 
 function requestCard(r) {
-  const e = earnings(r); const left = Math.max(0, Math.ceil((r.expires - Date.now()) / 1000));
-  const eta = Math.round(8 + r.km * 2.4);
+  const e = earnings(r); const left = Math.max(0, Math.ceil((r.expires - Date.now()) / 1000)); const eta = Math.round(8 + r.km * 2.4);
   return `<div class="request" role="alertdialog" aria-label="New job request">
-    <div class="ring"><span class="eyebrow">New job${r.urgent ? " · Urgent" : ""}</span><span class="count" id="count">${left}s</span></div>
+    <div class="ring"><span class="eyebrow">${r.scheduled ? "Scheduled job · " + esc(r.scheduled) : "New job"}${r.urgent ? " · Urgent" : ""}</span><span class="count" id="count">${left}s</span></div>
     <div class="bar" aria-hidden="true"><i id="bar" style="width:${(left / P.acceptSeconds) * 100}%"></i></div>
-    <div><h2>${esc(r.item)}</h2><p class="muted" style="margin-top:6px">${esc(r.type)} · ${esc(r.suburb)}</p></div>
-    <div class="facts"><div><b>${r.km} km</b><small>away</small></div><div><b>~${eta} min</b><small>to get there</small></div><div><b>${esc(r.customer.split(" ")[0])}</b><small>customer</small></div></div>
+    <div><h2>${esc(r.item)}</h2><p class="muted" style="margin-top:6px">${esc(r.type)} · ${esc(r.suburb)}${r.regular ? ' · <b style="color:var(--good)">Your regular customer</b>' : ""}</p></div>
+    <div class="facts"><div><b>${r.km} km</b><small>away</small></div><div><b>~${eta} min</b><small>to get there</small></div><div><b>${esc(first(r.customer))} ★${r.custRating}</b><small>${r.custJobs} past job${r.custJobs > 1 ? "s" : ""}</small></div></div>
     <p>${esc(r.desc)}</p>
+    ${r.passport ? passportBox(r.passport) : ""}
     ${r.type === "Repair" ? `<div class="earn"><span><strong>You earn now</strong><br><small style="color:inherit;opacity:.85">Call-out${e.travel ? " + extra travel" : ""}. Repair quoted on site.</small></span><b>${usd(e.upfront)}</b></div>`
-      : `<div class="earn"><span><strong>You earn</strong><br><small style="color:inherit;opacity:.85">${usd(e.labour)} agreed price, minus ${P.commission}%${e.travel ? ", plus travel" : ""}</small></span><b>${usd(e.total)}</b></div>`}
+      : `<div class="earn"><span><strong>You earn</strong><br><small style="color:inherit;opacity:.85">${usd(e.labour)} agreed, minus ${P.commission}%${e.travel ? ", plus travel" : ""}</small></span><b>${usd(e.total)}</b></div>`}
     <div class="two"><button class="btn quiet" type="button" data-decline>Decline</button><button class="btn gold" type="button" data-accept>Accept job</button></div>
-    <p class="muted" style="font-size:13.5px;text-align:center">Not answering counts as a decline. The job goes to the next pro.</p></div>`;
+    <p class="muted small" style="text-align:center">Not answering counts as a decline. The job goes to the next pro.</p></div>`;
 }
+const passportBox = (p) => `<div class="passport"><b>Appliance passport · ${esc(p.appliance)}</b>${p.history.map(([d, w, by]) => `<span>${esc(d)}: ${esc(w)} <span class="muted">(${esc(by)})</span></span>`).join("")}</div>`;
 
 function jobView(j) {
-  const e = earnings(j); const first = j.customer.split(" ")[0];
-  const head = (title, sub, extra = "") => `<div class="stagehead"><div style="display:flex;justify-content:space-between;gap:10px"><span class="mono" style="color:#B9B2A2">${esc(j.id)} · ${esc(j.type)}</span><span class="loc"><span class="dotlive"></span>Location shared</span></div><h2>${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}</div>`;
-  const cust = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><span><span class="eyebrow">Customer</span><b style="display:block;font-size:18px">${esc(j.customer)}</b><span class="muted">${esc(j.address)}, ${esc(j.suburb)}</span></span><span class="pill">${j.km} km</span></div><p>${esc(j.desc)}</p>
-    <div class="two"><a class="btn quiet" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.address + ", " + j.suburb + ", Harare")}" target="_blank" rel="noopener">Directions</a><button class="btn quiet" type="button" data-chat>Message</button></div></div>`;
+  const e = earnings(j); const f = first(j.customer);
+  const head = (title, sub, extra = "") => `<div class="stagehead"><div class="toprow"><span class="mono" style="color:#B9B2A2">${esc(j.id)} · ${esc(j.type)}</span><button class="sos" type="button" data-sos>SOS</button></div>
+    <h2>${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}
+    <span class="loc"><span class="dotlive ${S.net ? "" : "off"}"></span>${S.net ? "Location shared with Basa seBasa" : "Location saved offline"}</span></div>${S.sos ? sosSheet(j) : ""}`;
+  const cust = `<div class="card"><div class="toprow" style="align-items:start"><span><span class="eyebrow">Customer</span><b style="display:block;font-size:18px">${esc(j.customer)} <span class="muted" style="font-size:14px">★${j.custRating}</span></b><span class="muted">${esc(j.address)}, ${esc(j.suburb)}</span></span><span class="pill">${j.km} km</span></div><p>${esc(j.desc)}</p>${j.passport ? passportBox(j.passport) : ""}
+    <div class="two"><a class="btn quiet sm" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.address + ", " + j.suburb + ", Harare")}" target="_blank" rel="noopener">Directions</a><button class="btn quiet sm" type="button" data-chat>Message</button></div></div>`;
   switch (j.stage) {
-    case "await_callout": return head("Waiting for call-out", `${esc(first)} is paying the ${usd(P.callout + e.travel)} call-out on EcoCash. Don't leave yet.`, `<div class="wait" style="background:rgba(255,255,255,.08)"><span class="spin"></span><span>We'll tell you the moment it's paid.</span></div>`) + cust;
-    case "ready": return head("Ready to go", j.type === "Repair" ? "Call-out paid. You're cleared to travel." : `Price confirmed with ${esc(first)}. You're cleared to travel.`) + `<div class="card"><h3>Start your trip</h3><p class="muted">The customer will see you on the map with your ETA. Keep the app open while you travel.</p><button class="btn gold" type="button" data-trip>I'm on my way</button></div>` + cust;
-    case "travelling": return head(`On the way to ${first}`, "", `<div class="map"><svg viewBox="0 0 320 200" aria-label="Your route"><rect width="320" height="200" fill="#22201A"/><g stroke="#3A362C" stroke-width="8" fill="none" stroke-linecap="round"><path d="M-10 50H330M-10 140H330M70 -10V210M200 -10V210M270 -10V210"/></g><g stroke="#2E2B23" stroke-width="3" fill="none"><path d="M-10 95H330M130 -10V210M-10 180H330M30 0V200"/></g><path id="route" d="M40 170 L70 170 L70 140 L200 140 L200 50 L272 50" stroke="#F0AE00" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/><g transform="translate(272 50)"><circle r="11" fill="#F5F1E6"/><path d="M-5 2 0 -4 5 2V6H-5z" fill="#14120D"/></g><g id="dot"><circle r="13" fill="#F0AE00" opacity=".25"/><circle r="7" fill="#F0AE00" stroke="#14120D" stroke-width="2"/></g></svg><span class="eta" id="eta">${Math.round(8 + j.km * 2.4)} min</span></div>`) + `<button class="btn gold" type="button" data-arrived id="arrive-btn">I've arrived</button>` + cust;
-    case "arrived": return head("You've arrived", j.type === "Repair" ? `Inspect the problem, then send ${esc(first)} a full quote before doing any work.` : `Take a before photo, then start the job timer.`) + (j.type === "Repair" ? quoteForm(j) : startCard(j));
-    case "quote_sent": return head("Quote sent", `Waiting for ${esc(first)} to approve.`, `<div class="wait" style="background:rgba(255,255,255,.08)"><span class="spin"></span><span>${esc(first)} sees your diagnosis and the total on WhatsApp.</span></div>`) + `<div class="card"><h3>Your quote</h3>${splitTable(j)}</div>`;
-    case "deferred": return head("Repair saved for later", `${esc(first)} will repair another time. You keep the call-out.`) + `<div class="card"><p>The diagnosis is valid for ${P.diagnosisDays} days. When ${esc(first)} is ready, <b>you get first chance</b> to do the repair. You'll have 24 hours to accept.</p><table class="split"><tr class="you"><td>You earned</td><td>${usd(e.upfront)}</td></tr></table><p class="muted" style="font-size:14px">Paid to your EcoCash within ${P.payoutHours} hours.</p><button class="btn gold" type="button" data-finish-deferred>Back to jobs</button></div>`;
-    case "approved": return head("Quote approved", `${esc(first)} said yes. You can start.`) + startCard(j);
-    case "working": return head("Job in progress", "") + `<div class="card"><span class="eyebrow" style="text-align:center">Time on the job</span><div class="timer" id="timer">${fmt(workMs(j))}</div><div class="two"><button class="btn quiet" type="button" data-pause>${j.pausedAt ? "Resume" : "Pause"}</button><button class="btn quiet" type="button" data-chat>Message</button></div></div>
-      <div class="card"><h3>Finish the job</h3><div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}">${j.beforePhoto ? "✓ Before photo" : "Before photo"}<small class="muted">${j.beforePhoto ? esc(j.beforePhoto) : "Taken"}</small></label><label class="photo ${j.afterPhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="after-photo">${j.afterPhoto ? "✓ After photo" : "Add after photo"}<small class="muted">${j.afterPhoto ? esc(j.afterPhoto) : "Required"}</small></label></div>
-      <div class="field"><label for="notes">What did you do?</label><textarea id="notes" placeholder="e.g. Replaced start relay, regassed, tested 30 min. 3-month warranty."></textarea></div><p class="err" id="done-err" hidden></p><button class="btn gold" type="button" data-complete>Job complete</button></div>`;
-    case "await_payment": return head("Waiting for payment", `${esc(first)} is checking the work and paying on EcoCash.`, `<div class="wait" style="background:rgba(255,255,255,.08)"><span class="spin"></span><span>Don't accept cash. All payments go through Basa seBasa.</span></div>`) + `<div class="card"><h3>Your earnings</h3>${splitTable(j)}</div>`;
-    case "paid": return head("Paid. Well done", `Your payout is on its way.`) + `<div class="card"><table class="split"><tr class="you"><td>You earn from this job</td><td>${usd(e.total)}</td></tr></table><p class="muted" style="font-size:14px">Sent to your EcoCash within ${P.payoutHours} hours. You'll get a WhatsApp message with the reference.</p>${j.rating ? `<p>${esc(first)} rated you <b>${"★".repeat(j.rating)}</b> ${j.review ? `"${esc(j.review)}"` : ""}</p>` : ""}<button class="btn gold" type="button" data-finish>Back to jobs</button></div>`;
+    case "await_callout": return head("Waiting for call-out", `${esc(f)} is paying the ${usd(P.callout + e.travel)} call-out on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span><span>We'll tell you the moment it's paid.</span></div>`) + cust;
+    case "ready": return head("Ready to go", j.type === "Repair" ? "Call-out paid. You're cleared to travel." : `Price confirmed with ${esc(f)}. You're cleared to travel.`) + `<div class="card"><h3>Start your trip</h3><p class="muted">${esc(f)} sees you on the map with your ETA.</p><button class="btn gold" type="button" data-trip>I'm on my way</button></div>` + cust;
+    case "travelling": return head(`On the way to ${f}`, "", `<div class="map"><svg viewBox="0 0 320 200" aria-label="Your route"><rect width="320" height="200" fill="#22201A"/><g stroke="#3A362C" stroke-width="8" fill="none" stroke-linecap="round"><path d="M-10 50H330M-10 140H330M70 -10V210M200 -10V210M270 -10V210"/></g><g stroke="#2E2B23" stroke-width="3" fill="none"><path d="M-10 95H330M130 -10V210M-10 180H330M30 0V200"/></g><path id="route" d="M40 170 L70 170 L70 140 L200 140 L200 50 L272 50" stroke="#F0AE00" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/><g transform="translate(272 50)"><circle r="11" fill="#F5F1E6"/><path d="M-5 2 0 -4 5 2V6H-5z" fill="#14120D"/></g><g id="dot"><circle r="13" fill="#F0AE00" opacity=".25"/><circle r="7" fill="#F0AE00" stroke="#14120D" stroke-width="2"/></g></svg><span class="eta" id="eta">${Math.round(8 + j.km * 2.4)} min</span></div>`) + `<button class="btn gold" type="button" data-arrived>I've arrived</button>` + cust;
+    case "verify": return head("Check you're at the right place", `Ask ${esc(f)} for their <b>Basa Code</b>. It proves to them you're the real Basa seBasa pro.`) + `<div class="card"><div class="field"><label for="code">${esc(f)}'s 4-digit Basa Code</label><input id="code" class="code" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="····"></div>${DEMO ? `<p class="muted small" style="text-align:center">Preview: the customer's code is <b class="mono">${esc(j.code)}</b></p>` : ""}<p class="err" id="code-err" hidden></p><button class="btn gold" type="button" data-verify>Confirm arrival</button></div>
+      <div class="card"><h3>Customer not answering?</h3>${j.waitStart ? `<div class="wait"><span class="spin"></span><span>Waiting: <b id="wait">${fmt(waitLeft(j))}</b> left. Keep calling.</span></div>${waitLeft(j) <= 0 ? `<button class="btn danger" type="button" data-noshow>Customer not home: close job</button>` : ""}` : `<p class="muted">Start the ${P.noShowMinutes}-minute wait. If nobody comes, you keep ${j.type === "Repair" ? "the call-out" : "a no-show fee"}, and ${esc(f)} is told.</p><button class="btn quiet" type="button" data-wait>Start ${P.noShowMinutes}-minute wait</button>`}</div>`;
+    case "arrived": return head("Arrival confirmed", j.type === "Repair" ? `Inspect the problem, then send ${esc(f)} a full quote before doing any work.` : `Take a before photo, then start the job timer.`) + (j.type === "Repair" ? quoteForm(j) : startCard(j));
+    case "quote_sent": return head("Quote sent", `Waiting for ${esc(f)} to approve.`, `<div class="wait"><span class="spin"></span><span>${esc(f)} sees your diagnosis and the total on WhatsApp.</span></div>`) + `<div class="card"><h3>Your quote</h3>${splitTable(j)}</div>`;
+    case "deferred": return head("Repair saved for later", `${esc(f)} will repair another time. You keep the call-out.`) + `<div class="card"><p>The diagnosis is saved in the appliance passport for ${P.diagnosisDays} days. When ${esc(f)} is ready, <b>you get first chance</b> to do the repair.</p><table class="split"><tr class="you"><td>You earned</td><td>${usd(e.upfront)}</td></tr></table><button class="btn gold" type="button" data-end-deferred>Back to jobs</button></div>`;
+    case "approved": return head("Quote approved", `${esc(f)} said yes. You can start.`) + startCard(j);
+    case "working": return head("Job in progress", "") + workView(j);
+    case "await_payment": return head("Waiting for payment", `${esc(f)} has your service report and is paying on EcoCash.`, `<div class="wait"><span class="spin"></span><span>Don't accept cash. All payments go through Basa seBasa.</span></div>`) + reportCard(j);
+    case "rate": return head("Paid. Well done", `${esc(f)} rated you ${"★".repeat(j.rating)}. Your payout is on its way.`) + `<div class="card"><table class="split"><tr class="you"><td>You earn from this job</td><td>${usd(e.total)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours, with the reference on WhatsApp.</p>${j.review ? `<p>"${esc(j.review)}"</p>` : ""}</div>
+      <div class="card"><h3>How was ${esc(f)}?</h3><p class="muted small">Your rating helps us protect pros from difficult customers.</p><div class="stars" role="radiogroup" aria-label="Rate the customer">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-crate="${n}" class="${(j.custStars || 0) >= n ? "on" : ""}" aria-label="${n} star${n > 1 ? "s" : ""}">★</button>`).join("")}</div>
+        <label class="tick"><input type="checkbox" id="flag"> Report a problem (unsafe, abusive, asked to pay cash)</label><p class="err" id="rate-err" hidden></p><button class="btn gold" type="button" data-finish>Finish</button></div>`;
   }
   return "";
 }
+const waitLeft = (j) => j.waitStart + (P.noShowMinutes * 60000) / (DEMO ? 40 : 1) - Date.now(); // the preview speeds the 15-minute wait up
+function sosSheet(j) {
+  return `<div class="card sheet"><h3>Safety</h3><p class="muted small">Use these if you feel unsafe. Our team sees your location straight away.</p>
+    <button class="btn danger" type="button" data-sos-call>Call the Basa seBasa safety line</button><button class="btn quiet" type="button" data-sos-share>Share my live location with a contact</button><button class="btn quiet" type="button" data-sos-leave>Leave this job safely</button><button class="btn quiet sm" type="button" data-sos>Close</button></div>`;
+}
 function quoteForm(j) {
   return `<div class="card"><h3>Diagnose and quote</h3>
-    <div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="before-photo">${j.beforePhoto ? "✓ Photo added" : "Photo of the fault"}<small class="muted">${j.beforePhoto ? esc(j.beforePhoto) : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${fmt(Date.now() - j.arrivedAt)}</b><small class="muted">on site</small></div></div>
+    <div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="before-photo">${j.beforePhoto ? "✓ Fault photo" : "Photo of the fault"}<small class="muted">${j.beforePhoto ? esc(j.beforePhoto) : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${fmt(Date.now() - j.arrivedAt)}</b><small class="muted">on site</small></div></div>
     <div class="field"><label for="diag">What's wrong?</label><textarea id="diag" placeholder="e.g. Start relay burnt out. Compressor is fine."></textarea></div>
     <div class="two"><div class="field"><label for="labour">Labour (USD)</label><input id="labour" type="number" min="0" step="1" inputmode="decimal" placeholder="40"></div><div class="field"><label for="parts">Parts (USD)</label><input id="parts" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></div></div>
+    <div class="field"><label for="warranty">Warranty you'll give</label><select id="warranty"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="180">6 months</option></select></div>
     <div id="preview">${splitTable({ ...j, quote: { labour: 0, parts: 0 } })}</div>
-    <p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-quote>Send quote to ${esc(j.customer.split(" ")[0])}</button>
-    <p class="muted" style="font-size:13.5px;text-align:center">Never start a repair before the customer approves.</p></div>`;
+    <p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-quote>Send quote to ${esc(first(j.customer))}</button>
+    <p class="muted small" style="text-align:center">Never start a repair before the customer approves.</p></div>`;
 }
 function startCard(j) {
-  return `<div class="card"><h3>Start the job</h3>${j.type !== "Repair" ? `<div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="before-photo">${j.beforePhoto ? "✓ Before photo" : "Before photo"}<small class="muted">${j.beforePhoto ? esc(j.beforePhoto) : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${usd(j.agreed)}</b><small class="muted">agreed price</small></div></div>` : ""}
-    <p class="muted">The timer records how long the job takes, so customers can trust the work was done.</p><button class="btn gold" type="button" data-start>Start job timer</button></div>`;
+  return `<div class="card"><h3>Start the job</h3>${j.type !== "Repair" ? `<div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="before-photo">${j.beforePhoto ? "✓ Before photo" : "Before photo"}<small class="muted">${j.beforePhoto ? esc(j.beforePhoto) : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${usd(j.agreed)}</b><small class="muted">agreed price</small></div></div>
+      <div class="field"><label for="warranty">Warranty you'll give</label><select id="warranty"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="180">6 months</option></select></div>` : ""}
+    <p class="muted">The timer and checklist become the customer's service report.</p><button class="btn gold" type="button" data-start>Start job timer</button></div>`;
+}
+function workView(j) {
+  const needReceipt = earnings(j).parts > 0;
+  return `<div class="card"><span class="eyebrow" style="text-align:center">Time on the job</span><div class="timer" id="timer">${fmt(workMs(j))}</div><div class="two"><button class="btn quiet sm" type="button" data-pause>${j.pausedAt ? "Resume" : "Pause"}</button><button class="btn quiet sm" type="button" data-chat>Message</button></div></div>
+    <div class="card"><h3>Quality checklist</h3><div class="checklist">${CHECKLIST.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}</div>
+      <div class="two"><div class="field"><label for="psi">Suction pressure (psi)</label><input id="psi" type="number" inputmode="decimal" placeholder="optional"></div><div class="field"><label for="amps">Current draw (A)</label><input id="amps" type="number" inputmode="decimal" placeholder="optional"></div></div></div>
+    <div class="card"><h3>Proof of work</h3><div class="photos"><label class="photo ${j.afterPhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" id="after-photo">${j.afterPhoto ? "✓ After photo" : "After photo"}<small class="muted">${j.afterPhoto ? esc(j.afterPhoto) : "Required"}</small></label>
+      <label class="photo ${j.receiptPhoto ? "done" : ""}" ${needReceipt ? "" : 'style="opacity:.5"'}><input type="file" accept="image/*" capture="environment" id="receipt-photo" ${needReceipt ? "" : "disabled"}>${j.receiptPhoto ? "✓ Parts receipt" : "Parts receipt"}<small class="muted">${needReceipt ? (j.receiptPhoto ? esc(j.receiptPhoto) : "Required for parts") : "No parts"}</small></label></div>
+      <div class="field"><label for="notes">What did you do?</label><textarea id="notes" placeholder="e.g. Replaced start relay, leak tested, cooling at 4°C after 30 min."></textarea></div><p class="err" id="done-err" hidden></p><button class="btn gold" type="button" data-complete>Job complete</button></div>`;
+}
+function reportCard(j) {
+  const e = earnings(j);
+  return `<div class="card"><h3>Service report sent</h3><div class="report"><header><b>Basa seBasa service report</b><span class="pill good">Verified visit</span></header><dl>
+    <dt>Job</dt><dd class="mono">${esc(j.id)}</dd><dt>Pro</dt><dd>${esc(ME.name)} · Trust ${ME.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd>
+    ${j.quote?.diagnosis ? `<dt>Fault</dt><dd>${esc(j.quote.diagnosis)}</dd>` : ""}<dt>Work done</dt><dd>${esc(j.notes || "As quoted")}</dd><dt>Time on job</dt><dd>${j.minutes} min</dd>
+    <dt>Checks</dt><dd>${j.checks}/${CHECKLIST.length} quality checks${j.psi ? ` · ${esc(j.psi)} psi` : ""}${j.amps ? ` · ${esc(j.amps)} A` : ""}</dd>
+    ${e.parts ? `<dt>Parts</dt><dd>${usd(e.parts)} · receipt attached</dd>` : ""}<dt>Photos</dt><dd>${[j.beforePhoto && "before", j.afterPhoto && "after", j.receiptPhoto && "receipt"].filter(Boolean).join(", ")}</dd>
+    <dt>Warranty</dt><dd><b>Until ${esc(dateIn(j.warranty))}</b>. Free return visit if the same fault comes back.</dd></dl></div>
+    <p class="muted small">This report is saved to the customer's appliance passport. Warranty only applies to jobs booked through Basa seBasa.</p>${splitTable(j)}</div>`;
 }
 function splitTable(j) {
   const e = earnings(j);
@@ -289,23 +374,29 @@ function splitTable(j) {
 const workMs = (j) => (j.pausedAt || Date.now()) - j.startedAt - (j.pausedTotal || 0);
 
 function viewEarnings() {
-  const now = Date.now(); const week = S.done.filter((d) => now - d.at < 7 * 864e5);
-  const pending = S.done.filter((d) => now < d.at + P.payoutHours * 36e5 && !d.paidOut);
+  const now = Date.now(); const week = S.done.filter((d) => now - d.at < 7 * 864e5); const got = week.reduce((s, d) => s + d.earned, 0);
+  const pending = S.done.filter((d) => now < d.at + P.payoutHours * 36e5);
+  const regulars = new Set(S.done.filter((d) => d.regular).map((d) => d.customer)).size;
   return `<h2>Earnings</h2>
-    <div class="kpis"><div class="kpi lead"><span class="eyebrow">This week</span><b>${usd(week.reduce((s, d) => s + d.earned, 0))}</b><span style="color:#B9B2A2;font-size:13.5px">${week.length} jobs</span></div><div class="kpi"><span class="eyebrow">Payout pending</span><b>${usd(pending.reduce((s, d) => s + d.earned, 0))}</b><span class="muted" style="font-size:13.5px">Within ${P.payoutHours} h of payment</span></div></div>
-    <div class="card"><h3>Payouts</h3>${S.done.length ? S.done.map((d) => { const due = d.at + P.payoutHours * 36e5; const left = due - now; return `<div class="row"><span><b>${esc(d.item)}</b><small>${new Date(d.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${esc(d.id)}</small></span><span class="amt">${usd(d.earned)}<br><span class="pill ${left <= 0 ? "good" : ""}">${left <= 0 ? "Paid to EcoCash" : "Due in " + Math.max(1, Math.round(left / 36e5)) + " h"}</span></span></div>`; }).join("") : `<p class="muted">Your completed jobs and payouts appear here.</p>`}</div>
-    <div class="card"><h3>How you're paid</h3><p class="muted">Customers pay Basa seBasa on EcoCash. We send your share to your EcoCash number within ${P.payoutHours} hours: ${100 - P.commission}% of labour, all of the parts, $${P.callout - P.calloutPlatform} of each $${P.callout} call-out, and any extra travel.</p></div>`;
+    <div class="kpis"><div class="kpi lead"><span class="eyebrow">This week</span><b>${usd(got)}</b><span class="small">${week.length} jobs · goal ${usd(P.weeklyGoal)}</span></div><div class="kpi"><span class="eyebrow">Payout pending</span><b>${usd(pending.reduce((s, d) => s + d.earned, 0))}</b><span class="muted small">Within ${P.payoutHours} h of payment</span></div></div>
+    <div class="card"><div class="goal" aria-hidden="true"><i style="width:${Math.min(100, got / P.weeklyGoal * 100)}%"></i></div><p class="muted small">${got >= P.weeklyGoal ? "Weekly goal reached. Well done." : usd(P.weeklyGoal - got) + " to reach your weekly goal."}</p></div>
+    <div class="card"><h3>Payouts</h3>${S.done.length ? S.done.map((d) => { const left = d.at + P.payoutHours * 36e5 - now; return `<div class="row"><span><b>${esc(d.item)}</b><small>${new Date(d.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${esc(d.id)}</small></span><span class="amt">${usd(d.earned)}<br><span class="pill ${left <= 0 ? "good" : ""}">${left <= 0 ? "Paid to EcoCash" : "Due in " + Math.max(1, Math.round(left / 36e5)) + " h"}</span></span></div>`; }).join("") : `<p class="muted">Your completed jobs and payouts appear here.</p>`}</div>
+    <div class="card"><h3>Your regulars</h3><p><b style="font-family:var(--display);font-size:28px">${regulars + 14}</b> <span class="muted">customers have booked you again</span></p><p class="muted small">When your regulars book you through Basa seBasa, you get the job first, their warranty stays valid, and every visit grows your Trust Score. Jobs taken outside the app lose all three.</p></div>
+    <div class="card"><h3>How you're paid</h3><p class="muted">Customers pay Basa seBasa on EcoCash. We send your share to your EcoCash within ${P.payoutHours} hours: ${100 - P.commission}% of labour, all of the parts, $${P.callout - P.calloutPlatform} of each $${P.callout} call-out, and any extra travel.</p></div>`;
 }
 function viewHistory() {
-  return `<h2>History</h2><div class="card">${S.done.length ? S.done.map((d) => `<div class="row"><span><b>${esc(d.item)}</b><small>${esc(d.suburb)} · ${esc(d.type)} · ${d.minutes ? d.minutes + " min on the job" : "call-out only"}</small></span><span class="amt">${d.rating ? "★".repeat(d.rating) : "—"}<br><small>${usd(d.earned)}</small></span></div>`).join("") : `<div class="empty"><h3>No jobs yet</h3><p class="muted">Go online to get your first job.</p></div>`}</div>`;
+  return `<h2>History</h2><div class="card">${S.done.length ? S.done.map((d) => `<div class="row"><span><b>${esc(d.item)}</b><small>${esc(d.suburb)} · ${esc(d.type)} · ${d.minutes ? d.minutes + " min on the job" : d.noshow ? "customer not home" : "call-out only"}${d.warranty ? " · warranty to " + esc(d.warranty) : ""}</small></span><span class="amt">${d.rating ? "★".repeat(d.rating) : "—"}<br><small>${usd(d.earned)}</small></span></div>`).join("") : `<div class="empty"><h3>No jobs yet</h3><p class="muted">Go online to get your first job.</p></div>`}</div>`;
 }
 function viewProfile() {
+  const ix = LEVELS.findIndex((l) => l.name === ME.level);
   return `<h2>Profile</h2>
-    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><span><span class="eyebrow">Trust Score</span><b style="display:block;font-family:var(--display);font-size:54px;line-height:1">${ME.trust}<span class="muted" style="font-size:22px">/100</span></b></span><span class="pill good">Verified</span></div>
-      <p class="muted">Customers see this before they choose you. It comes from your checks, experience, ratings and jobs done.</p></div>
-    <div class="card"><h3>Checks</h3><div class="checks">${Object.entries(ME.checks).map(([k, v]) => `<div><span>${esc(k)}</span><span class="${v ? "ok" : "no"}">${v ? "✓ Checked" : "Not yet"}</span></div>`).join("")}</div></div>
-    <div class="card"><h3>Raise your score</h3><ul style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Add a police clearance: <b>+10</b></li><li>Accept jobs quickly and arrive on time</li><li>Send before and after photos on every job</li><li>Never ask a customer for cash</li></ul></div>
-    <div class="card"><h3>Your details</h3><div class="checks"><div><span>Trade</span><span>Fridge &amp; aircon</span></div><div><span>Based in</span><span>${esc(ME.suburb)}</span></div><div><span>Experience</span><span>${ME.years} years</span></div><div><span>EcoCash for payouts</span><span class="mono">077 ••• 0001</span></div></div></div>`;
+    <div class="card"><div class="toprow"><span><span class="eyebrow">Trust Score</span><b style="display:block;font-family:var(--display);font-size:54px;line-height:1">${ME.trust}<span class="muted" style="font-size:22px">/100</span></b></span><span class="pill good">Verified</span></div><p class="muted">Customers see this before they choose you. It comes from your checks, experience, ratings, on-time arrivals and complaint record.</p></div>
+    <div class="card"><h3>Pro level: ${esc(ME.level)}</h3><div class="ladder">${LEVELS.map((l, i) => `<div class="${i === ix ? "me" : ""}"><b>${l.name}</b>${i < ix ? "✓" : i === ix ? "You" : ""}</div>`).join("")}</div>
+      <p><b>Your perk:</b> ${esc(LEVELS[ix].perk)}.</p><p class="muted small">Next: <b>${esc(LEVELS[ix + 1]?.name || "")}</b> at ${esc(LEVELS[ix + 1]?.need || "")}. Perk: ${esc(LEVELS[ix + 1]?.perk || "")}.</p></div>
+    <div class="card"><h3>Checks</h3><div class="checks">${Object.entries(ME.checks).map(([k, v]) => `<div><span>${esc(k)}</span><span class="${v ? "ok" : "no"}">${v ? "✓ Checked" : "Not yet · +10"}</span></div>`).join("")}</div></div>
+    <div class="card"><h3>Skills</h3><div class="chips">${ME.skills.map((s) => `<span class="chip">${esc(s)}</span>`).join("")}</div><p class="muted small">Skills verified by Basa seBasa get you matched to the jobs you do best.</p></div>
+    <div class="card"><h3>Your details</h3><div class="checks"><div><span>Based in</span><span>${esc(ME.suburb)}</span></div><div><span>Experience</span><span>${ME.years} years</span></div><div><span>Working hours</span><span>${esc(ME.hours)}</span></div><div><span>Languages</span><span>${esc(ME.languages.join(", "))}</span></div><div><span>EcoCash for payouts</span><span class="mono">077 ••• 0001</span></div></div></div>
+    ${DEMO ? `<div class="card"><h3>Preview controls</h3><p class="muted small">Try what happens during a power cut or with no signal.</p><button class="btn quiet" type="button" data-net>${S.net ? "Simulate no network" : "Reconnect network"}</button></div>` : ""}`;
 }
 
 // ================= LIVE BITS =================
@@ -329,50 +420,68 @@ setInterval(() => {
     const c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = (left / P.acceptSeconds) * 100 + "%";
     if (left <= 0) { S.request = null; toast("Request expired. It went to the next pro."); render(); scheduleRequest(6000); }
   }
-  if (S.job?.stage === "working") { const t = $("#timer"); if (t) t.textContent = fmt(workMs(S.job)); }
+  const j = S.job;
+  if (j?.stage === "working") { const t = $("#timer"); if (t) t.textContent = fmt(workMs(j)); }
+  if (j?.stage === "verify" && j.waitStart) { const w = $("#wait"); const left = waitLeft(j); if (w) w.textContent = fmt(left); if (left <= 0 && !j.waitDone) { j.waitDone = true; render(); } }
 }, 1000);
 
 // ================= ACTIONS =================
-function finishJob(earned, minutes) { const j = S.job; S.done.unshift({ id: j.id, item: j.item, type: j.type, suburb: j.suburb, at: Date.now(), earned, minutes, rating: j.rating || 0 }); persist(); S.job = null; render(); if (S.online) scheduleRequest(5000); }
+function finishJob(earned, extra = {}) { const j = S.job; S.done.unshift({ id: j.id, item: j.item, type: j.type, suburb: j.suburb, customer: j.customer, regular: !!j.regular, at: Date.now(), earned, minutes: j.minutes || 0, rating: j.rating || 0, warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", ...extra }); persist(); S.job = null; S.sos = false; render(); if (S.online) scheduleRequest(5000); }
+const fail = (id, msg) => { const el = document.getElementById(id); el.textContent = msg; el.hidden = false; };
 document.addEventListener("change", (e) => {
-  if (e.target.id === "online") { S.online = e.target.checked; if (!S.online) { S.request = null; toast("You're offline. No new jobs."); } else { toast("You're online. Location sharing is on."); scheduleRequest(); } render(); }
-  if (e.target.id === "before-photo" || e.target.id === "after-photo") { const f = e.target.files?.[0]; if (f && S.job) { S.job[e.target.id === "before-photo" ? "beforePhoto" : "afterPhoto"] = f.name; render(); } }
+  const id = e.target.id;
+  if (id === "online") { S.online = e.target.checked; if (!S.online) { S.request = null; toast("You're offline. No new jobs."); } else { toast("You're online. Location sharing is on."); scheduleRequest(); } render(); }
+  if (["before-photo", "after-photo", "receipt-photo"].includes(id)) { const f = e.target.files?.[0]; if (f && S.job) { S.job[{ "before-photo": "beforePhoto", "after-photo": "afterPhoto", "receipt-photo": "receiptPhoto" }[id]] = f.name; render(); } }
 });
 document.addEventListener("input", (e) => {
   if ((e.target.id === "labour" || e.target.id === "parts") && S.job) { const prev = $("#preview"); if (prev) prev.innerHTML = splitTable({ ...S.job, quote: { labour: Number($("#labour").value) || 0, parts: Number($("#parts").value) || 0 } }); }
+  if (e.target.id === "code") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
 });
 document.addEventListener("click", (e) => {
-  const b = e.target.closest("button, a[data-tab]"); if (!b) return;
-  const j = S.job;
-  if (b.hasAttribute("data-go-online")) { S.online = true; toast("You're online. Location sharing is on."); scheduleRequest(); render(); }
-  else if (b.hasAttribute("data-decline")) { S.request = null; toast("Declined. We'll send the next job."); render(); scheduleRequest(7000); }
-  else if (b.hasAttribute("data-accept")) {
+  const b = e.target.closest("button"); if (!b) return;
+  const j = S.job; const has = (a) => b.hasAttribute(a);
+  if (has("data-go-online")) { S.online = true; toast("You're online. Location sharing is on."); scheduleRequest(); render(); }
+  else if (has("data-decline")) { S.request = null; toast("Declined. We'll send the next job."); render(); scheduleRequest(7000); }
+  else if (has("data-accept")) {
     const r = S.request; S.request = null; S.job = { ...r, stage: r.type === "Repair" ? "await_callout" : "ready", acceptedAt: Date.now() }; render();
-    if (r.type === "Repair") sim("ready", 5000, "Call-out paid. You can leave now."); else toast(`Accepted. ${r.customer.split(" ")[0]} has been told.`);
+    send(`Accepted. ${first(r.customer)} has been told and given a Basa Code.`);
+    if (r.type === "Repair") sim("ready", 5000, "Call-out paid. You can leave now.", "await_callout");
   }
-  else if (b.hasAttribute("data-trip")) { j.stage = "travelling"; j.tripAt = Date.now(); toast(`${j.customer.split(" ")[0]} can see you on the map.`); render(); }
-  else if (b.hasAttribute("data-arrived")) { j.stage = "arrived"; j.arrivedAt = Date.now(); toast(`${j.customer.split(" ")[0]} has been told you've arrived.`); render(); }
-  else if (b.hasAttribute("data-quote")) {
-    const diag = $("#diag").value.trim(), lab = Number($("#labour").value), parts = Number($("#parts").value) || 0, err = $("#q-err");
-    if (diag.length < 5) { err.textContent = "Describe what's wrong so the customer understands."; err.hidden = false; return; }
-    if (!(lab > 0)) { err.textContent = "Enter the labour price."; err.hidden = false; return; }
-    j.quote = { labour: lab, parts, diagnosis: diag }; j.stage = "quote_sent"; render();
-    // the preview's sample customer says yes to most quotes, and defers the expensive ones
-    if (lab + parts > 150) sim("deferred", 6000, "The customer will repair later. You keep the call-out.");
-    else sim("approved", 6000, "Quote approved. You can start.");
+  else if (has("data-trip")) { j.stage = "travelling"; j.tripAt = Date.now(); send(`${first(j.customer)} can see you on the map.`); render(); }
+  else if (has("data-arrived")) { j.stage = "verify"; render(); }
+  else if (has("data-verify")) { const c = $("#code").value; if (c.length !== 4) return fail("code-err", "Enter the 4-digit code."); if (c !== j.code) return fail("code-err", "That code doesn't match. Check you're at the right house, or call us."); j.stage = "arrived"; j.arrivedAt = Date.now(); send("Arrival confirmed. The customer knows it's really you."); render(); }
+  else if (has("data-wait")) { j.waitStart = Date.now(); send(`${first(j.customer)} has been told you're waiting outside.`); render(); }
+  else if (has("data-noshow")) { j.calloutOnly = true; j.noshow = true; send("Job closed as customer not home."); finishJob(j.type === "Repair" ? earnings(j).upfront : 3, { noshow: true }); }
+  else if (has("data-quote")) {
+    const diag = $("#diag").value.trim(), lab = Number($("#labour").value), parts = Number($("#parts").value) || 0;
+    if (diag.length < 5) return fail("q-err", "Describe what's wrong so the customer understands.");
+    if (!(lab > 0)) return fail("q-err", "Enter the labour price.");
+    j.quote = { labour: lab, parts, diagnosis: diag }; j.warranty = Number($("#warranty").value); j.stage = "quote_sent"; send(""); render();
+    if (lab + parts > 150) sim("deferred", 6000, "The customer will repair later. You keep the call-out.", "quote_sent");
+    else sim("approved", 6000, "Quote approved. You can start.", "quote_sent");
   }
-  else if (b.hasAttribute("data-start")) { j.stage = "working"; j.startedAt = Date.now(); j.pausedTotal = 0; j.pausedAt = null; render(); }
-  else if (b.hasAttribute("data-pause")) { if (j.pausedAt) { j.pausedTotal += Date.now() - j.pausedAt; j.pausedAt = null; } else j.pausedAt = Date.now(); render(); }
-  else if (b.hasAttribute("data-complete")) {
-    const err = $("#done-err"); if (!j.afterPhoto) { err.textContent = "Add an after photo first. It protects you if there's a dispute."; err.hidden = false; return; }
-    j.minutes = Math.max(1, Math.round(workMs(j) / 6e4)); j.notes = $("#notes").value.trim(); j.stage = "await_payment"; render();
-    later(7000, () => { if (S.job !== j) return; j.stage = "paid"; j.rating = 5; j.review = "On time and explained everything."; toast("Customer paid. Your payout is on its way."); render(); });
+  else if (has("data-start")) { if ($("#warranty")) j.warranty = Number($("#warranty").value); j.warranty = j.warranty || 90; j.stage = "working"; j.startedAt = Date.now(); j.pausedTotal = 0; j.pausedAt = null; send("Job timer started."); render(); }
+  else if (has("data-pause")) { if (j.pausedAt) { j.pausedTotal += Date.now() - j.pausedAt; j.pausedAt = null; } else j.pausedAt = Date.now(); render(); }
+  else if (has("data-complete")) {
+    const checks = CHECKLIST.filter((_, i) => $("#ck" + i).checked).length;
+    if (checks < CHECKLIST.length) return fail("done-err", `Tick all ${CHECKLIST.length} quality checks first.`);
+    if (!j.afterPhoto) return fail("done-err", "Add an after photo. It protects you if there's a dispute.");
+    if (earnings(j).parts > 0 && !j.receiptPhoto) return fail("done-err", "Add a photo of the parts receipt so the customer sees what they paid for.");
+    Object.assign(j, { checks, psi: $("#psi").value, amps: $("#amps").value, notes: $("#notes").value.trim(), minutes: Math.max(1, Math.round(workMs(j) / 6e4)), stage: "await_payment" });
+    send("Service report sent to the customer."); render();
+    later(7000, () => { if (S.job !== j) return; j.stage = "rate"; j.rating = 5; j.review = "On time, showed his Basa Code, and explained everything."; toast("Customer paid. Your payout is on its way."); render(); });
   }
-  else if (b.hasAttribute("data-finish")) finishJob(earnings(j).total, j.minutes);
-  else if (b.hasAttribute("data-finish-deferred")) finishJob(earnings(j).upfront, 0);
-  else if (b.hasAttribute("data-chat")) toast("In the live app this opens WhatsApp with the customer.");
+  else if (b.dataset.crate) { j.custStars = Number(b.dataset.crate); render(); }
+  else if (has("data-finish")) { if (!j.custStars) return fail("rate-err", "Tap the stars to rate the customer."); if ($("#flag").checked) toast("Thanks. Our team will call you about this."); finishJob(earnings(j).total); }
+  else if (has("data-end-deferred")) { j.calloutOnly = true; finishJob(earnings(j).upfront); }
+  else if (has("data-sos")) { S.sos = !S.sos; render(); }
+  else if (has("data-sos-call")) toast("In the live app this calls the Basa seBasa safety line with your location.");
+  else if (has("data-sos-share")) toast("In the live app this sends your live location to your emergency contact.");
+  else if (has("data-sos-leave")) { toast("Our team has been told and will contact the customer. Get somewhere safe."); S.sos = false; j.calloutOnly = true; finishJob(earnings(j).upfront, { noshow: false }); }
+  else if (has("data-chat")) toast("In the live app this opens WhatsApp with the customer through a Basa seBasa number.");
+  else if (has("data-net")) { S.net = !S.net; if (S.net && S.queued) { toast(`Back online. ${S.queued} saved update${S.queued > 1 ? "s" : ""} sent.`); S.queued = 0; } else if (!S.net) toast("No network. Keep working; updates are saved."); render(); }
 });
-function route() { const h = location.hash.slice(1); S.tab = ["jobs", "earnings", "history", "profile"].includes(h) ? h : "jobs"; render(); window.scrollTo(0, 0); }
+function route() { const h = location.hash.slice(1); S.tab = ["jobs", "earnings", "history", "profile"].includes(h) ? h : "jobs"; S.sos = false; render(); window.scrollTo(0, 0); }
 window.addEventListener("hashchange", route);
 route();
 })();
