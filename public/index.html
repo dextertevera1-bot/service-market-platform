@@ -8,7 +8,7 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="#customer" data-view-link="customer">
+      <a class="brand" href="#home" data-view-link="home">
         <span class="brand-mark">SM</span>
         <span>
           <strong>Service Market</strong>
@@ -16,21 +16,271 @@
         </span>
       </a>
       <nav class="role-tabs" aria-label="Role portals">
-        <button class="tab is-active" type="button" data-view-link="customer">Customer</button>
-        <button class="tab" type="button" data-view-link="technician">Technician</button>
-        <button class="tab" type="button" data-view-link="admin">Admin</button>
+        <button class="tab is-active" type="button" data-view-link="home">Home</button>
+        <button class="tab" type="button" data-view-link="customer">Bot Flow</button>
+        <button class="tab" type="button" data-view-link="technician">Technician Desk</button>
+        <button class="tab" type="button" data-view-link="admin">Ops Console</button>
       </nav>
     </header>
 
     <main>
-      <section id="customer-view" class="view is-active">
+      <section id="home-view" class="view is-active">
+        <section class="landing-hero">
+          <div class="landing-overlay">
+            <p class="eyebrow">Zimbabwe's WhatsApp bot for trusted service work</p>
+            <h1>A WhatsApp bot that manages the job from request to payment.</h1>
+            <p>Customers message the Service Market bot, get matched with verified technicians, receive job updates, confirm completion, send EcoCash references, leave reviews, and report problems without downloading an app.</p>
+            <form class="landing-hero-search" id="landing-hero-search">
+              <label for="landing-search-input">Tell the bot what you need</label>
+              <div>
+                <input id="landing-search-input" placeholder="e.g. My fridge is not cooling in Avondale" autocomplete="off" />
+                <button class="primary-button" type="submit">Start WhatsApp Bot</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="landing-metrics" aria-label="Platform trust metrics">
+          <article><strong>Bot</strong><span>Guided intake and matching</span></article>
+          <article><strong>EcoCash</strong><span>Reference captured after completion</span></article>
+          <article><strong>Live</strong><span>Status updates in WhatsApp</span></article>
+          <article><strong>Admin</strong><span>Oversight for exceptions</span></article>
+        </section>
+
+        <section class="landing-search">
+          <div>
+            <p class="eyebrow">Popular services</p>
+            <h2>Find help fast.</h2>
+          </div>
+          <div class="shortcut-grid">
+            <button type="button" data-landing-category="HVAC/Refrigeration"><span class="service-icon">HV</span>HVAC</button>
+            <button type="button" data-landing-category="Electrical"><span class="service-icon">EL</span>Electrician</button>
+            <button type="button" data-landing-category="Plumbing"><span class="service-icon">PL</span>Plumbing</button>
+            <button type="button" data-landing-category="Appliance Repair"><span class="service-icon">AP</span>Appliance Repair</button>
+            <button type="button" data-landing-category="Auto Mechanic"><span class="service-icon">AU</span>Automotive</button>
+            <button type="button" data-landing-category="Generator Repair"><span class="service-icon">GN</span>Generator</button>
+            <button type="button" data-landing-category="Solar/Inverter"><span class="service-icon">SO</span>Solar/Inverter</button>
+            <button type="button" data-landing-category="Borehole Pumps"><span class="service-icon">BP</span>Borehole Pumps</button>
+            <button type="button" data-landing-category="Welding"><span class="service-icon">WD</span>Welding</button>
+            <button type="button" data-landing-category="Carpentry"><span class="service-icon">CP</span>Carpentry</button>
+          </div>
+        </section>
+
+        <template class="legacy-home-testimonial">
+          <p>“I could compare the technician’s verification, reviews and warranty before calling. It felt organised and professional, but still simple enough to use on WhatsApp.”</p>
+          <strong>Rudo M., Harare homeowner</strong>
+        </template>
+
+        <section class="landing-section">
+          <div>
+            <p class="eyebrow">How Trust Works</p>
+            <h2>Simple proof before you book.</h2>
+          </div>
+          <div class="trust-proof-grid">
+            <article><span class="proof-icon">ID</span><strong>Verified identity</strong></article>
+            <article><span class="proof-icon">QV</span><strong>Qualification review</strong></article>
+            <article><span class="proof-icon">RV</span><strong>Customer reviews</strong></article>
+            <article><span class="proof-icon">WR</span><strong>Warranty support</strong></article>
+            <article><span class="proof-icon">AD</span><strong>Admin oversight</strong></article>
+          </div>
+        </section>
+
+        <section class="landing-section featured-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Featured Technicians</p>
+              <h2>Start with trusted professionals.</h2>
+            </div>
+            <button class="secondary-button" type="button" data-view-link="customer">View all</button>
+          </div>
+          <div class="featured-technicians" id="featured-technicians"></div>
+        </section>
+
+        <section class="landing-section how-it-works">
+          <div>
+            <p class="eyebrow">Bot-led operating model</p>
+            <h2>The bot stays involved from start to finish.</h2>
+          </div>
+          <div class="process-grid">
+            <article><span>01</span><strong>Intake</strong><p>The bot asks for service type, suburb, urgency, photos, access notes and preferred time.</p></article>
+            <article><span>02</span><strong>Match</strong><p>The bot shares verified technician options with Trust Score, area, ETA and estimated price range.</p></article>
+            <article><span>03</span><strong>Coordinate</strong><p>The bot confirms acceptance, sends technician contact details, collects status updates and escalates delays.</p></article>
+            <article><span>04</span><strong>Close</strong><p>The bot confirms completion, captures EcoCash reference, requests a review and logs disputes.</p></article>
+          </div>
+        </section>
+
+        <section class="landing-section bot-demo-section">
+          <div>
+            <p class="eyebrow">Conversation prototype</p>
+            <h2>Service Market Bot becomes the transaction manager.</h2>
+          </div>
+          <div class="bot-demo-grid">
+            <article class="chat-card">
+              <span class="chat-bubble customer">My geyser is leaking in Borrowdale. Can I get someone today?</span>
+              <span class="chat-bubble bot">I can help. Please send a photo, exact suburb, urgency and whether water is still running.</span>
+              <span class="chat-bubble bot">Matched: Tendai Moyo, Trust Score 96, Admin Approved, 24 min response target. Estimate USD 35-120 after inspection.</span>
+              <span class="chat-bubble bot">Job accepted. Technician is on the way. Reply 1 when arrived, 2 to report delay, 3 for support.</span>
+            </article>
+            <div class="bot-capability-grid">
+              <article><strong>Customer intake</strong><p>Collects issue, location, photos, urgency and schedule.</p></article>
+              <article><strong>Technician linking</strong><p>Ranks and shares trusted technicians from verified records.</p></article>
+              <article><strong>Job coordination</strong><p>Tracks accepted, travelling, arrived, working and completed states.</p></article>
+              <article><strong>EcoCash closeout</strong><p>Captures reference, amount, technician and customer confirmation.</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="testimonial-card">
+          <p>"The WhatsApp bot asked the right questions, sent me a verified technician, followed up until the job was done, and recorded my EcoCash reference."</p>
+          <strong>Rudo M., Harare homeowner</strong>
+        </section>
+
+        <section class="app-teaser">
+          <div>
+            <p class="eyebrow">No app required</p>
+            <h2>The bot is the customer interface</h2>
+            <p>The web system becomes the back office for bot conversations, verification, dispatch, job records, disputes, payment references and reporting.</p>
+          </div>
+          <span class="app-device" aria-hidden="true">WA</span>
+        </section>
+
+        <section class="final-cta">
+          <p class="eyebrow">Ready when the job matters</p>
+          <h2>Let the Service Market WhatsApp bot manage the whole job.</h2>
+          <a class="primary-button" href="https://wa.me/263784425268?text=Hi%20Service%20Market%20Bot%2C%20I%20need%20a%20verified%20technician." target="_blank" rel="noreferrer">Message the Bot</a>
+        </section>
+
+        <footer class="site-footer">
+          <a href="#about" data-view-link="about">About</a>
+          <a href="#how-it-works" data-view-link="how-it-works">How it Works</a>
+          <a href="#technician" data-view-link="technician">Become a Technician</a>
+          <a href="#help" data-view-link="help">Help</a>
+          <a href="#contact" data-view-link="contact">Contact</a>
+          <a href="#terms" data-view-link="terms">Terms</a>
+          <a href="#privacy" data-view-link="privacy">Privacy</a>
+        </footer>
+      </section>
+
+      <section id="about-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">About Service Market</p>
+          <h1>Building Zimbabwe's most trusted technician marketplace.</h1>
+          <p>Service Market exists to help customers confidently choose verified, accountable service professionals for work inside homes, businesses and vehicles.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Mission</h2><p>Make skilled technical services easier to find, safer to book and more transparent from first contact to job completion.</p></article>
+          <article><h2>Vision</h2><p>A practical trust network where great technicians grow professionally and customers book with confidence.</p></article>
+          <article><h2>Why TradeTrust Exists</h2><p>Customers need proof before inviting someone into their space. TradeTrust turns identity, qualifications, reviews and accountability into clear decision signals.</p></article>
+          <article><h2>Our Trust Promise</h2><p>We prioritize verified identity, qualification review, admin oversight, documented work and clear dispute paths.</p></article>
+        </div>
+        <section class="info-panel">
+          <h2>Leadership Message</h2>
+          <p>Service Market is being designed for real Zimbabwean conditions: phone-first communication, manual payment tracking, trusted local professionals and admin oversight where automation is not yet reliable enough.</p>
+        </section>
+        <section class="info-panel">
+          <h2>FAQs</h2>
+          <div class="faq-list">
+            <details open><summary>Is Service Market only for Harare?</summary><p>The current prototype uses Harare-heavy sample data, with service areas ready for wider Zimbabwe coverage.</p></details>
+            <details><summary>Are technicians verified?</summary><p>Technicians can be marked identity checked, qualification reviewed and admin approved inside the Trust Engine workflow.</p></details>
+            <details><summary>Does Service Market handle payments?</summary><p>The Zimbabwe MVP supports manual payment tracking for EcoCash, ZIPIT, bank transfer and cash. Live gateways are future integrations.</p></details>
+          </div>
+        </section>
+      </section>
+
+      <section id="how-it-works-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">How it Works</p>
+          <h1>Simple journeys for customers, technicians and admins.</h1>
+          <p>Service Market keeps the customer experience clear while giving technicians and administrators the tools needed for safe, accountable service work.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Customer Journey</h2><p>Customer messages the WhatsApp bot, answers guided questions, receives verified technician options, confirms the job and pays after completion.</p></article>
+          <article><h2>Technician Journey</h2><p>Technician receives bot-assisted job details, accepts or declines, shares ETA, updates progress and submits completion notes.</p></article>
+          <article><h2>Trust Verification</h2><p>The bot packages Trust Score, badges, ratings, completed jobs and admin approval into a short technician recommendation.</p></article>
+          <article><h2>Payments</h2><p>Customer pays by EcoCash or cash after completion. The bot captures reference, amount and confirmation for admin review.</p></article>
+          <article><h2>Reviews</h2><p>After completion, the bot sends a review prompt covering professionalism, communication, quality, punctuality, cleanliness and value.</p></article>
+          <article><h2>Dispute Resolution</h2><p>Customers report problems to the bot. The bot logs the dispute, notifies admin and technician, and tracks resolution.</p></article>
+        </div>
+      </section>
+
+      <section id="help-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">Help Centre</p>
+          <h1>Support for customers and technicians.</h1>
+          <p>Find answers about booking, verification, technician conduct, payments and dispute handling.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Frequently Asked Questions</h2><p>Learn how to search, request quotes, compare technicians and track bookings.</p></article>
+          <article><h2>Customer Support</h2><p>Use the customer portal to view booking history, report issues and follow job updates.</p></article>
+          <article><h2>Reporting a Technician</h2><p>Report problems from the booking record so admins can review the case and follow up.</p></article>
+          <article><h2>Payment Questions</h2><p>Manual payment records show method, reference, amount, status and admin verification state.</p></article>
+          <article><h2>Verification Questions</h2><p>Technicians can submit identity, trade certificate, references, warranty and optional police clearance information.</p></article>
+          <article><h2>Coming Soon</h2><p>A full searchable help centre and ticket inbox can be added when Service Market moves beyond the MVP.</p></article>
+        </div>
+      </section>
+
+      <section id="contact-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">Contact</p>
+          <h1>Reach Service Market support.</h1>
+          <p>Contact options are designed for Zimbabwe-first communication and practical admin follow-up.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Customer Support</h2><p>For bookings, technician concerns and job status questions.</p></article>
+          <article><h2>Business Enquiries</h2><p>For partnerships, verification operations and city expansion discussions.</p></article>
+          <article><h2>Email</h2><p><a href="mailto:support@servicemarket.co.zw">support@servicemarket.co.zw</a></p></article>
+          <article><h2>WhatsApp</h2><p><a href="https://wa.me/263784425268" target="_blank" rel="noreferrer">+263 78 442 5268</a></p></article>
+          <article><h2>Operating Hours</h2><p>Monday to Saturday, 8:00 AM - 6:00 PM. Urgent support placeholders are available in the customer portal.</p></article>
+          <article><h2>Office Location</h2><p>Harare office placeholder. Full address to be confirmed before launch.</p></article>
+        </div>
+      </section>
+
+      <section id="terms-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">Terms & Conditions</p>
+          <h1>Clear rules for a trust-first marketplace.</h1>
+          <p>This MVP terms page is a clean placeholder for launch-ready legal review.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Marketplace Role</h2><p>Service Market helps customers discover, compare and request services from technicians. Final work scope and pricing should be confirmed before work begins.</p></article>
+          <article><h2>Technician Conduct</h2><p>Technicians are expected to provide accurate credentials, professional service, clear communication and honest job documentation.</p></article>
+          <article><h2>Customer Responsibilities</h2><p>Customers should provide accurate job details, safe access and timely confirmation when work is completed.</p></article>
+          <article><h2>Payments</h2><p>Manual payment tracking does not represent live gateway processing. Admin verification is required for platform records.</p></article>
+          <article><h2>Disputes</h2><p>Reported problems may be reviewed by admins and recorded against booking, payment and technician history.</p></article>
+          <article><h2>Coming Soon</h2><p>Production terms should be reviewed by Zimbabwe-qualified legal counsel before public launch.</p></article>
+        </div>
+      </section>
+
+      <section id="privacy-view" class="view info-page">
+        <div class="info-hero">
+          <p class="eyebrow">Privacy Policy</p>
+          <h1>Privacy designed around safety and accountability.</h1>
+          <p>This MVP policy page explains the intended privacy posture while full legal documentation is prepared.</p>
+          <button class="ghost-button" type="button" data-view-link="home">Back Home</button>
+        </div>
+        <div class="info-grid">
+          <article><h2>Data We Collect</h2><p>Profiles, booking details, contact information, verification status, reviews, payment references and service reports may be stored in future production systems.</p></article>
+          <article><h2>Why We Use It</h2><p>Data supports technician matching, trust verification, booking operations, dispute handling and customer support.</p></article>
+          <article><h2>Location Privacy</h2><p>Technician location is intended to be required only during active jobs to improve safety, transparency and accountability.</p></article>
+          <article><h2>Documents</h2><p>Identity and credential documents must be protected with secure storage, access controls and retention rules before production launch.</p></article>
+          <article><h2>Sharing</h2><p>Customer and technician details should only be shared where necessary for booking, support, verification or legal compliance.</p></article>
+          <article><h2>Coming Soon</h2><p>Production privacy policy should be reviewed by legal counsel before launch.</p></article>
+        </div>
+      </section>
+
+      <section id="customer-view" class="view">
         <div class="hero">
           <div>
             <p class="eyebrow">Verified local technicians</p>
-            <h1>Find trusted help, call directly, and request a quote.</h1>
-            <p class="hero-copy">Built for practical service work in Zimbabwe: WhatsApp-first communication, admin verified technicians, and manual payment tracking.</p>
+            <h1>Prototype the WhatsApp bot transaction flow.</h1>
+            <p class="hero-copy">Customers should start with the bot. This screen remains as a web prototype for matching, booking records, payment references and admin-assisted exceptions.</p>
           </div>
-          <a class="urgent-call" href="tel:+263771000000">
+          <a class="urgent-call" href="tel:+263784425268">
             <span>Urgent job?</span>
             <strong>Call Service Market</strong>
           </a>
@@ -49,6 +299,34 @@
             <span>Service area</span>
             <select id="area-filter"></select>
           </label>
+          <label>
+            <span>Trust score</span>
+            <select id="trust-filter">
+              <option value="">Any score</option>
+              <option value="70">70+</option>
+              <option value="80">80+</option>
+              <option value="90">90+</option>
+            </select>
+          </label>
+          <label>
+            <span>Availability</span>
+            <select id="availability-filter">
+              <option value="">Any time</option>
+              <option value="today">Available today</option>
+              <option value="emergency">Emergency available</option>
+            </select>
+          </label>
+          <label>
+            <span>Sort by</span>
+            <select id="sort-filter">
+              <option value="trust">Highest Trust Score</option>
+              <option value="rating">Highest Rating</option>
+              <option value="experience">Most Experience</option>
+              <option value="response">Fastest Response</option>
+              <option value="jobs">Most Completed Jobs</option>
+              <option value="complaints">Lowest Complaint Rate</option>
+            </select>
+          </label>
           <label class="check-row">
             <input id="verified-filter" type="checkbox" checked />
             <span>Admin verified only</span>
@@ -56,6 +334,17 @@
         </section>
 
         <section class="stats-row" id="customer-stats" aria-label="Marketplace stats"></section>
+
+        <section class="trust-engine-panel" aria-label="Trust Engine">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Phase 2 Trust Engine</p>
+              <h2>Choose technicians based on evidence, not guesswork.</h2>
+            </div>
+          </div>
+          <p class="trust-intro">Service Market uses the Trust Engine to help customers choose verified professionals based on identity, qualifications, job history, reviews, response time, warranty and complaint record.</p>
+          <div id="trust-engine-pillars" class="pillar-grid"></div>
+        </section>
 
         <div class="customer-grid">
           <section>
@@ -75,63 +364,96 @@
             <p id="selected-technician" class="selected-tech">Choose a technician or submit an open request.</p>
             <form id="booking-form" class="stacked-form">
               <input type="hidden" id="booking-technician-id" />
-              <label>
-                <span>Your name</span>
-                <input id="customer-name" required placeholder="Full name" />
-              </label>
-              <label>
-                <span>Phone</span>
-                <input id="customer-phone" required placeholder="+263..." inputmode="tel" />
-              </label>
-              <label>
-                <span>WhatsApp</span>
-                <input id="customer-whatsapp" placeholder="+263..." inputmode="tel" />
-              </label>
-              <label>
-                <span>Service area</span>
-                <select id="booking-area" required></select>
-              </label>
-              <label>
-                <span>Address or suburb</span>
-                <input id="booking-address" placeholder="e.g. Avondale, Harare" />
-              </label>
-              <label>
-                <span>Service category</span>
-                <select id="booking-category" required></select>
-              </label>
-              <label>
-                <span>Describe the problem</span>
-                <textarea id="booking-issue" required rows="4" placeholder="Tell the technician what is happening."></textarea>
-              </label>
-              <div class="two-column">
+              <div class="booking-step-block">
+                <span class="step-kicker">Step 1</span>
+                <h3>Choose technician and contact</h3>
                 <label>
-                  <span>Urgency</span>
-                  <select id="booking-urgency">
-                    <option>Normal</option>
-                    <option>Urgent</option>
-                  </select>
+                  <span>Your name</span>
+                  <input id="customer-name" required placeholder="Full name" />
+                </label>
+                <div class="two-column">
+                  <label>
+                    <span>Phone</span>
+                    <input id="customer-phone" required placeholder="+263..." inputmode="tel" />
+                  </label>
+                  <label>
+                    <span>WhatsApp</span>
+                    <input id="customer-whatsapp" placeholder="+263..." inputmode="tel" />
+                  </label>
+                </div>
+              </div>
+              <div class="booking-step-block">
+                <span class="step-kicker">Step 2</span>
+                <h3>Describe the job</h3>
+                <label>
+                  <span>Service area</span>
+                  <select id="booking-area" required></select>
                 </label>
                 <label>
-                  <span>Currency</span>
-                  <select id="booking-currency">
-                    <option>USD</option>
-                    <option>ZWL</option>
-                    <option>Negotiable</option>
-                  </select>
+                  <span>Address or suburb</span>
+                  <input id="booking-address" placeholder="e.g. Avondale, Harare" />
+                </label>
+                <div class="two-column">
+                  <label>
+                    <span>Shared latitude</span>
+                    <input id="booking-latitude" type="number" step="any" placeholder="-17.8252" />
+                  </label>
+                  <label>
+                    <span>Shared longitude</span>
+                    <input id="booking-longitude" type="number" step="any" placeholder="31.0335" />
+                  </label>
+                </div>
+                <p class="fine-print">In WhatsApp, the customer can share a live location pin. This web prototype also accepts latitude and longitude, with a city-centre estimate as fallback.</p>
+                <label>
+                  <span>Service category</span>
+                  <select id="booking-category" required></select>
+                </label>
+                <label>
+                  <span>Describe the problem</span>
+                  <textarea id="booking-issue" required rows="4" placeholder="Tell the technician what is happening."></textarea>
+                </label>
+                <label>
+                  <span>Optional image</span>
+                  <input id="booking-image" type="file" accept="image/*" />
                 </label>
               </div>
-              <label>
-                <span>Preferred time</span>
-                <input id="booking-time" placeholder="Today, tomorrow morning, weekend..." />
-              </label>
-              <label>
-                <span>Payment method</span>
-                <select id="booking-payment-method" required></select>
-              </label>
+              <div class="booking-step-block">
+                <span class="step-kicker">Step 3</span>
+                <h3>Schedule and confirm</h3>
+                <div class="two-column">
+                  <label>
+                    <span>Urgency</span>
+                    <select id="booking-urgency">
+                      <option>Normal</option>
+                      <option>Urgent</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Currency</span>
+                    <select id="booking-currency">
+                      <option>USD</option>
+                      <option>ZWL</option>
+                      <option>Negotiable</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>Preferred time</span>
+                  <input id="booking-time" placeholder="Today, tomorrow morning, weekend..." />
+                </label>
+              </div>
               <div class="estimate-box" id="booking-estimate">Estimated price range appears after selecting a technician.</div>
+              <div class="transport-quote-card" id="transport-quote">
+                <strong>Transport estimate pending</strong>
+                <p>Select a technician and service location to preview the travel fee before submitting.</p>
+              </div>
+              <label class="check-row transport-confirmation">
+                <input id="transport-confirmation" type="checkbox" required disabled />
+                <span>I accept the estimated transport fee before the technician is dispatched.</span>
+              </label>
               <button class="primary-button wide" type="submit">Request Quote</button>
             </form>
-            <p class="fine-print">Payment is arranged manually: Cash, EcoCash, bank transfer, or another agreed method. Service Market can help track disputes.</p>
+            <p class="fine-print">Payment is handled after completion using EcoCash, ZIPIT, bank transfer, cash, or approved pay-later records.</p>
           </aside>
         </div>
 
@@ -146,6 +468,10 @@
         </section>
       </section>
 
+      <section id="profile-view" class="view">
+        <div id="technician-profile"></div>
+      </section>
+
       <section id="technician-view" class="view">
         <div class="portal-hero">
           <div>
@@ -157,20 +483,74 @@
 
         <div class="portal-grid">
           <section class="panel">
-            <h2>Create or update profile</h2>
-            <form id="technician-form" class="stacked-form">
-              <label><span>Full name</span><input id="tech-name" required /></label>
-              <label><span>Business name</span><input id="tech-business" /></label>
-              <div class="two-column">
-                <label><span>Phone</span><input id="tech-phone" required inputmode="tel" /></label>
-                <label><span>WhatsApp</span><input id="tech-whatsapp" required inputmode="tel" /></label>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Technician onboarding</p>
+                <h2>Verification wizard</h2>
               </div>
-              <label><span>Service area</span><select id="tech-area" required></select></label>
-              <label><span>Trade / specialty</span><select id="tech-trade" required></select></label>
-              <label><span>Years experience</span><input id="tech-years" type="number" min="0" value="1" /></label>
-              <label><span>Credentials</span><textarea id="tech-credentials" rows="3" placeholder="ID, license, certificates, references..."></textarea></label>
-              <label><span>Starting price or range</span><input id="tech-price" placeholder="$25-$90 or Negotiable" /></label>
-              <button class="primary-button" type="submit">Submit for Admin Review</button>
+              <span class="status-pill" id="wizard-status">Draft</span>
+            </div>
+            <div class="verification-progress">
+              <div class="progress-track"><i id="wizard-progress-bar" style="width: 0%"></i></div>
+              <strong id="wizard-progress-text">0% complete</strong>
+            </div>
+            <ol class="wizard-steps" id="wizard-steps">
+              <li class="is-active">Personal Information</li>
+              <li>Professional Information</li>
+              <li>Credentials & Documents</li>
+              <li>References & Warranty</li>
+              <li>Review & Submit</li>
+            </ol>
+            <form id="technician-form" class="wizard-form">
+              <section class="wizard-step-panel is-active" data-wizard-step="0">
+                <h3>Personal Information</h3>
+                <label><span>Full name</span><input id="tech-name" required /></label>
+                <label><span>Business name</span><input id="tech-business" /></label>
+                <div class="two-column">
+                  <label><span>Phone</span><input id="tech-phone" required inputmode="tel" /></label>
+                  <label><span>WhatsApp</span><input id="tech-whatsapp" inputmode="tel" /></label>
+                </div>
+                <label><span>Profile photo</span><input id="tech-profile-photo" type="file" accept="image/*" /></label>
+              </section>
+              <section class="wizard-step-panel" data-wizard-step="1">
+                <h3>Professional Information</h3>
+                <label><span>Service area</span><select id="tech-area" required></select></label>
+                <label><span>Trade / specialty</span><select id="tech-trade" required></select></label>
+                <label><span>Years experience</span><input id="tech-years" type="number" min="0" value="1" /></label>
+                <label><span>Starting price or range</span><input id="tech-price" placeholder="$25-$90 or Negotiable" /></label>
+                <label><span>Short professional bio</span><textarea id="tech-notes" rows="3" placeholder="Describe your professionalism, honesty, experience and service quality."></textarea></label>
+              </section>
+              <section class="wizard-step-panel" data-wizard-step="2">
+                <h3>Credentials & Documents</h3>
+                <label><span>National ID</span><input id="tech-national-id" type="file" /></label>
+                <label><span>Trade certificate</span><input id="tech-trade-certificate" type="file" /></label>
+                <label><span>Additional certificates</span><input id="tech-additional-certificates" type="file" multiple /></label>
+                <label><span>Optional police clearance</span><input id="tech-police-clearance" type="file" /></label>
+                <label><span>Credential summary</span><textarea id="tech-credentials" rows="3" placeholder="Certificate names, trade license, references..."></textarea></label>
+              </section>
+              <section class="wizard-step-panel" data-wizard-step="3">
+                <h3>References & Warranty</h3>
+                <label><span>Reference 1</span><input id="tech-reference-one" placeholder="Name and phone or company reference" /></label>
+                <label><span>Reference 2</span><input id="tech-reference-two" placeholder="Optional second reference" /></label>
+                <label><span>Warranty policy</span><textarea id="tech-warranty" rows="3" placeholder="e.g. 7-day workmanship warranty on completed repairs"></textarea></label>
+                <div class="privacy-permission-card">
+                  <strong>Active job location sharing</strong>
+                  <p>Service Market only tracks technician location during active jobs to improve safety, transparency and accountability.</p>
+                  <label class="check-row"><input id="tech-location-policy" type="checkbox" required /><span>I agree to share location only while active on a Service Market job.</span></label>
+                  <label class="check-row"><input id="tech-available-ping" type="checkbox" /><span>Allow optional location ping while Available for nearby matching.</span></label>
+                </div>
+              </section>
+              <section class="wizard-step-panel" data-wizard-step="4">
+                <h3>Review & Submit</h3>
+                <div id="wizard-review" class="wizard-review"></div>
+                <p class="fine-print">Submitting changes status to Pending Verification. Admin can approve, reject, request more information or suspend the profile.</p>
+              </section>
+              <div class="wizard-actions">
+                <button class="ghost-button" type="button" id="wizard-back">Back</button>
+                <button class="secondary-button" type="button" id="wizard-save-draft">Save Draft</button>
+                <button class="secondary-button" type="button" id="wizard-next">Next</button>
+                <button class="primary-button" type="submit" id="wizard-submit">Submit for Verification</button>
+              </div>
             </form>
           </section>
 
@@ -190,25 +570,101 @@
         <div class="portal-hero">
           <div>
             <p class="eyebrow">Admin Portal</p>
-            <h1>Approve technicians, assign bookings, track payments.</h1>
+            <h1>Control verification, trust quality and booking operations.</h1>
           </div>
           <a class="secondary-button" href="/api/reports/bookings.csv">Export CSV</a>
         </div>
 
         <section class="stats-row" id="admin-metrics"></section>
 
+        <nav class="admin-side-nav" aria-label="Admin dashboard sections">
+          <button type="button" data-admin-scroll="admin-technicians-section">Trust Engine</button>
+          <button type="button" data-admin-scroll="admin-bookings-section">Bookings</button>
+          <button type="button" data-admin-scroll="admin-customers-section">Customers</button>
+          <button type="button" data-admin-scroll="admin-payments-section">Payments</button>
+          <button type="button" data-admin-scroll="admin-transport-section">Transport Fees</button>
+        </nav>
+
         <div class="admin-grid">
-          <section class="panel">
-            <h2>Technicians</h2>
+          <section class="panel" id="admin-technicians-section">
+            <h2>Admin Trust Control Panel</h2>
             <div id="admin-technicians" class="admin-list"></div>
           </section>
-          <section class="panel">
-            <h2>Bookings and payments</h2>
+          <section class="panel" id="admin-bookings-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Booking operations</p>
+                <h2>All bookings</h2>
+              </div>
+              <div class="admin-filter-grid">
+                <label class="compact-filter">
+                  <span>Status</span>
+                  <select id="admin-booking-status-filter"></select>
+                </label>
+                <label class="compact-filter">
+                  <span>City</span>
+                  <select id="admin-job-city-filter"></select>
+                </label>
+                <label class="compact-filter">
+                  <span>Trade</span>
+                  <select id="admin-job-trade-filter"></select>
+                </label>
+                <label class="compact-filter">
+                  <span>Technician</span>
+                  <select id="admin-job-technician-filter"></select>
+                </label>
+                <label class="compact-filter">
+                  <span>Trust</span>
+                  <select id="admin-job-trust-filter">
+                    <option value="">All trust scores</option>
+                    <option value="90">90+</option>
+                    <option value="80">80+</option>
+                    <option value="70">70+</option>
+                  </select>
+                </label>
+              </div>
+            </div>
             <div id="admin-bookings" class="admin-list"></div>
           </section>
-          <section class="panel">
+          <section class="panel" id="admin-customers-section">
             <h2>Customers</h2>
             <div id="admin-customers" class="admin-list"></div>
+          </section>
+          <section class="panel" id="admin-payments-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Payment Management</p>
+                <h2>Transactions</h2>
+              </div>
+              <div class="inline-actions">
+                <label class="compact-filter">
+                  <span>Method</span>
+                  <select id="admin-payment-method-filter"></select>
+                </label>
+                <a class="secondary-button" href="/api/reports/payments.csv">Export Payments</a>
+              </div>
+            </div>
+            <div id="admin-payments" class="admin-list"></div>
+          </section>
+          <section class="panel" id="admin-transport-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Transport tariff control</p>
+                <h2>Distance-based fee settings</h2>
+              </div>
+            </div>
+            <form id="transport-settings-form" class="transport-settings-grid">
+              <label><span>Currency</span><input name="currency" id="transport-currency" /></label>
+              <label><span>Diagnostic fee</span><input name="diagnosticFee" id="transport-diagnostic-fee" type="number" min="0" step="0.01" /></label>
+              <label><span>Free radius km</span><input name="freeRadiusKm" id="transport-free-radius" type="number" min="0" step="0.1" /></label>
+              <label><span>Minimum fee</span><input name="minimumFee" id="transport-minimum-fee" type="number" min="0" step="0.01" /></label>
+              <label><span>Price per km</span><input name="pricePerKm" id="transport-price-per-km" type="number" min="0" step="0.01" /></label>
+              <label><span>Maximum fee</span><input name="maximumFee" id="transport-maximum-fee" type="number" min="0" step="0.01" /></label>
+              <label><span>Emergency surcharge</span><input name="emergencySurcharge" id="transport-emergency-surcharge" type="number" min="0" step="0.01" /></label>
+              <label><span>After-hours surcharge</span><input name="afterHoursSurcharge" id="transport-after-hours-surcharge" type="number" min="0" step="0.01" /></label>
+              <label class="check-row"><input name="allowAdminOverride" id="transport-admin-override" type="checkbox" /><span>Allow admin manual override</span></label>
+              <button class="secondary-button" type="submit">Save Transport Settings</button>
+            </form>
           </section>
         </div>
       </section>

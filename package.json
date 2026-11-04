@@ -4,7 +4,8 @@
   "description": "A trust-first professional services platform connecting customers with verified technicians and mechanics.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check:navigation": "node scripts/nav-integrity-check.js"
   },
   "keywords": [
     "marketplace",
