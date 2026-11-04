@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Basa seBasa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a phone-first customer app. Ink and gold from the logo; big condensed headlines; one column that widens to two on desktop. */
+:root {
+  --bg: #F5F3EE; --card: #FFFFFF; --sunk: #ECE9E1; --ink: #15130E; --muted: #6A665C; --line: #DEDAD0;
+  --gold: #F0AE00; --gold-deep: #8A6400; --on-gold: #15130E; --night: #15130E; --night-fg: #F5F1E6;
+  --good: #23784A; --good-bg: #E1F2E7; --bad: #A62A20; --bad-bg: #F8E1DD; --warn-bg: #FCEFCF;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #100F0B; --card: #1B1914; --sunk: #25221B; --ink: #F3EFE5; --muted: #A7A193; --line: #36322A;
+  --gold: #F5BA14; --gold-deep: #F5C542; --on-gold: #15130E; --night: #0A0907; --night-fg: #F5F1E6;
+  --good: #66C88F; --good-bg: #17301F; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #100F0B; --card: #1B1914; --sunk: #25221B; --ink: #F3EFE5; --muted: #A7A193; --line: #36322A;
+  --gold: #F5BA14; --gold-deep: #F5C542; --on-gold: #15130E; --night: #0A0907; --night-fg: #F5F1E6;
+  --good: #66C88F; --good-bg: #17301F; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--night); }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.02; margin: 0; text-wrap: balance; letter-spacing: .005em; }
+h2 { font-size: clamp(30px, 6vw, 44px); text-transform: uppercase; }
+h3 { font-size: 22px; }
+p { margin: 0; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px)); }
+
+/* header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--night); color: var(--night-fg); }
+.top .wrap { display: flex; align-items: center; gap: 14px; padding-block: 10px; }
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; margin-right: auto; }
+.mark { width: 36px; height: 36px; border-radius: 9px; background: var(--gold); color: var(--on-gold); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 25px; position: relative; }
+.mark::after { content: ""; position: absolute; width: 6px; height: 6px; background: var(--on-gold); top: 8px; right: 7px; border-radius: 1px; }
+.logo b { font-family: var(--display); font-size: 23px; letter-spacing: .02em; white-space: nowrap; }
+.logo b i { font-style: normal; color: var(--gold); }
+.topnav { display: flex; gap: 2px; }
+.topnav a { text-decoration: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 15px; color: #CFC9BA; white-space: nowrap; }
+.topnav a:hover, .topnav a[aria-current="page"] { color: var(--night-fg); background: rgba(255,255,255,.08); }
+.demo { background: var(--gold); color: var(--on-gold); font-size: 13px; font-weight: 600; text-align: center; padding: 5px 16px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 2px solid var(--ink); background: transparent; padding: 11px 20px; border-radius: 999px; font-weight: 700; cursor: pointer; text-decoration: none; font-size: 16px; }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.btn.ink { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.btn.sm { padding: 7px 14px; font-size: 14.5px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) { .btn { transition: transform .12s; } .btn:active { transform: scale(.97); } }
+
+/* hero */
+.hero { background: var(--night); color: var(--night-fg); padding-block: 36px 44px; overflow: hidden; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+.hero h1 { font-size: clamp(48px, 11vw, 104px); text-transform: uppercase; line-height: .9; letter-spacing: -.005em; }
+.hero h1 span { color: var(--gold); display: block; }
+.hero p.lead { font-size: 19px; color: #D9D3C4; margin-top: 16px; max-width: 34ch; }
+.hero .row { margin-top: 24px; }
+.hero .btn:not(.gold) { border-color: #5A554A; color: var(--night-fg); }
+.promise { display: grid; gap: 10px; }
+.promise div { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: center; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); padding: 12px 14px; border-radius: 12px; }
+.promise svg { width: 26px; height: 26px; color: var(--gold); }
+.promise b { display: block; font-size: 15.5px; }
+.promise small { color: #B9B2A2; font-size: 13.5px; }
+
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+section.band { padding-block: 44px; }
+.services { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 20px; }
+.svc { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-align: left; cursor: pointer; display: grid; gap: 8px; align-content: start; min-height: 132px; }
+.svc:hover { border-color: var(--ink); }
+.svc svg { width: 30px; height: 30px; }
+.svc b { font-family: var(--display); font-size: 21px; line-height: 1.05; text-transform: uppercase; }
+.svc small { color: var(--muted); font-size: 13.5px; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 20px; counter-reset: s; }
+.steps li { list-style: none; background: var(--card); border-radius: 14px; padding: 18px; border: 1px solid var(--line); display: grid; gap: 6px; }
+.steps li::before { counter-increment: s; content: counter(s); font-family: var(--display); font-weight: 800; font-size: 40px; color: var(--gold-deep); line-height: 1; }
+.steps ol { padding: 0; margin: 0; }
+.prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 20px; }
+.price { background: var(--card); border-radius: 14px; padding: 20px; border: 1px solid var(--line); display: grid; gap: 8px; align-content: start; }
+.price .big { font-family: var(--display); font-size: 46px; font-weight: 800; line-height: 1; }
+.price .big small { font-size: 20px; font-weight: 600; color: var(--muted); }
+.price.featured { background: var(--night); color: var(--night-fg); border-color: var(--night); }
+.price.featured .muted { color: #B9B2A2; }
+
+/* booking */
+.page { padding-block: 26px 70px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 22px; align-items: start; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.stepper { display: flex; gap: 6px; margin-bottom: 14px; }
+.stepper span { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.stepper span.on { background: var(--gold); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .lab { font-weight: 600; font-size: 14.5px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+input[type=text], input[type=tel], input[type=number], select, textarea { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 11px 12px; }
+input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
+textarea { min-height: 96px; resize: vertical; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.opt { border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 13px; cursor: pointer; display: grid; gap: 2px; background: var(--card); text-align: left; }
+.opt small { color: var(--muted); font-size: 13px; }
+.opt[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--sunk); }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+.check input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--gold); flex: none; }
+.err { color: var(--bad); font-weight: 600; font-size: 14.5px; }
+.pros { display: grid; gap: 10px; }
+.pro { border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 14px; align-items: center; cursor: pointer; background: var(--card); text-align: left; width: 100%; }
+.pro[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.avatar { width: 54px; height: 54px; border-radius: 50%; background: var(--night); color: var(--gold); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 21px; }
+.pro b { font-size: 17px; }
+.pro .meta { color: var(--muted); font-size: 13.5px; }
+.badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+.badge { font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+.score { text-align: center; }
+.score b { font-family: var(--display); font-size: 30px; font-weight: 800; display: block; line-height: 1; }
+.score small { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.summary { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 74px); }
+.money { width: 100%; border-collapse: collapse; font-size: 15px; }
+.money td { padding: 7px 0; border-bottom: 1px dashed var(--line); vertical-align: top; }
+.money td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.money tr.total td { border-bottom: 0; font-size: 19px; font-weight: 800; padding-top: 10px; }
+.money small { color: var(--muted); display: block; font-size: 13px; font-weight: 400; }
+.tip { background: var(--warn-bg); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; }
+
+/* tracking */
+.status { background: var(--night); color: var(--night-fg); border-radius: 18px; padding: 20px; display: grid; gap: 14px; }
+.status h2 { font-size: clamp(32px, 7vw, 46px); }
+.status .muted { color: #B9B2A2; }
+.pulse { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); margin-right: 8px; vertical-align: 2px; }
+@media (prefers-reduced-motion: no-preference) { .pulse { animation: pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { opacity: .3; transform: scale(.75); } } }
+.map { border-radius: 14px; overflow: hidden; background: #22201A; aspect-ratio: 16 / 9; max-width: 100%; position: relative; }
+.map svg { width: 100%; height: 100%; display: block; }
+.eta { position: absolute; left: 12px; top: 12px; background: var(--gold); color: var(--on-gold); border-radius: 10px; padding: 6px 11px; font-weight: 700; font-size: 14px; }
+.timeline { display: grid; gap: 0; }
+.timeline div { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding-bottom: 14px; position: relative; }
+.timeline div::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); margin-top: 5px; z-index: 1; }
+.timeline div::after { content: ""; position: absolute; left: 7px; top: 19px; bottom: 0; width: 2px; background: var(--line); }
+.timeline div:last-child::after { display: none; }
+.timeline div.done::before { background: var(--ink); border-color: var(--ink); }
+.timeline div.now::before { background: var(--gold); border-color: var(--gold); }
+.timeline small { color: var(--muted); display: block; font-size: 13px; }
+.act { border: 2.5px solid var(--gold); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.feed { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
+.feed p { background: var(--sunk); border-radius: 12px 12px 12px 4px; padding: 9px 12px; font-size: 14.5px; }
+.feed time { display: block; font-size: 12px; color: var(--muted); }
+.stars { display: flex; gap: 4px; }
+.stars button { background: none; border: 0; padding: 2px; cursor: pointer; color: var(--line); }
+.stars button svg { width: 36px; height: 36px; }
+.stars button.on { color: var(--gold); }
+.list { display: grid; gap: 10px; }
+.bk { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; text-decoration: none; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+.bk:hover { border-color: var(--ink); }
+.tag { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--warn-bg); white-space: nowrap; align-self: start; }
+.tag.done { background: var(--good-bg); color: var(--good); }
+.empty { text-align: center; padding: 40px 20px; display: grid; gap: 12px; justify-items: center; }
+footer { background: var(--night); color: #B9B2A2; padding-block: 28px; font-size: 14px; }
+footer .wrap { display: grid; gap: 8px; }
+footer b { color: var(--night-fg); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); border-radius: 12px; padding: 12px 16px; font-weight: 600; z-index: 40; max-width: calc(100vw - 32px); }
+.ecocash { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 10px 0; }
+.phone { width: 150px; height: 230px; border: 3px solid var(--ink); border-radius: 24px; display: grid; place-items: center; padding: 12px; background: var(--sunk); }
+.phone div { background: var(--card); border-radius: 10px; padding: 10px; font-size: 12.5px; box-shadow: 0 1px 0 var(--line); }
+
+@media (max-width: 880px) {
+  .hero .wrap, .layout { grid-template-columns: minmax(0, 1fr); }
+  .summary { position: static; }
+  .topnav a.hide-sm { display: none; }
+}
+@media (max-width: 520px) { .top .wrap { gap: 8px; } .topnav a { padding: 7px 7px; font-size: 14px; } .mark { width: 32px; height: 32px; font-size: 22px; } .logo b { font-size: 20px; } .pro { grid-template-columns: 46px minmax(0, 1fr) auto; } .avatar { width: 46px; height: 46px; } }
+</style>
+
+<header class="top"><div class="wrap">
+  <a class="logo" href="#home"><span class="mark" aria-hidden="true">B</span><b>BASA <i>se</i>BASA</b></a>
+  <nav class="topnav" aria-label="Main">
+    <a href="#book" data-nav="book">Book</a>
+    <a href="#bookings" data-nav="bookings">My jobs</a>
+    <a href="#join" data-nav="join" class="hide-sm">For pros</a>
+    <a href="#help" data-nav="help">Help</a>
+  </nav>
+</div></header>
+<div class="demo" id="demo-bar">Preview: sample professionals and simulated live updates. Nothing is charged.</div>
+<main id="app"></main>
+<footer><div class="wrap"><b>Basa seBasa · Verified professionals. Work done right.</b><span>Harare, Zimbabwe · Payments by EcoCash only. Never pay a technician in cash.</span></div></footer>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+// ================= CONFIG (the same numbers as the operations desk) =================
+const PRICING = { commissionRate: 15, calloutFee: 9, freeKm: 10, perKm: 0.5, ecocashChargeRate: 2, platformChargeShare: 0, maidRates: { standard: 5, verified: 6, premium: 8 }, diagnosisValidDays: 30 };
+const DEMO = true;            // false once connected to the Basa seBasa server
+const DEMO_SPEED = 1;         // 1 = a few seconds per step in the preview
+
+const ICON = {
+  snow: '<path d="M12 2v20M4.9 6l14.2 12M19.1 6 4.9 18M9 4l3 2 3-2M9 20l3-2 3 2"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  drop: '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>',
+  washer: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6h2"/>',
+  car: '<path d="M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM7 19v2M17 19v2"/><circle cx="7.5" cy="13" r="1"/><circle cx="16.5" cy="13" r="1"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>',
+  broom: '<path d="M19 3 11 11M8 12l4 4-3 5-6-6z M5 18l2-2"/>',
+  shield: '<path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/>',
+  pin: '<path d="M12 22s7-7.2 7-12a7 7 0 0 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+  wallet: '<rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/>',
+  doc: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h7M9 17h5"/>',
+  star: '<path d="m12 2.8 2.8 6 6.4.6-4.8 4.3 1.4 6.4L12 16.9l-5.8 3.2 1.4-6.4L2.8 9.4l6.4-.6z" fill="currentColor"/>',
+};
+const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+
+const SERVICES = [
+  { id: "HVAC/Refrigeration", name: "Fridge & aircon", icon: "snow", note: "Fridges, freezers, aircons", types: ["Repair", "Installation", "Service"] },
+  { id: "Electrical", name: "Electrical", icon: "bolt", note: "Faults, wiring, sockets", types: ["Repair", "Installation"] },
+  { id: "Plumbing", name: "Plumbing", icon: "drop", note: "Leaks, geysers, blockages", types: ["Repair", "Installation"] },
+  { id: "Appliance repair", name: "Appliances", icon: "washer", note: "Washers, stoves, microwaves", types: ["Repair", "Service"] },
+  { id: "Auto mechanic", name: "Mechanic", icon: "car", note: "Mobile car repairs", types: ["Repair", "Service"] },
+  { id: "Solar & inverters", name: "Solar", icon: "sun", note: "Panels, inverters, batteries", types: ["Repair", "Installation", "Service"] },
+  { id: "Maid / cleaning", name: "Maids", icon: "broom", note: "Hourly home cleaning", types: ["Maid"] },
+];
+const TYPE_INFO = {
+  Repair: "Something is broken. A technician inspects first, then quotes before any work.",
+  Installation: "Fit something new. Price agreed before the technician comes.",
+  Service: "Routine servicing at an agreed price.",
+  Maid: "Book trusted, verified help by the hour.",
+};
+const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
+// rough suburb positions (km east, km north of the CBD), used only for preview distances
+const POS = { Avondale: [-1, 3], Belvedere: [-2.5, 0.5], Borrowdale: [5, 8], Budiriro: [-9, -6], CBD: [0, 0], Chitungwiza: [6, -22], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Kuwadzana: [-14, 1], Mabelreign: [-5, 4.5], Marlborough: [-4, 8], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
+
+// ================= DATA LAYER =================
+// In the preview these are sample professionals and a simulated job. When the Basa seBasa server is ready,
+// replace the functions in API with calls to it; the screens only use API.*.
+const SAMPLE_PROS = [
+  { id: "p1", name: "Tendai M.", trade: "HVAC/Refrigeration", suburb: "Avondale", years: 7, rating: 4.9, jobs: 128, trust: 94, badges: ["ID checked", "Trade verified", "Warranty"] },
+  { id: "p2", name: "Kudzai C.", trade: "HVAC/Refrigeration", suburb: "Hatfield", years: 5, rating: 4.7, jobs: 61, trust: 86, badges: ["ID checked", "Trade verified"] },
+  { id: "p3", name: "Blessing N.", trade: "HVAC/Refrigeration", suburb: "Glen View", years: 3, rating: 4.6, jobs: 22, trust: 74, badges: ["ID checked", "Trade verified"] },
+  { id: "p4", name: "Farai D.", trade: "Electrical", suburb: "Belvedere", years: 9, rating: 4.8, jobs: 143, trust: 96, badges: ["ID checked", "Trade verified", "Police clearance"] },
+  { id: "p5", name: "Simba R.", trade: "Electrical", suburb: "Greendale", years: 4, rating: 4.6, jobs: 37, trust: 80, badges: ["ID checked", "Trade verified"] },
+  { id: "p6", name: "Tatenda G.", trade: "Plumbing", suburb: "Mbare", years: 6, rating: 4.7, jobs: 88, trust: 88, badges: ["ID checked", "Trade verified", "Warranty"] },
+  { id: "p7", name: "Nyasha P.", trade: "Plumbing", suburb: "Mabelreign", years: 3, rating: 4.5, jobs: 19, trust: 72, badges: ["ID checked", "Trade verified"] },
+  { id: "p8", name: "Ruvimbo K.", trade: "Appliance repair", suburb: "Eastlea", years: 8, rating: 4.8, jobs: 104, trust: 92, badges: ["ID checked", "Trade verified", "Warranty"] },
+  { id: "p9", name: "Tafadzwa B.", trade: "Auto mechanic", suburb: "Msasa", years: 10, rating: 4.8, jobs: 156, trust: 95, badges: ["ID checked", "Trade verified"] },
+  { id: "p10", name: "Takudzwa S.", trade: "Solar & inverters", suburb: "Mount Pleasant", years: 6, rating: 4.9, jobs: 71, trust: 91, badges: ["ID checked", "Trade verified", "Warranty"] },
+  { id: "p11", name: "Rudo C.", trade: "Maid / cleaning", suburb: "Borrowdale", years: 4, rating: 4.9, jobs: 93, trust: 90, badges: ["ID checked", "Police clearance", "References"] },
+  { id: "p12", name: "Chipo T.", trade: "Maid / cleaning", suburb: "Waterfalls", years: 2, rating: 4.7, jobs: 34, trust: 78, badges: ["ID checked", "Police clearance"] },
+];
+const distKm = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2 || 1.5; };
+const API = {
+  async matches(service, suburb) {
+    return SAMPLE_PROS.filter((p) => p.trade === service).map((p) => ({ ...p, km: distKm(p.suburb, suburb), eta: Math.round(8 + distKm(p.suburb, suburb) * 2.4) }))
+      .sort((a, b) => (a.km - b.km) * 4 + (b.trust - a.trust) / 4).slice(0, 3);
+  },
+  async createBooking(b) { const job = { ...b, id: "j" + Date.now().toString(36), code: "BSB-" + String(Math.floor(1000 + Math.random() * 8999)), createdAt: Date.now(), stage: "requested", feed: [], timeline: [] }; addEvent(job, "requested", "Request received. We're confirming your professional."); JOBS.unshift(job); save(); Sim.start(job); return job; },
+  async pay(job, which, ecocash) { return Sim.pay(job, which, ecocash); },
+  async approveQuote(job) { return Sim.approve(job); },
+  async deferQuote(job) { return Sim.defer(job); },
+  async review(job, rating, text) { job.review = { rating, text, at: Date.now() }; job.stage = "closed"; addEvent(job, "closed", "Thank you for your review."); save(); emit(job); },
+};
+
+// ================= MONEY =================
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const usd = (n) => "$" + r2(n).toFixed(2);
+function price(b) {
+  const p = PRICING, rate = p.ecocashChargeRate / 100, share = p.platformChargeShare / 100;
+  const transport = r2(Math.max(0, (b.km || 0) - p.freeKm) * p.perKm);
+  const callout = b.type === "Repair" ? p.calloutFee : 0;
+  let labour = 0, parts = 0;
+  if (b.type === "Maid") labour = r2(b.hours * p.maidRates[b.tier || "standard"]);
+  else if (b.quote) { labour = r2(b.quote.labour); parts = r2(b.quote.parts); }
+  else if (b.type !== "Repair") labour = r2(b.agreed || 0);
+  const commission = labour * p.commissionRate / 100;
+  const payout = r2((callout ? callout - 1 : 0) + transport + labour - commission + parts);
+  const base1 = b.type === "Repair" ? r2(callout + transport) : 0;
+  const base2 = r2(labour + parts + (b.type === "Repair" ? 0 : transport));
+  const fee1 = r2(base1 * rate * (1 - share));
+  const fee2 = r2((base2 * rate + Math.max(0, payout) * rate) * (1 - share));
+  return { transport, callout, labour, parts, base1, base2, fee1, fee2, pay1: r2(base1 + fee1), pay2: r2(base2 + fee2) };
+}
+
+// ================= STATE =================
+let JOBS = [];
+try { JOBS = JSON.parse(localStorage.getItem("bsb-jobs") || "[]"); } catch (e) { JOBS = []; }
+function save() { try { localStorage.setItem("bsb-jobs", JSON.stringify(JOBS.slice(0, 20))); } catch (e) {} }
+const listeners = new Set();
+function emit(job) { listeners.forEach((fn) => fn(job)); }
+function addEvent(job, stage, text) { job.feed.push({ at: Date.now(), text }); job.timeline.push({ stage, at: Date.now() }); }
+const B = { step: 0, service: null, type: null, desc: "", suburb: "", address: "", hours: 4, tier: "standard", agreed: "", pros: [], pro: null, name: "", wa: "", agree: false, photo: "" };
+
+// ================= SIMULATION (preview only) =================
+const Sim = {
+  timers: {},
+  later(job, ms, fn) { clearTimeout(this.timers[job.id]); this.timers[job.id] = setTimeout(() => { fn(); save(); emit(job); }, ms / DEMO_SPEED); },
+  go(job, stage, text) { job.stage = stage; addEvent(job, stage, text); },
+  start(job) {
+    this.later(job, 2500, () => { this.go(job, "accepted", `${job.pro.name} accepted your job.`);
+      if (job.type === "Repair") this.go(job, "pay_callout", `Pay the ${usd(price(job).pay1)} call-out on EcoCash so ${job.pro.name.split(" ")[0]} can leave.`);
+      else this.travel(job);
+    });
+  },
+  travel(job) {
+    this.go(job, "on_way", `${job.pro.name} is on the way. Live location is on.`); job.leftAt = Date.now(); job.travelMs = 30000 / DEMO_SPEED;
+    this.later(job, 30000, () => { this.go(job, "arrived", `${job.pro.name} has arrived.`);
+      if (job.type === "Repair") this.later(job, 6000, () => { job.quote = { labour: job.service === "Auto mechanic" ? 55 : 40, parts: job.service === "Plumbing" ? 12 : 18, diagnosis: diagnosisFor(job.service) }; this.go(job, "quoted", "Your quote is ready. Nothing starts until you approve."); });
+      else this.later(job, 4000, () => { this.go(job, "working", "Work has started."); this.finish(job); });
+    });
+  },
+  finish(job) { this.later(job, 9000, () => { this.go(job, "pay_final", `Job done. Please check the work, then pay ${usd(price(job).pay2)} on EcoCash.`); }); },
+  async pay(job, which, ecocash) {
+    job.paying = which; emit(job);
+    await new Promise((r) => setTimeout(r, 3500 / DEMO_SPEED));
+    job.paying = null;
+    const pr = price(job);
+    if (which === "callout") { job.paid1 = { amount: pr.pay1, number: ecocash, at: Date.now() }; this.go(job, "paid_callout", `Payment of ${usd(pr.pay1)} received. Thank you.`); this.travel(job); }
+    else { job.paid2 = { amount: pr.pay2, number: ecocash, at: Date.now() }; this.go(job, "review", `Payment of ${usd(pr.pay2)} received. Your receipt is saved below.`); }
+    save(); emit(job);
+  },
+  approve(job) { this.go(job, "working", "Quote approved. Work has started."); save(); emit(job); this.finish(job); },
+  defer(job) { job.deferredUntil = Date.now() + PRICING.diagnosisValidDays * 864e5; this.go(job, "deferred", `No problem. Your diagnosis is saved for ${PRICING.diagnosisValidDays} days, and ${job.pro.name} gets first chance to finish the job.`); save(); emit(job); },
+  resume(job) { this.go(job, "quoted", "Welcome back. Here is your saved quote."); save(); emit(job); },
+};
+const diagnosisFor = (s) => ({ "HVAC/Refrigeration": "Start relay burnt out. The compressor is fine; replacing the relay and checking the gas.", Electrical: "Loose neutral in the distribution board. Re-terminate and fit a new breaker.", Plumbing: "Worn geyser thermostat valve. Replace the valve and reseal the joint.", "Appliance repair": "Drum belt snapped and the motor brush is worn. Replace both.", "Auto mechanic": "Alternator not charging. Replace the regulator and test the battery.", "Solar & inverters": "Battery cells out of balance. Rebalance and update inverter settings." }[s] || "Fault found. Repair as quoted.");
+
+// ================= HELPERS =================
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const time = (t) => new Date(t).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const initials = (n) => n.split(/\s+/).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+const svcOf = (id) => SERVICES.find((s) => s.id === id);
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3000); }
+const STAGE_TEXT = { requested: "Finding your pro", accepted: "Accepted", pay_callout: "Pay call-out", paid_callout: "Call-out paid", on_way: "On the way", arrived: "Arrived", quoted: "Approve your quote", deferred: "Saved for later", working: "Working", pay_final: "Pay to finish", review: "Rate your pro", closed: "Done" };
+const needsYou = (s) => ["pay_callout", "quoted", "pay_final", "review", "deferred"].includes(s);
+
+// ================= ROUTER =================
+let view = "home", trackId = null;
+function route() {
+  const h = location.hash.slice(1) || "home";
+  if (h.startsWith("job-")) { view = "track"; trackId = h.slice(4); }
+  else view = ["home", "book", "bookings", "join", "help"].includes(h) ? h : "home";
+  document.querySelectorAll("[data-nav]").forEach((a) => a.dataset.nav === view || (view === "track" && a.dataset.nav === "bookings") ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  render(); window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+function render() {
+  $("#demo-bar").hidden = !DEMO;
+  $("#app").innerHTML = view === "book" ? viewBook() : view === "track" ? viewTrack() : view === "bookings" ? viewBookings() : view === "join" ? viewJoin() : view === "help" ? viewHelp() : viewHome();
+  if (view === "track") startMap();
+}
+listeners.add((job) => { if (view === "track" && job.id === trackId) { const keep = captureInputs(); render(); restoreInputs(keep); } else if (needsYou(job.stage) && view !== "track") toast(`${job.code}: ${STAGE_TEXT[job.stage]}`); });
+function captureInputs() { const o = {}; document.querySelectorAll("#app input[id], #app textarea[id]").forEach((el) => (o[el.id] = el.value)); return o; }
+function restoreInputs(o) { Object.entries(o).forEach(([k, v]) => { const el = document.getElementById(k); if (el && el.type !== "checkbox") el.value = v; }); }
+
+// ================= HOME =================
+function viewHome() {
+  return `<section class="hero"><div class="wrap">
+    <div><p class="eyebrow">Harare · Verified home services</p>
+      <h1>Work done right. <span>Every time.</span></h1>
+      <p class="lead">Book a checked, rated professional in minutes. See the price before they come, track them to your door, and pay safely on EcoCash.</p>
+      <div class="row"><a class="btn gold" href="#book">Book a professional</a><a class="btn" href="#help">How we protect you</a></div></div>
+    <div class="promise" aria-label="Our promise">
+      <div>${icon("shield")}<span><b>Every pro is checked in person</b><small>National ID, trade qualification and references before their first job.</small></span></div>
+      <div>${icon("doc")}<span><b>You approve the price first</b><small>Repairs get a written quote. Nothing starts until you say yes.</small></span></div>
+      <div>${icon("pin")}<span><b>Track them live</b><small>See where your technician is and when they'll arrive.</small></span></div>
+      <div>${icon("wallet")}<span><b>EcoCash only, never cash</b><small>Every payment is recorded, with a receipt for your job.</small></span></div>
+    </div></div></section>
+  <section class="band"><div class="wrap"><p class="eyebrow">What do you need?</p><h2>Pick a service</h2>
+    <div class="services">${SERVICES.map((s) => `<button class="svc" type="button" data-start="${esc(s.id)}">${icon(s.icon)}<b>${esc(s.name)}</b><small>${esc(s.note)}</small></button>`).join("")}</div></div></section>
+  <section class="band" style="padding-top:0"><div class="wrap"><p class="eyebrow">How it works</p><h2>Four steps, no surprises</h2>
+    <ol class="steps"><li><b>Tell us the problem</b><span class="muted">Pick a service, describe it, add a photo.</span></li><li><b>Choose your pro</b><span class="muted">We show the best 3 near you, with Trust Score, rating and arrival time.</span></li><li><b>Track and approve</b><span class="muted">Watch them arrive. For repairs, approve the quote before work starts.</span></li><li><b>Pay and rate</b><span class="muted">Pay on EcoCash when you're happy. Your rating keeps every pro honest.</span></li></ol></div></section>
+  <section class="band" style="padding-top:0"><div class="wrap"><p class="eyebrow">Clear prices</p><h2>Know what you'll pay</h2>
+    <div class="prices">
+      <div class="price featured"><span class="eyebrow">Repairs</span><span class="big">$${PRICING.calloutFee} <small>call-out</small></span><p class="muted">Covers inspection and travel within ${PRICING.freeKm} km. You then get a full written quote before any work.</p></div>
+      <div class="price"><span class="eyebrow">Installations &amp; servicing</span><span class="big">Fixed <small>price</small></span><p class="muted">Agreed with you before the technician comes. No call-out fee.</p></div>
+      <div class="price"><span class="eyebrow">Maids</span><span class="big">$${PRICING.maidRates.standard} <small>/ hour</small></span><p class="muted">Verified pros from $${PRICING.maidRates.verified}/h, home managers $${PRICING.maidRates.premium}/h. Most bookings are 4–6 hours.</p></div>
+    </div><p class="muted" style="margin-top:12px;font-size:14px">Beyond ${PRICING.freeKm} km, travel is $${PRICING.perKm.toFixed(2)} per extra km. EcoCash charges are shown in your total before you pay.</p></div></section>`;
+}
+
+// ================= BOOKING =================
+function viewBook() {
+  const steps = ["Service", "Where", "Your pro", "Confirm"];
+  const body = [stepService, stepWhere, stepPro, stepConfirm][B.step]();
+  return `<div class="wrap page"><div class="layout"><div>
+    <div class="stepper" aria-hidden="true">${steps.map((_, i) => `<span class="${i <= B.step ? "on" : ""}"></span>`).join("")}</div>
+    <p class="eyebrow">Step ${B.step + 1} of 4 · ${steps[B.step]}</p>
+    <form class="card" id="book-form" novalidate style="margin-top:10px">${body}<p class="err" id="book-err" hidden></p>
+      <div class="row" style="justify-content:space-between">${B.step ? `<button class="btn sm" type="button" data-back>Back</button>` : "<span></span>"}<button class="btn gold" type="submit">${B.step === 3 ? "Confirm booking" : "Continue"}</button></div></form></div>
+    <aside class="card summary" aria-label="Your booking">${summary()}</aside></div></div>`;
+}
+function stepService() {
+  const s = svcOf(B.service);
+  return `<h3>What do you need?</h3>
+    <div class="opts">${SERVICES.map((x) => `<button class="opt" type="button" data-svc="${esc(x.id)}" aria-pressed="${B.service === x.id}"><b>${esc(x.name)}</b><small>${esc(x.note)}</small></button>`).join("")}</div>
+    ${s ? `<div class="field"><span class="lab">Type of job</span><div class="opts">${s.types.map((t) => `<button class="opt" type="button" data-type="${t}" aria-pressed="${B.type === t}"><b>${t === "Maid" ? "Hourly booking" : t}</b><small>${esc(TYPE_INFO[t])}</small></button>`).join("")}</div></div>` : ""}
+    ${B.type === "Maid" ? `<div class="fields"><div class="field"><label for="b-tier">Level</label><select id="b-tier"><option value="standard" ${B.tier === "standard" ? "selected" : ""}>Standard maid · $${PRICING.maidRates.standard}/h</option><option value="verified" ${B.tier === "verified" ? "selected" : ""}>Verified pro maid · $${PRICING.maidRates.verified}/h</option><option value="premium" ${B.tier === "premium" ? "selected" : ""}>Home manager · $${PRICING.maidRates.premium}/h</option></select></div><div class="field"><label for="b-hours">Hours</label><input id="b-hours" type="number" min="2" max="10" step="1" value="${esc(B.hours)}" inputmode="numeric"></div></div>` : ""}
+    ${B.type === "Installation" || B.type === "Service" ? `<div class="field"><label for="b-agreed">Your budget for the job (USD)</label><input id="b-agreed" type="number" min="5" step="5" inputmode="decimal" value="${esc(B.agreed)}" placeholder="e.g. 120"><span class="muted" style="font-size:13.5px">Your pro confirms the final fixed price on WhatsApp before travelling.</span></div>` : ""}
+    ${B.type ? `<div class="field"><label for="b-desc">${B.type === "Maid" ? "What should be done?" : "Describe the problem"}</label><textarea id="b-desc" placeholder="${B.type === "Maid" ? "e.g. 3-bedroom house, laundry and ironing." : "e.g. Fridge stopped cooling since Sunday, light still comes on."}">${esc(B.desc)}</textarea></div>
+    <div class="field"><label for="b-photo">Add a photo (optional)</label><input id="b-photo" type="file" accept="image/*"><span class="muted" style="font-size:13.5px">${B.photo ? "Photo added: " + esc(B.photo) : "A photo helps your pro bring the right parts."}</span></div>` : ""}`;
+}
+function stepWhere() {
+  return `<h3>Where should they come?</h3>
+    <div class="fields"><div class="field"><label for="b-suburb">Suburb</label><select id="b-suburb"><option value="">Choose your suburb</option>${SUBURBS.map((s) => `<option ${B.suburb === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+    <div class="field"><label for="b-address">Street address or landmark</label><input id="b-address" type="text" autocomplete="street-address" value="${esc(B.address)}" placeholder="e.g. 14 Lomagundi Rd, near the shops"></div></div>
+    <p class="tip">Your pro will ask you to share your WhatsApp location when they leave, so they find you first time.</p>`;
+}
+function stepPro() {
+  if (!B.pros.length) return `<h3>Choose your professional</h3><p class="muted">No verified ${esc(svcOf(B.service).name.toLowerCase())} pros near ${esc(B.suburb)} yet. Message us on WhatsApp and we'll find one for you.</p>`;
+  return `<h3>Choose your professional</h3><p class="muted">The best verified matches near ${esc(B.suburb)}, closest and most trusted first.</p>
+    <div class="pros">${B.pros.map((p, i) => `<button class="pro" type="button" data-pro="${p.id}" aria-pressed="${B.pro?.id === p.id}">
+      <span class="avatar">${initials(p.name)}</span>
+      <span><b>${esc(p.name)}</b>${i === 0 ? ' <span class="badge" style="background:var(--warn-bg);color:var(--gold-deep)">Best match</span>' : ""}<br><span class="meta">★ ${p.rating} · ${p.jobs} jobs · ${p.years} yrs · ${p.km} km · arrives in ~${p.eta} min</span>
+        <span class="badges">${p.badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}</span></span>
+      <span class="score"><b>${p.trust}</b><small>Trust</small></span></button>`).join("")}</div>
+    <details><summary class="muted" style="cursor:pointer">What is the Trust Score?</summary><p class="muted" style="margin-top:8px;font-size:14.5px">A score out of 100 built from checks we do in person (ID, trade qualification, police clearance, references, warranty), their experience, and real ratings from customers after paid jobs.</p></details>`;
+}
+function stepConfirm() {
+  const pr = price({ ...B, km: B.pro?.km });
+  return `<h3>Almost done</h3>
+    <div class="fields"><div class="field"><label for="b-name">Your name</label><input id="b-name" type="text" autocomplete="name" value="${esc(B.name)}"></div>
+    <div class="field"><label for="b-wa">WhatsApp number</label><input id="b-wa" type="tel" autocomplete="tel" placeholder="077 123 4567" value="${esc(B.wa)}"></div></div>
+    ${B.type === "Repair" ? `<p class="tip">You'll pay the <b>${usd(pr.pay1)}</b> call-out on EcoCash once ${esc(B.pro.name)} accepts. After inspecting, they send a full quote. You decide whether to go ahead.</p>` : `<p class="tip">You pay <b>${usd(pr.pay2)}</b> on EcoCash after the work is done and you're happy.${B.type !== "Maid" ? " Your pro confirms the fixed price first." : ""}</p>`}
+    <label class="check"><input type="checkbox" id="b-agree" ${B.agree ? "checked" : ""}> I agree to the prices shown, including travel and EcoCash charges, and will pay through Basa seBasa only.</label>`;
+}
+function summary() {
+  const s = svcOf(B.service); const pr = price({ ...B, km: B.pro?.km });
+  const rows = [];
+  if (B.type === "Repair") { rows.push([`Call-out<small>Inspection + travel up to ${PRICING.freeKm} km</small>`, usd(pr.callout)]); }
+  if (B.pro && pr.transport) rows.push([`Extra travel<small>${r2(B.pro.km - PRICING.freeKm)} km × $${PRICING.perKm.toFixed(2)}</small>`, usd(pr.transport)]);
+  if (B.type === "Maid") rows.push([`${B.hours} hours<small>${B.tier === "premium" ? "Home manager" : B.tier === "verified" ? "Verified pro maid" : "Standard maid"} · $${PRICING.maidRates[B.tier]}/h</small>`, usd(pr.labour)]);
+  if ((B.type === "Installation" || B.type === "Service") && B.agreed) rows.push(["Your budget<small>Final price confirmed by your pro</small>", usd(pr.labour)]);
+  const fee = B.type === "Repair" ? pr.fee1 : pr.fee2; if (B.type && fee) rows.push([`EcoCash charges`, usd(fee)]);
+  const total = B.type === "Repair" ? pr.pay1 : pr.pay2;
+  return `<p class="eyebrow">Your booking</p>
+    ${s ? `<p style="font-weight:700;font-size:18px">${esc(s.name)}${B.type ? ` · ${B.type === "Maid" ? "Hourly" : B.type}` : ""}</p>` : `<p class="muted">Pick a service to see your price.</p>`}
+    ${B.suburb ? `<p class="muted">${esc(B.suburb)}${B.address ? ", " + esc(B.address) : ""}</p>` : ""}
+    ${B.pro ? `<p><b>${esc(B.pro.name)}</b> · Trust ${B.pro.trust} · ~${B.pro.eta} min away</p>` : ""}
+    ${B.type ? `<table class="money">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}<tr class="total"><td>${B.type === "Repair" ? "Pay now to book" : "Pay after the job"}</td><td>${usd(total)}</td></tr></table>
+      ${B.type === "Repair" ? `<p class="muted" style="font-size:14px">The repair itself is quoted after inspection. You approve it before any work.</p>` : ""}` : ""}`;
+}
+async function nextStep() {
+  const err = $("#book-err"); const fail = (m) => { err.textContent = m; err.hidden = false; };
+  readStep();
+  if (B.step === 0) { if (!B.service) return fail("Pick a service."); if (!B.type) return fail("Pick the type of job."); if (B.desc.trim().length < 5) return fail("Tell us a little more about the job."); if ((B.type === "Installation" || B.type === "Service") && !(Number(B.agreed) > 0)) return fail("Enter your budget so we can match the right pro."); }
+  if (B.step === 1) { if (!B.suburb) return fail("Choose your suburb."); B.pros = await API.matches(B.service, B.suburb); B.pro = B.pros[0] || null; }
+  if (B.step === 2) { if (!B.pro) return fail("Choose a professional."); }
+  if (B.step === 3) {
+    if (!B.name.trim()) return fail("Enter your name."); if (B.wa.replace(/\D/g, "").length < 9) return fail("Enter a WhatsApp number we can reach you on."); if (!B.agree) return fail("Tick the box to agree to the prices.");
+    const job = await API.createBooking({ service: B.service, type: B.type, desc: B.desc, suburb: B.suburb, address: B.address, hours: B.hours, tier: B.tier, agreed: Number(B.agreed) || 0, pro: B.pro, km: B.pro.km, name: B.name, wa: B.wa, photo: B.photo });
+    Object.assign(B, { step: 0, service: null, type: null, desc: "", agreed: "", pros: [], pro: null, agree: false, photo: "" });
+    location.hash = "#job-" + job.id; return;
+  }
+  B.step++; render(); window.scrollTo(0, 0);
+}
+function readStep() {
+  const v = (id) => document.getElementById(id);
+  if (v("b-desc")) B.desc = v("b-desc").value; if (v("b-hours")) B.hours = Math.min(10, Math.max(2, Number(v("b-hours").value) || 4)); if (v("b-tier")) B.tier = v("b-tier").value; if (v("b-agreed")) B.agreed = v("b-agreed").value;
+  if (v("b-suburb")) B.suburb = v("b-suburb").value; if (v("b-address")) B.address = v("b-address").value;
+  if (v("b-name")) B.name = v("b-name").value; if (v("b-wa")) B.wa = v("b-wa").value; if (v("b-agree")) B.agree = v("b-agree").checked;
+}
+
+// ================= TRACKING =================
+function viewTrack() {
+  const job = JOBS.find((j) => j.id === trackId);
+  if (!job) return `<div class="wrap page"><div class="card empty"><h3>We couldn't find that job</h3><p class="muted">It may have been booked on another phone.</p><a class="btn gold" href="#book">Book a professional</a></div></div>`;
+  const pr = price(job), first = job.pro.name.split(" ")[0];
+  const flow = job.type === "Repair" ? ["requested", "accepted", "paid_callout", "on_way", "arrived", "quoted", "working", "pay_final", "review", "closed"] : ["requested", "accepted", "on_way", "arrived", "working", "pay_final", "review", "closed"];
+  const at = Math.max(0, flow.indexOf(job.stage === "pay_callout" ? "accepted" : job.stage === "deferred" ? "quoted" : job.stage));
+  const label = { requested: "Request sent", accepted: "Pro accepted", paid_callout: "Call-out paid", on_way: "On the way", arrived: "Arrived", quoted: "Quote", working: "Work in progress", pay_final: "Payment", review: "Your rating", closed: "Complete" };
+  const when = (s) => { const t = job.timeline.filter((x) => x.stage === s).pop(); return t ? time(t.at) : ""; };
+  const head = { requested: ["Finding your pro", "Confirming with " + first + "…"], accepted: [first + " accepted", ""], pay_callout: ["Pay the call-out", first + " leaves as soon as it's paid."], paid_callout: ["Paid. Getting ready", ""], on_way: [first + " is on the way", "Live location is on."], arrived: [first + " has arrived", job.type === "Repair" ? "Inspecting the problem now." : "Getting started."], quoted: ["Your quote is ready", "Nothing starts until you approve."], deferred: ["Saved for later", `Your diagnosis is valid until ${new Date(job.deferredUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}.`], working: ["Work in progress", first + " is on the job."], pay_final: ["Job done", "Check the work, then pay to finish."], review: ["How did " + first + " do?", "Your rating helps every customer."], closed: ["All done", "Thank you for choosing Basa seBasa."] }[job.stage] || ["", ""];
+  return `<div class="wrap page"><div class="layout"><div style="display:grid;gap:16px">
+    <div class="status"><div class="row" style="justify-content:space-between"><span class="mono" style="color:#B9B2A2">${esc(job.code)} · ${esc(svcOf(job.service).name)}</span>${job.stage !== "closed" ? '<span style="font-size:14px"><span class="pulse"></span>Live</span>' : ""}</div>
+      <h2>${esc(head[0])}</h2>${head[1] ? `<p class="muted">${esc(head[1])}</p>` : ""}
+      ${["on_way", "arrived", "working"].includes(job.stage) || (job.stage === "quoted") ? mapBox(job) : ""}</div>
+    ${actionBox(job, pr)}
+    <div class="card"><h3>Updates</h3><div class="feed" aria-live="polite">${job.feed.slice().reverse().map((f) => `<p>${esc(f.text)}<time>${time(f.at)}</time></p>`).join("")}</div></div>
+  </div>
+  <aside style="display:grid;gap:16px">
+    <div class="card"><div class="row" style="gap:14px"><span class="avatar">${initials(job.pro.name)}</span><span><b style="font-size:18px">${esc(job.pro.name)}</b><br><span class="muted" style="font-size:14px">★ ${job.pro.rating} · ${job.pro.jobs} jobs · Trust ${job.pro.trust}</span></span></div>
+      <div class="badges">${job.pro.badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}</div>
+      <p class="muted" style="font-size:14px">Chat with ${esc(first)} in WhatsApp. Never pay them directly.</p></div>
+    <div class="card"><h3>Progress</h3><div class="timeline">${flow.map((s, i) => `<div class="${i < at ? "done" : i === at ? "now" : ""}"><span>${label[s]}<small>${when(s)}</small></span></div>`).join("")}</div></div>
+    <div class="card"><h3>Payments</h3><table class="money">
+      ${job.type === "Repair" ? `<tr><td>Call-out${job.paid1 ? "<small>Paid " + time(job.paid1.at) + "</small>" : ""}</td><td>${usd(pr.pay1)}</td></tr>` : ""}
+      ${job.quote ? `<tr><td>Repair (labour ${usd(pr.labour)} + parts ${usd(pr.parts)} + EcoCash charges)${job.paid2 ? "<small>Paid " + time(job.paid2.at) + "</small>" : ""}</td><td>${usd(pr.pay2)}</td></tr>` : ""}
+      ${job.type !== "Repair" ? `<tr><td>${job.type === "Maid" ? job.hours + " hours" : "Agreed price"} + EcoCash charges${job.paid2 ? "<small>Paid " + time(job.paid2.at) + "</small>" : ""}</td><td>${usd(pr.pay2)}</td></tr>` : ""}
+      <tr class="total"><td>Paid so far</td><td>${usd((job.paid1?.amount || 0) + (job.paid2?.amount || 0))}</td></tr></table></div>
+  </aside></div></div>`;
+}
+function mapBox(job) {
+  return `<div class="map" id="map"><svg viewBox="0 0 320 180" aria-label="Live map: your technician's route">
+    <rect width="320" height="180" fill="#22201A"/>
+    <g stroke="#3A362C" stroke-width="7" fill="none" stroke-linecap="round"><path d="M-10 40H330M-10 120H330M60 -10V190M190 -10V190M260 -10V190M0 175 320 10"/></g>
+    <g stroke="#2E2B23" stroke-width="3" fill="none"><path d="M-10 80H330M120 -10V190M-10 155H330M30 0V180M230 0V180"/></g>
+    <path id="route" d="M40 150 L60 150 L60 120 L190 120 L190 40 L262 40" stroke="${"#F0AE00"}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/>
+    <g transform="translate(262 40)"><circle r="11" fill="#F5F1E6"/><path d="M-5 2 0 -4 5 2V6H-5z" fill="#15130E"/></g>
+    <g id="dot"><circle r="13" fill="#F0AE00" opacity=".25"/><circle r="7" fill="#F0AE00" stroke="#15130E" stroke-width="2"/></g></svg>
+    <span class="eta" id="eta">${job.stage === "on_way" ? "Arriving soon" : "Arrived"}</span></div>`;
+}
+let mapRaf = 0;
+function startMap() {
+  cancelAnimationFrame(mapRaf);
+  const job = JOBS.find((j) => j.id === trackId); const route = document.getElementById("route"), dot = document.getElementById("dot"); if (!job || !route) return;
+  const len = route.getTotalLength();
+  const tick = () => {
+    if (!document.getElementById("route")) return;
+    let f = 1; if (job.stage === "on_way") f = Math.min(1, (Date.now() - (job.leftAt || Date.now())) / (job.travelMs || 30000));
+    const pt = route.getPointAtLength(len * f); dot.setAttribute("transform", `translate(${pt.x} ${pt.y})`);
+    const eta = document.getElementById("eta");
+    if (eta && job.stage === "on_way") { const mins = Math.max(1, Math.round(job.pro.eta * (1 - f))); eta.textContent = `${mins} min away · ${r2(job.km * (1 - f)).toFixed(1)} km`; }
+    if (job.stage === "on_way" && f < 1) mapRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+function actionBox(job, pr) {
+  const first = job.pro.name.split(" ")[0];
+  const payForm = (which, amount, title, text) => job.paying === which
+    ? `<div class="act"><div class="ecocash"><div class="phone"><div><b>EcoCash</b><br>Pay ${usd(amount)} to Basa seBasa?<br>Enter PIN: ••••</div></div><h3>Check your phone</h3><p class="muted">Enter your EcoCash PIN on the prompt to pay ${usd(amount)}.</p></div></div>`
+    : `<form class="act" data-pay="${which}" novalidate><h3>${title}</h3><p>${text}</p><table class="money">${which === "callout" ? `<tr><td>Call-out</td><td>${usd(pr.callout)}</td></tr>${pr.transport ? `<tr><td>Extra travel</td><td>${usd(pr.transport)}</td></tr>` : ""}<tr><td>EcoCash charges</td><td>${usd(pr.fee1)}</td></tr>` : `${job.type === "Maid" ? `<tr><td>${job.hours} hours</td><td>${usd(pr.labour)}</td></tr>` : `<tr><td>Labour</td><td>${usd(pr.labour)}</td></tr>${pr.parts ? `<tr><td>Parts</td><td>${usd(pr.parts)}</td></tr>` : ""}`}${job.type !== "Repair" && pr.transport ? `<tr><td>Extra travel</td><td>${usd(pr.transport)}</td></tr>` : ""}<tr><td>EcoCash charges</td><td>${usd(pr.fee2)}</td></tr>`}<tr class="total"><td>Total</td><td>${usd(amount)}</td></tr></table>
+      <div class="field"><label for="pay-num">EcoCash number</label><input id="pay-num" type="tel" inputmode="tel" value="${esc(job.wa)}"></div><p class="err" id="pay-err" hidden></p><button class="btn gold" type="submit">Pay ${usd(amount)} with EcoCash</button><p class="muted" style="font-size:13.5px">You'll get a PIN prompt on your phone. We pay ${esc(first)} once your payment is confirmed.</p></form>`;
+  switch (job.stage) {
+    case "pay_callout": return payForm("callout", pr.pay1, "Pay the call-out", `${esc(first)} sets off as soon as this is paid. It covers the inspection and travel.`);
+    case "quoted": return `<div class="act"><h3>${esc(first)}'s quote</h3><p><b>What's wrong:</b> ${esc(job.quote.diagnosis)}</p><table class="money"><tr><td>Labour</td><td>${usd(pr.labour)}</td></tr><tr><td>Parts</td><td>${usd(pr.parts)}</td></tr><tr><td>EcoCash charges</td><td>${usd(pr.fee2)}</td></tr><tr class="total"><td>Pay after the work</td><td>${usd(pr.pay2)}</td></tr></table>
+      <div class="row"><button class="btn gold" type="button" data-approve>Approve and start</button><button class="btn" type="button" data-defer>Not now</button></div><p class="muted" style="font-size:13.5px">Not ready? Your diagnosis stays valid for ${PRICING.diagnosisValidDays} days. You've only paid the call-out.</p></div>`;
+    case "deferred": return `<div class="act"><h3>Ready to fix it?</h3><p>Your saved quote is ${usd(pr.pay2)}. ${esc(first)} gets first chance to finish the job.</p><div class="row"><button class="btn gold" type="button" data-resume>Resume repair</button></div></div>`;
+    case "pay_final": return payForm("final", pr.pay2, "Pay to finish", `Happy with the work? Pay through Basa seBasa. Never pay ${esc(first)} directly.`);
+    case "review": return `<form class="act" data-review novalidate><h3>Rate ${esc(first)}</h3><div class="stars" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-star="${n}" aria-label="${n} star${n > 1 ? "s" : ""}" class="${(job.draftRating || 0) >= n ? "on" : ""}">${icon("star")}</button>`).join("")}</div><div class="field"><label for="rv-text">Anything to add? (optional)</label><textarea id="rv-text" placeholder="On time? Tidy? Explained the work?"></textarea></div><p class="err" id="rv-err" hidden></p><button class="btn gold" type="submit">Send rating</button></form>`;
+    case "closed": return `<div class="act"><h3>Thanks for your ${job.review?.rating}-star rating</h3><p class="muted">Need something else fixed?</p><div class="row"><a class="btn gold" href="#book">Book again</a></div></div>`;
+  }
+  return "";
+}
+
+// ================= OTHER PAGES =================
+function viewBookings() {
+  return `<div class="wrap page"><p class="eyebrow">My jobs</p><h2 style="margin-bottom:16px">Your bookings</h2>
+    ${JOBS.length ? `<div class="list">${JOBS.map((j) => `<a class="bk" href="#job-${esc(j.id)}"><b>${esc(svcOf(j.service)?.name)} · ${esc(j.pro.name)}</b><span class="tag ${j.stage === "closed" ? "done" : ""}">${esc(STAGE_TEXT[j.stage])}</span><span class="muted mono">${esc(j.code)} · ${new Date(j.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · ${esc(j.suburb)}</span></a>`).join("")}</div>`
+    : `<div class="card empty"><h3>No bookings yet</h3><p class="muted">Your jobs and receipts will appear here.</p><a class="btn gold" href="#book">Book a professional</a></div>`}</div>`;
+}
+function viewJoin() {
+  return `<div class="wrap page"><div class="layout"><div style="display:grid;gap:16px"><p class="eyebrow">For professionals</p><h2>Get steady, paid work</h2>
+    <p style="font-size:18px">Basa seBasa sends verified pros jobs near them, collects the money on EcoCash and pays you within 24 hours.</p>
+    <div class="prices" style="margin-top:0"><div class="price"><span class="eyebrow">You keep</span><span class="big">85% <small>of labour</small></span><p class="muted">Plus 100% of parts, and $8 of every $9 call-out.</p></div><div class="price"><span class="eyebrow">Paid out</span><span class="big">24 <small>hours</small></span><p class="muted">From when the customer pays, straight to your EcoCash.</p></div></div>
+    <div class="card"><h3>What you need</h3><ul style="margin:0;padding-left:20px;display:grid;gap:4px"><li>National ID</li><li>Trade qualification or proof of experience</li><li>Two references from past customers or employers</li><li>A smartphone with WhatsApp and EcoCash</li><li>Willingness to share live location during jobs</li></ul></div></div>
+    <form class="card" id="join-form" novalidate><h3>Apply to join</h3>
+      <div class="field"><label for="j-name">Full name</label><input id="j-name" type="text" autocomplete="name"></div>
+      <div class="field"><label for="j-wa">WhatsApp number</label><input id="j-wa" type="tel" autocomplete="tel"></div>
+      <div class="field"><label for="j-trade">Trade</label><select id="j-trade">${SERVICES.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")}</select></div>
+      <div class="field"><label for="j-sub">Where you're based</label><select id="j-sub">${SUBURBS.map((s) => `<option>${s}</option>`).join("")}</select></div>
+      <div class="field"><label for="j-years">Years of experience</label><input id="j-years" type="number" min="0" inputmode="numeric"></div>
+      <p class="err" id="join-err" hidden></p><button class="btn gold" type="submit">Send application</button>
+      <p class="muted" style="font-size:13.5px">We'll message you on WhatsApp to book your in-person check.</p></form></div></div>`;
+}
+function viewHelp() {
+  const q = [["How do you check professionals?", "Every pro meets our team in person. We check their National ID and trade qualification, call their references and, for home help, ask for police clearance. Their Trust Score shows what's been checked."], ["Why can't I pay in cash?", "Paying through Basa seBasa on EcoCash means every payment is recorded, you get a receipt, and we can step in if something goes wrong. If a pro asks for cash, tell us."], ["What is the call-out fee?", `For repairs, $${PRICING.calloutFee} covers the inspection and travel within ${PRICING.freeKm} km. If you decide not to repair, that's all you pay.`], ["What if I can't afford the repair today?", `Choose "Not now" on your quote. Your diagnosis stays valid for ${PRICING.diagnosisValidDays} days and your pro gets first chance to finish it.`], ["What are the EcoCash charges?", "They're EcoCash's own transaction charges, shown in your total before you pay. We never add hidden fees."], ["Something went wrong. What do I do?", "Message us on WhatsApp with your job number (it starts with BSB). A real person on our team will help you."]];
+  return `<div class="wrap page"><p class="eyebrow">Help</p><h2 style="margin-bottom:16px">How we protect you</h2>
+    <div class="list">${q.map(([a, b]) => `<details class="card" style="gap:8px"><summary style="cursor:pointer;font-weight:700;font-size:17px">${esc(a)}</summary><p class="muted">${esc(b)}</p></details>`).join("")}</div>
+    <div class="card" style="margin-top:16px"><h3>Talk to us</h3><p>WhatsApp: <span class="mono">Basa seBasa number coming soon</span></p><p class="muted">Monday to Saturday, 7am to 7pm.</p></div></div>`;
+}
+
+// ================= EVENTS =================
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button, a"); if (!t) return;
+  if (t.dataset.start) { Object.assign(B, { step: 0, service: t.dataset.start, type: svcOf(t.dataset.start).types.length === 1 ? svcOf(t.dataset.start).types[0] : null }); location.hash = "#book"; if (view === "book") render(); return; }
+  if (t.dataset.svc) { readStep(); B.service = t.dataset.svc; const s = svcOf(B.service); if (!s.types.includes(B.type)) B.type = s.types.length === 1 ? s.types[0] : null; render(); return; }
+  if (t.dataset.type) { readStep(); B.type = t.dataset.type; render(); document.getElementById("b-desc")?.focus(); return; }
+  if (t.dataset.pro) { B.pro = B.pros.find((p) => p.id === t.dataset.pro); render(); return; }
+  if (t.hasAttribute("data-back")) { readStep(); B.step = Math.max(0, B.step - 1); render(); return; }
+  const job = JOBS.find((j) => j.id === trackId);
+  if (t.hasAttribute("data-approve") && job) { await API.approveQuote(job); return; }
+  if (t.hasAttribute("data-defer") && job) { await API.deferQuote(job); return; }
+  if (t.hasAttribute("data-resume") && job) { Sim.resume(job); return; }
+  if (t.dataset.star && job) { job.draftRating = Number(t.dataset.star); const keep = captureInputs(); render(); restoreInputs(keep); return; }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "b-photo") { B.photo = e.target.files?.[0]?.name || ""; readStep(); render(); } if (e.target.id === "b-tier" || e.target.id === "b-hours") { readStep(); $(".summary").innerHTML = summary(); } });
+document.addEventListener("input", (e) => { if (e.target.id === "b-hours" || e.target.id === "b-agreed") { readStep(); $(".summary").innerHTML = summary(); } });
+document.addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target;
+  if (f.id === "book-form") return nextStep();
+  const job = JOBS.find((j) => j.id === trackId);
+  if (f.dataset.pay && job) { const n = $("#pay-num").value; if (n.replace(/\D/g, "").length < 9) { const er = $("#pay-err"); er.textContent = "Enter your EcoCash number."; er.hidden = false; return; } await API.pay(job, f.dataset.pay, n); return; }
+  if (f.hasAttribute("data-review") && job) { if (!job.draftRating) { const er = $("#rv-err"); er.textContent = "Tap the stars to rate."; er.hidden = false; return; } await API.review(job, job.draftRating, $("#rv-text").value.trim()); return; }
+  if (f.id === "join-form") { const er = $("#join-err"); if (!$("#j-name").value.trim() || $("#j-wa").value.replace(/\D/g, "").length < 9) { er.textContent = "Enter your name and WhatsApp number."; er.hidden = false; return; } f.outerHTML = `<div class="card empty"><h3>Application received</h3><p class="muted">${DEMO ? "In the live app, our team messages you on WhatsApp to book your check." : "We'll message you on WhatsApp to book your in-person check."}</p></div>`; }
+});
+
+// resume any preview jobs that were mid-flow when the page was last open
+JOBS.forEach((j) => { if (j.stage === "requested") Sim.start(j); else if (j.stage === "on_way") Sim.travel(j); else if (j.stage === "working") Sim.finish(j); else if (j.stage === "arrived") { j.stage = "on_way"; Sim.travel(j); } });
+route();
+})();
+</script>
+
+</body>
+</html>

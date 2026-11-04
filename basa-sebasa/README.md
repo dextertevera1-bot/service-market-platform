@@ -1,0 +1,41 @@
+# Basa seBasa web apps
+
+Two web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
+
+| Folder | What it is | Who uses it |
+| --- | --- | --- |
+| `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
+| `ops-desk/` | Operations desk: jobs pipeline with enforced stages, technician verification and Trust Score, money ledger, pricing settings, WhatsApp message templates, 24-hour payout deadlines | Basa seBasa team |
+
+## Business rules built in
+
+- Commission: 15% of labour only. Parts go 100% to the technician.
+- Repairs: USD 9 call-out (inspection + travel within 10 km); platform keeps USD 1, technician USD 8.
+- Extra travel: USD 0.50 per km beyond 10 km.
+- Full quote approved by the customer before any repair work.
+- Deferred repairs: diagnosis valid 30 days; original technician gets 24-hour first refusal.
+- Maids: USD 5 / 6 / 8 per hour (standard / verified pro / home manager).
+- EcoCash only, USD only, no cash. EcoCash charges added to the customer's total (2% placeholder rate; set from the current Econet tariff). Fallback setting: platform absorbs 20%.
+- Technician payouts sent manually on EcoCash within 24 hours of the customer paying.
+
+## Running the customer app
+
+Open `customer-app/index.html` in a browser. It runs in **preview mode**: sample professionals and simulated live updates, nothing is charged.
+
+To go live, set `DEMO = false` and replace the functions in the `API` object (search for `DATA LAYER`) with calls to the Basa seBasa server:
+
+- `matches(service, suburb)` → verified technicians, ranked
+- `createBooking(booking)` → creates the job
+- `pay(job, "callout" | "final", ecocashNumber)` → starts a Paynow EcoCash mobile payment
+- `approveQuote(job)`, `deferQuote(job)`, `review(job, rating, text)`
+- live updates: push job changes from the server (websocket or realtime database) and call `emit(job)`
+
+Keep `PRICING` in sync with the server; the server must recalculate every amount itself.
+
+## The ops desk
+
+`ops-desk/index.html` currently runs as a private Claude page, using Claude's built-in storage (`window.claude.use("db")`). Opened directly in a browser it shows a sign-in message. When the server and database exist, replace the `boot()` and `write()` functions with your database's realtime client (for example Supabase or Firebase). Collections used: `jobs`, `technicians`, `settings/pricing`.
+
+## Planned architecture
+
+WhatsApp Cloud API (Meta) → Basa seBasa server (bot logic, pricing, Paynow EcoCash) → live database → ops desk and customer app.

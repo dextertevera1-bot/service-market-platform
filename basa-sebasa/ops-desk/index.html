@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Basa seBasa Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: an operator's desk. Sticky top bar, then list + detail side by side on wide screens; one column on phones. */
+:root {
+  --bg: #F2F1EC; --surface: #FFFFFF; --sunk: #E9E7E0; --ink: #17150F; --muted: #67635A; --line: #DBD8CF;
+  --gold: #E3A400; --gold-ink: #7E5A00; --on-gold: #17150F;
+  --good: #2D7A4E; --good-bg: #E3F1E8; --warn: #9A5B00; --warn-bg: #FBEFD6; --bad: #A8281F; --bad-bg: #F8E2DF;
+  --display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12110D; --surface: #1C1A15; --sunk: #25221C; --ink: #F1EEE5; --muted: #A49F92; --line: #36332B;
+  --gold: #F2B90F; --gold-ink: #F2C23A; --on-gold: #17150F;
+  --good: #63C58D; --good-bg: #183223; --warn: #EDB060; --warn-bg: #3A2A12; --bad: #F2867C; --bad-bg: #3D1E1B;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #12110D; --surface: #1C1A15; --sunk: #25221C; --ink: #F1EEE5; --muted: #A49F92; --line: #36332B;
+  --gold: #F2B90F; --gold-ink: #F2C23A; --on-gold: #17150F;
+  --good: #63C58D; --good-bg: #183223; --warn: #EDB060; --warn-bg: #3A2A12; --bad: #F2867C; --bad-bg: #3D1E1B;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .005em; text-wrap: balance; margin: 0; }
+h2 { font-size: 22px; } h3 { font-size: 17px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+
+/* top bar */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1280px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.mark { width: 38px; height: 38px; border-radius: 9px; background: var(--on-gold); color: var(--gold); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1; position: relative; }
+.mark::after { content: ""; position: absolute; width: 7px; height: 7px; background: var(--gold); top: 8px; right: 7px; border-radius: 1px; }
+.brand b { font-family: var(--display); font-size: 21px; letter-spacing: .01em; display: block; line-height: 1.05; }
+.brand b span { color: var(--gold-ink); }
+.brand small { color: var(--muted); font-size: 12.5px; }
+nav { display: flex; gap: 4px; flex-wrap: wrap; }
+nav a { text-decoration: none; color: var(--muted); font-weight: 600; padding: 7px 12px; border-radius: 8px; display: flex; gap: 6px; align-items: center; }
+nav a:hover { color: var(--ink); background: var(--sunk); }
+nav a[aria-current="page"] { color: var(--ink); background: var(--sunk); box-shadow: inset 0 -2px 0 var(--gold); }
+.count { background: var(--gold); color: var(--on-gold); font-size: 11.5px; padding: 0 6px; border-radius: 9px; font-weight: 700; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.sm { padding: 5px 10px; font-size: 13.5px; }
+
+main { max-width: 1280px; margin: 0 auto; padding-block: 20px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.note { background: var(--warn-bg); color: var(--warn); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.empty { padding: 36px 20px; text-align: center; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+.empty h3 { color: var(--ink); }
+
+/* jobs */
+.split { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 18px; align-items: start; }
+.listhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); padding: 4px 11px; border-radius: 999px; font-size: 13.5px; cursor: pointer; font-weight: 500; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.jobs { display: grid; }
+.jobrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); text-decoration: none; color: inherit; }
+.jobrow:last-child { border-bottom: 0; }
+.jobrow:hover { background: var(--sunk); }
+.jobrow[aria-current="true"] { background: var(--sunk); box-shadow: inset 3px 0 0 var(--gold); }
+.jobrow .who { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobrow .meta { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; background: var(--sunk); color: var(--muted); align-self: start; }
+.pill.ops { background: var(--warn-bg); color: var(--warn); }
+.pill.field { background: var(--sunk); color: var(--ink); }
+.pill.done { background: var(--good-bg); color: var(--good); }
+.pill.off { background: var(--bad-bg); color: var(--bad); }
+.ex { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--gold-ink); border: 1px dashed var(--gold-ink); padding: 0 5px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
+
+.detail { padding: 20px; display: grid; gap: 20px; min-width: 0; }
+.dhead { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: start; }
+.dhead h2 { font-size: 26px; }
+.track { display: flex; gap: 3px; overflow-x: auto; padding-bottom: 2px; }
+.track span { flex: 1 0 auto; min-width: 54px; font-size: 11px; color: var(--muted); border-top: 4px solid var(--line); padding-top: 5px; white-space: nowrap; }
+.track span.done { border-color: var(--ink); color: var(--ink); }
+.track span.now { border-color: var(--gold); color: var(--ink); font-weight: 700; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.box { background: var(--sunk); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.box p { margin: 0; overflow-wrap: anywhere; }
+.money { width: 100%; border-collapse: collapse; font-size: 14px; }
+.money td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.money td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.money tr.total td { font-weight: 700; border-bottom: 0; padding-top: 8px; }
+.money tr.sub td { color: var(--muted); font-size: 13px; }
+.action { border: 2px solid var(--gold); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; }
+.action h3 { display: flex; gap: 8px; align-items: center; }
+.action h3::before { content: "Next"; font-family: var(--body); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--gold); color: var(--on-gold); padding: 2px 7px; border-radius: 4px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label, .field .lab { font-size: 13px; font-weight: 600; }
+input[type=text], input[type=number], input[type=tel], select, textarea { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 7px; padding: 8px 10px; }
+textarea { min-height: 70px; resize: vertical; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.check input { margin-top: 3px; accent-color: var(--gold); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { color: var(--bad); font-size: 14px; font-weight: 600; }
+.pick { display: grid; gap: 6px; }
+.pick label { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; cursor: pointer; background: var(--surface); }
+.pick label:has(input:checked) { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.pick input { accent-color: var(--gold); }
+.tag { font-size: 11px; font-weight: 700; color: var(--gold-ink); text-transform: uppercase; letter-spacing: .06em; }
+.wa { background: var(--sunk); border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.wa pre { margin: 0; white-space: pre-wrap; font-family: var(--body); font-size: 14px; overflow-wrap: anywhere; }
+.hist { display: grid; gap: 0; font-size: 13.5px; }
+.hist div { display: grid; grid-template-columns: 120px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.hist div:last-child { border-bottom: 0; }
+.back { display: none; }
+
+/* tables */
+.tablewrap { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.t th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.score { font-family: var(--display); font-size: 20px; font-weight: 700; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; display: grid; gap: 2px; }
+.kpi b { font-family: var(--display); font-size: 28px; font-variant-numeric: tabular-nums; }
+.kpi.lead { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.kpi.lead .label { color: var(--gold); }
+.sheet { padding: 20px; display: grid; gap: 18px; margin-bottom: 18px; }
+.sheet > header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-weight: 600; z-index: 20; max-width: calc(100vw - 32px); }
+.toast.bad { background: var(--bad); color: #fff; }
+
+@media (max-width: 860px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split.showing .listcol { display: none; }
+  .split:not(.showing) .detailcol { display: none; }
+  .back { display: inline-flex; }
+  .hist div { grid-template-columns: 1fr; gap: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .jobrow, .chip, .btn { transition: background-color .12s, border-color .12s; } }
+</style>
+
+<header class="bar"><div class="bar-in">
+  <div class="brand"><div class="mark" aria-hidden="true">B</div><div><b>BASA <span>se</span>BASA</b><small>Pilot operations desk · Harare</small></div></div>
+  <nav aria-label="Sections">
+    <a href="#jobs" data-nav="jobs">Jobs <span class="count" id="nav-active" hidden></span></a>
+    <a href="#technicians" data-nav="technicians">Technicians</a>
+    <a href="#money" data-nav="money">Money</a>
+    <a href="#pricing" data-nav="pricing">Pricing</a>
+  </nav>
+  <button class="btn primary" id="new-job-btn" type="button">New job</button>
+</div></header>
+
+<main id="app">
+  <div class="panel empty" id="boot"><h3>Opening the desk…</h3><p>Loading jobs, technicians and pricing.</p></div>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+// ---------- constants ----------
+const TRADES = ["HVAC/Refrigeration", "Electrical", "Plumbing", "Appliance repair", "Auto mechanic", "Solar & inverters", "Maid / cleaning"];
+const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
+const JOB_TYPES = ["Repair", "Installation", "Service", "Maid"];
+const MAID_TIERS = { standard: "Standard maid", verified: "Verified pro maid", premium: "Premium / home manager" };
+const DEFAULT_PRICING = { commissionRate: 15, calloutFee: 9, calloutPlatformShare: 1, freeKm: 10, perKm: 0.5, ecocashChargeRate: 2, platformChargeShare: 0, fallbackChargeShare: 20, maidRates: { standard: 5, verified: 6, premium: 8 }, merchantNumber: "", diagnosisValidDays: 30, firstRefusalHours: 24, payoutWindowHours: 24 };
+
+const FLOW = {
+  Repair: ["new", "assigned", "accepted", "callout_paid", "on_way", "arrived", "quoted", "approved", "working", "completed", "paid", "paid_out", "closed"],
+  Other: ["new", "assigned", "accepted", "on_way", "arrived", "working", "completed", "paid", "paid_out", "closed"],
+};
+const STAGE = {
+  new: ["New request", "ops"], assigned: ["Waiting for technician", "field"], accepted: ["Accepted", "field"],
+  callout_paid: ["Call-out paid", "field"], on_way: ["On the way", "field"], arrived: ["Arrived", "field"],
+  quoted: ["Quote with customer", "ops"], approved: ["Quote approved", "field"], working: ["Working", "field"],
+  completed: ["Awaiting payment", "ops"], paid: ["Payout due", "ops"], paid_out: ["Paid out", "done"], closed: ["Closed", "done"],
+  deferred: ["Repair deferred", "ops"], cancelled: ["Cancelled", "off"],
+};
+const SHORT = { new: "Request", assigned: "Assigned", accepted: "Accepted", callout_paid: "Call-out", on_way: "On way", arrived: "Arrived", quoted: "Quoted", approved: "Approved", working: "Working", completed: "Done", paid: "Paid", paid_out: "Paid out", closed: "Closed" };
+
+// ---------- state ----------
+const S = { db: null, user: null, me: null, jobs: [], techs: [], pricing: { ...DEFAULT_PRICING }, loaded: { jobs: false, techs: false, pricing: false }, filter: "active", view: "jobs", jobId: null, newJob: false, editTech: null, busy: false, readOnly: false, stale: false, people: {} };
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const usd = (n) => "USD " + r2(n).toFixed(2);
+const num = (v, d = 0) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+const fmtDate = (iso) => { if (!iso) return ""; const d = new Date(iso); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); };
+const flowFor = (job) => FLOW[job.type === "Repair" ? "Repair" : "Other"];
+const isExample = (o) => o && o.example === true;
+// manual technician payouts are due within the payout window after the customer pays
+function payoutDue(job) {
+  if (job.stage !== "paid") return null;
+  const paidAt = job.payment2?.at || job.calloutOnlyAt || job.updatedAt;
+  const due = new Date(paidAt).getTime() + num(S.pricing.payoutWindowHours, 24) * 36e5;
+  const left = due - Date.now();
+  return { due, left, overdue: left < 0, label: left < 0 ? `Payout overdue by ${hrs(-left)}` : `Pay out within ${hrs(left)}` };
+}
+const hrs = (ms) => { const h = Math.floor(ms / 36e5), m = Math.round((ms % 36e5) / 6e4); return h ? `${h} h${m ? " " + m + " min" : ""}` : `${m} min`; };
+
+function toast(msg, bad) { const t = $("#toast"); t.textContent = msg; t.className = "toast" + (bad ? " bad" : ""); t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 3200); }
+
+// ---------- money ----------
+function pricingFor(s) { return { ...DEFAULT_PRICING, ...(s || {}), maidRates: { ...DEFAULT_PRICING.maidRates, ...((s || {}).maidRates || {}) } }; }
+function calc(job, settings) {
+  const p = pricingFor(settings);
+  const isRepair = job.type === "Repair", isMaid = job.type === "Maid";
+  const km = num(job.distanceKm);
+  const transport = r2(Math.max(0, km - p.freeKm) * p.perKm);
+  const callout = isRepair ? p.calloutFee : 0;
+  const calloutPlatform = isRepair ? Math.min(p.calloutPlatformShare, p.calloutFee) : 0;
+  const calloutOnly = job.calloutOnly === true;
+  let labour = 0, parts = 0;
+  if (!calloutOnly) {
+    if (isMaid) labour = r2(num(job.maidHours) * num(job.maidRate, p.maidRates[job.maidTier || "standard"]));
+    else { labour = r2(num(job.quote?.labour)); parts = r2(num(job.quote?.parts)); }
+  }
+  const commission = r2(labour * p.commissionRate / 100);
+  const payout = r2((callout - calloutPlatform) + transport + labour - commission + parts);
+  const rate = p.ecocashChargeRate / 100, share = p.platformChargeShare / 100;
+  // First payment (repairs): call-out + any extra distance. Second payment: the job itself (+ extra distance for non-repairs).
+  const base1 = isRepair ? r2(callout + transport) : 0;
+  const base2 = calloutOnly ? 0 : r2(labour + parts + (isRepair ? 0 : transport));
+  const charge1 = r2(base1 * rate);
+  const charge2 = r2(base2 * rate + payout * rate); // incoming payment + outgoing payout transfer
+  const chargeTotal = r2(charge1 + charge2);
+  const cust1 = r2(base1 + charge1 * (1 - share));
+  // a deferred job closed on the call-out only has no second customer payment, so we carry its payout transfer charge
+  const cust2 = calloutOnly ? 0 : r2(base2 + charge2 * (1 - share));
+  const absorbed = r2(chargeTotal * share + (calloutOnly ? charge2 * (1 - share) : 0));
+  const priced = !isRepair || !!job.quote || calloutOnly;
+  const platform = r2(calloutPlatform + commission - absorbed);
+  return { p, isRepair, isMaid, km, transport, callout, calloutPlatform, labour, parts, commission, payout, base1, base2, charge1, charge2, chargeTotal, cust1, cust2, customerTotal: priced ? r2(cust1 + cust2) : cust1, priced, absorbed, platform };
+}
+
+// ---------- trust ----------
+function techStats(t) {
+  const done = S.jobs.filter((j) => j.technicianId === t.id && (j.stage === "closed" || j.stage === "paid_out"));
+  const rated = done.filter((j) => num(j.review?.rating) > 0);
+  const rating = rated.length ? rated.reduce((s, j) => s + num(j.review.rating), 0) / rated.length : 0;
+  const active = S.jobs.filter((j) => j.technicianId === t.id && !["closed", "cancelled", "paid_out", "new", "deferred"].includes(j.stage)).length;
+  return { jobs: done.length, rating, ratings: rated.length, active };
+}
+function trust(t) {
+  const st = techStats(t);
+  const c = t.checks || {};
+  let s = 0;
+  if (c.id) s += 15; if (c.qualification) s += 20; if (c.references) s += 10; if (c.warranty) s += 10; if (c.police) s += 10; if (c.inspected) s += 10;
+  s += Math.min(10, Math.round(num(t.years) * 2));
+  s += st.ratings ? Math.round(st.rating / 5 * 10) : 0;
+  s += Math.round(Math.min(st.jobs, 20) / 20 * 5);
+  return Math.min(100, s);
+}
+const canVerify = (t) => t.checks?.id && t.checks?.qualification;
+
+// ---------- data ----------
+async function boot() {
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]); } catch (e) { db = null; }
+  S.db = db; S.user = user;
+  if (!db) return renderNoStore();
+  try { S.me = user ? await user.me() : null; } catch (e) { S.me = null; }
+  try { const w = user ? await user.can("data.write") : null; S.readOnly = w === false; } catch (e) {}
+  const timer = setTimeout(() => { S.stale = true; render(); }, 10000);
+  const settle = (k) => (snap) => { if (!snap.metadata || !snap.metadata.fromCache) { S.stale = false; } S.loaded[k] = true; if (Object.values(S.loaded).every(Boolean)) clearTimeout(timer); };
+  const fail = (e) => { clearTimeout(timer); if (e && (e.code === "revoked" || e.code === "not_granted")) return renderNoStore(); toast("Couldn't load data: " + (e?.message || "unknown error"), true); };
+  db.collection("jobs").onSnapshot((snap) => { S.jobs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))); settle("jobs")(snap); render(); }, fail);
+  db.collection("technicians").onSnapshot((snap) => { S.techs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.name).localeCompare(String(b.name))); settle("techs")(snap); render(); }, fail);
+  db.doc("settings/pricing").onSnapshot((snap) => { S.pricing = pricingFor(snap.exists ? snap.data() : null); settle("pricing")(snap); render(); }, fail);
+}
+async function write(fn, okMsg) {
+  if (S.busy) return false;
+  if (S.readOnly) { toast("You have view-only access to this desk.", true); return false; }
+  S.busy = true;
+  try { await fn(); if (okMsg) toast(okMsg); return true; }
+  catch (e) {
+    if (e?.code === "invalid_argument") { S.readOnly = true; toast("This change was refused. You may not have edit access.", true); }
+    else if (e?.code === "quota_exceeded") toast("The desk's storage is full. Delete old example records first.", true);
+    else toast("Couldn't save: " + (e?.message || "try again"), true);
+    return false;
+  } finally { S.busy = false; }
+}
+const histEntry = (stage, note) => ({ stage, note: note || "", at: new Date().toISOString(), by: S.me?.id || null });
+function nextCode() { const n = S.jobs.reduce((m, j) => Math.max(m, parseInt(String(j.code || "").replace(/\D/g, ""), 10) || 0), 0) + 1; return "BSB-" + String(n).padStart(4, "0"); }
+
+// ---------- routing ----------
+function readHash() {
+  const h = (location.hash || "").slice(1);
+  S.newJob = false;
+  if (h.startsWith("job-")) { S.view = "jobs"; S.jobId = h.slice(4); }
+  else if (["jobs", "technicians", "money", "pricing"].includes(h)) { S.view = h; if (h === "jobs") S.jobId = null; }
+  else { S.view = "jobs"; }
+}
+window.addEventListener("hashchange", () => { readHash(); S.skipRestore = true; render(); window.scrollTo(0, 0); });
+
+// ---------- render ----------
+function renderNoStore() {
+  $("#app").innerHTML = `<div class="panel empty"><h3>This desk needs you signed in</h3><p>Open it on claude.ai while signed in with owner or editor access. Job records, customer numbers and payments are only shown to the Basa seBasa team.</p></div>`;
+  $("#new-job-btn").hidden = true;
+}
+function render() {
+  if (!S.db) return;
+  document.querySelectorAll("[data-nav]").forEach((a) => { if (a.dataset.nav === S.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  const active = S.jobs.filter((j) => !["closed", "cancelled"].includes(j.stage)).length;
+  const c = $("#nav-active"); c.hidden = !active; c.textContent = active;
+  $("#new-job-btn").hidden = S.readOnly;
+  const html = (S.stale ? `<div class="note">The desk can't reach its records right now. What you see may be out of date.</div>` : "") +
+    (S.readOnly ? `<div class="note">You have view-only access. Ask Dex for editor access to update jobs.</div>` : "") +
+    (S.view === "technicians" ? viewTechs() : S.view === "money" ? viewMoney() : S.view === "pricing" ? viewPricing() : viewJobs());
+  const keep = S.skipRestore ? {} : captureForm();
+  S.skipRestore = false;
+  $("#app").innerHTML = html;
+  restoreForm(keep);
+  if (S.newJob) syncNewJob();
+  resolvePeople();
+}
+// keep typed values across live re-renders
+function captureForm() { const out = {}; document.querySelectorAll("#app [id]").forEach((el) => { if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) out[el.id] = el.type === "checkbox" || el.type === "radio" ? el.checked : el.value; }); out.__focus = document.activeElement?.id; return out; }
+function restoreForm(k) { Object.entries(k).forEach(([id, v]) => { if (id === "__focus") return; const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox" || el.type === "radio") el.checked = v; else el.value = v; }); if (k.__focus) document.getElementById(k.__focus)?.focus(); }
+async function resolvePeople() {
+  if (!S.user) return;
+  const ids = [...new Set(S.jobs.flatMap((j) => (j.history || []).map((h) => h.by)).filter(Boolean))];
+  if (!ids.length) return;
+  try { const ps = await S.user.profiles(ids); document.querySelectorAll("[data-person]").forEach((el) => { el.textContent = ps[el.dataset.person]?.name || "Team member"; }); } catch (e) {}
+}
+
+// ---------- jobs view ----------
+function viewJobs() {
+  if (S.newJob) return newJobForm();
+  const filters = { active: (j) => !["closed", "cancelled", "deferred"].includes(j.stage), deferred: (j) => j.stage === "deferred", closed: (j) => ["closed", "cancelled"].includes(j.stage), all: () => true };
+  const list = S.jobs.filter(filters[S.filter]);
+  const job = S.jobs.find((j) => j.id === S.jobId);
+  const loading = !S.loaded.jobs;
+  const rows = list.map((j) => `<a class="jobrow" href="#job-${esc(j.id)}" ${j.id === S.jobId ? 'aria-current="true"' : ""}>
+      <span class="who">${esc(j.customer?.name || "Customer")}${isExample(j) ? '<span class="ex">EXAMPLE</span>' : ""}</span>${payPill(j)}
+      <span class="meta"><span class="mono">${esc(j.code)}</span> · ${esc(j.category)} · ${esc(j.type)} · ${esc(j.customer?.suburb || "")}</span></a>`).join("");
+  const emptyList = loading ? `<div class="empty"><p>Loading jobs…</p></div>` : `<div class="empty"><h3>${S.jobs.length ? "Nothing here" : "No jobs yet"}</h3><p>${S.jobs.length ? "Try another filter." : "When a customer messages on WhatsApp, record the request here with New job."}</p></div>`;
+  const chip = (k, l) => `<button class="chip" type="button" data-filter="${k}" aria-pressed="${S.filter === k}">${l}</button>`;
+  return `<div class="split ${job ? "showing" : ""}">
+    <section class="listcol" aria-label="Jobs">
+      <div class="listhead"><h2>Jobs</h2><div class="chips">${chip("active", "Active")}${chip("deferred", "Deferred")}${chip("closed", "Closed")}${chip("all", "All")}</div></div>
+      <div class="panel jobs">${rows || emptyList}</div>
+    </section>
+    <section class="detailcol" aria-label="Job detail">${job ? jobDetail(job) : `<div class="panel empty"><h3>Pick a job</h3><p>Choose a job on the left to see its money, its next step and the WhatsApp message to send.</p></div>`}</section>
+  </div>`;
+}
+const payPill = (j) => { const d = payoutDue(j); return d ? `<span class="pill ${d.overdue ? "off" : "ops"}">${esc(d.overdue ? "Payout overdue" : "Payout due · " + hrs(d.left))}</span>` : pill(j.stage); };
+const pill = (stage) => { const [l, k] = STAGE[stage] || [stage, ""]; return `<span class="pill ${k}">${esc(l)}</span>`; };
+
+function jobDetail(job) {
+  const m = calc(job, S.pricing);
+  const tech = S.techs.find((t) => t.id === job.technicianId);
+  const flow = flowFor(job);
+  const at = flow.indexOf(job.stage === "deferred" ? "quoted" : job.stage);
+  const track = flow.map((s, i) => `<span class="${i < at ? "done" : i === at ? "now" : ""}">${SHORT[s]}</span>`).join("");
+  const c = job.customer || {};
+  return `<div class="panel detail">
+    <div class="dhead"><div><a class="btn sm quiet back" href="#jobs">← All jobs</a><div class="label"><span class="mono">${esc(job.code)}</span> · ${esc(job.type)} · ${esc(job.urgency || "Normal")}${isExample(job) ? '<span class="ex">EXAMPLE</span>' : ""}</div><h2>${esc(job.category)} · ${esc(c.suburb)}</h2></div>${payPill(job)}</div>
+    ${job.stage !== "cancelled" ? `<div class="track" aria-label="Progress">${track}</div>` : ""}
+    <div class="cols">
+      <div class="box"><span class="label">Customer</span><p><b>${esc(c.name)}</b></p><p class="mono">${esc(c.whatsapp)}</p><p class="muted">${esc([c.address, c.suburb].filter(Boolean).join(", "))}</p><p>${esc(job.description)}</p></div>
+      <div class="box"><span class="label">Technician</span>${tech ? `<p><b>${esc(tech.name)}</b> · Trust ${trust(tech)}/100</p><p class="mono">${esc(tech.whatsapp)}</p><p class="muted">${esc(tech.trade)} · ${esc(tech.suburb)}</p>` : `<p class="muted">Not assigned yet.</p>`}
+        ${job.distanceKm ? `<p class="muted">${esc(job.distanceKm)} km away${job.etaMinutes ? ` · ETA ${esc(job.etaMinutes)} min` : ""}${job.locationShared ? " · live location shared" : ""}</p>` : ""}</div>
+      <div class="box"><span class="label">Money</span>${moneyTable(job, m)}</div>
+    </div>
+    ${job.diagnosis ? `<div class="box"><span class="label">Diagnosis</span><p>${esc(job.diagnosis)}</p>${job.stage === "deferred" ? `<p class="muted">Valid until ${esc(new Date(job.diagnosisValidUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" }))}. ${esc(tech?.name || "The original technician")} gets first refusal for ${esc(S.pricing.firstRefusalHours)} hours when the customer resumes.</p>` : ""}</div>` : ""}
+    ${actionPanel(job, m, tech)}
+    ${waPanel(job, m, tech)}
+    <div><h3 style="margin-bottom:6px">History</h3><div class="hist">${(job.history || []).slice().reverse().map((h) => `<div><span class="muted num">${esc(fmtDate(h.at))}</span><span><b>${esc((STAGE[h.stage] || [h.stage])[0])}</b>${h.note ? ` · ${esc(h.note)}` : ""}${h.by ? ` · <span class="muted" data-person="${esc(h.by)}">Team member</span>` : ""}</span></div>`).join("")}</div></div>
+    ${!S.readOnly ? `<div class="row">${!["closed", "cancelled", "paid", "paid_out", "working", "completed"].includes(job.stage) ? `<button class="btn sm danger" type="button" data-act="cancel">Cancel job</button>` : ""}${isExample(job) || job.stage === "cancelled" ? `<button class="btn sm quiet danger" type="button" data-act="delete-job">Delete record</button>` : ""}</div>` : ""}
+  </div>`;
+}
+function moneyTable(job, m) {
+  const rows = [];
+  if (m.isRepair) { rows.push(["Call-out (inspection + travel)", usd(m.callout)]); }
+  if (m.transport) rows.push([`Extra distance (${r2(m.km - m.p.freeKm)} km over ${m.p.freeKm})`, usd(m.transport)]);
+  if (m.isMaid) rows.push([`${num(job.maidHours)} h × ${usd(num(job.maidRate, m.p.maidRates[job.maidTier || "standard"]))}`, usd(m.labour)]);
+  else if (job.quote || !m.isRepair) { if (m.labour) rows.push(["Labour", usd(m.labour)]); if (m.parts) rows.push(["Parts", usd(m.parts)]); }
+  const shownCharges = m.priced ? r2(m.cust1 - m.base1 + m.cust2 - m.base2) : r2(m.cust1 - m.base1);
+  if (shownCharges) rows.push([`EcoCash charges${m.p.platformChargeShare ? ` (we cover ${m.p.platformChargeShare}%)` : ""}`, usd(shownCharges)]);
+  return `<table class="money">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}
+    <tr class="total"><td>Customer pays${m.priced ? "" : " so far"}</td><td>${usd(m.customerTotal)}</td></tr>
+    <tr class="sub"><td>Technician payout</td><td>${usd(m.payout)}</td></tr>
+    <tr class="sub"><td>Basa seBasa keeps</td><td>${usd(m.platform)}</td></tr></table>`;
+}
+
+// ---------- actions ----------
+function actionPanel(job, m, tech) {
+  if (S.readOnly || ["closed", "cancelled"].includes(job.stage)) return "";
+  const f = (inner, title, act, label, extra = "") => `<form class="action" data-form="${act}" novalidate><h3>${title}</h3>${inner}<p class="err" id="err-${act}" hidden></p><div class="row"><button class="btn primary" type="submit">${label}</button>${extra}</div></form>`;
+  switch (job.stage) {
+    case "new": {
+      const pool = S.techs.filter((t) => t.status === "Verified" && t.trade === job.category);
+      const ranked = pool.map((t) => ({ t, s: trust(t), local: t.suburb === job.customer?.suburb, busy: techStats(t).active })).sort((a, b) => (b.local - a.local) || (b.s - a.s));
+      if (!ranked.length) return `<div class="action"><h3>Assign a technician</h3><p>No verified ${esc(job.category)} technician yet. <a href="#technicians">Add or verify one</a> first.</p></div>`;
+      const extraFields = job.type === "Repair" ? "" : job.type === "Maid" ? "" : `<div class="field"><label for="a-labour">Agreed price, labour (USD)</label><input id="a-labour" type="number" min="0" step="0.5" inputmode="decimal"></div><div class="field"><label for="a-parts">Parts / materials (USD)</label><input id="a-parts" type="number" min="0" step="0.5" inputmode="decimal" value="0"></div>`;
+      return f(`<p class="muted">Best matches first: same suburb, then highest Trust Score. Send the customer up to three.</p>
+        <div class="pick">${ranked.map(({ t, s, local, busy }, i) => `<label><input type="radio" name="a-tech" id="a-tech-${esc(t.id)}" value="${esc(t.id)}" ${i === 0 ? "checked" : ""}><span><b>${esc(t.name)}</b> <span class="muted">· ${esc(t.suburb)}${busy ? ` · ${busy} active job${busy > 1 ? "s" : ""}` : ""}</span>${i < 3 ? `<br><span class="tag">Suggested ${i + 1}</span>` : ""}${local ? ' <span class="tag">Same suburb</span>' : ""}</span><span class="score">${s}</span></label>`).join("")}</div>
+        <div class="fields"><div class="field"><label for="a-km">Distance to customer (km)</label><input id="a-km" type="number" min="0" step="0.5" inputmode="decimal"></div>${extraFields}</div>`, "Assign a technician", "assign", "Send job to technician");
+    }
+    case "assigned":
+      return f(`<p>Ask ${esc(tech?.name || "the technician")} on WhatsApp to accept or decline.${m.isRepair ? "" : ` Agreed price: ${usd(m.labour + m.parts)}.`}</p>`, "Technician's answer", "accept", "Technician accepted", `<button class="btn" type="button" data-act="decline">Technician declined</button>`);
+    case "accepted":
+      if (m.isRepair) return f(`<p>Customer pays the call-out of <b>${usd(m.cust1)}</b> to the Basa seBasa EcoCash number before the technician travels.</p><div class="fields"><div class="field"><label for="p1-ref">EcoCash reference</label><input id="p1-ref" type="text" autocomplete="off" placeholder="e.g. MP260411.1432.A12345"></div></div><label class="check"><input type="checkbox" id="p1-ok"> I checked this reference and amount in the EcoCash merchant statement</label>`, "Call-out payment", "callout", "Call-out received");
+      return onWayForm(f);
+    case "callout_paid": return onWayForm(f);
+    case "on_way": return f(`<p>Mark arrival when the technician confirms they are on site.</p>`, "Arrival", "arrive", "Technician arrived");
+    case "arrived":
+      if (m.isRepair) return f(`<div class="fields"><div class="field full"><label for="q-diag">Diagnosis</label><textarea id="q-diag" placeholder="e.g. Compressor not starting; start relay burnt."></textarea></div><div class="field"><label for="q-labour">Labour (USD)</label><input id="q-labour" type="number" min="0" step="0.5" inputmode="decimal"></div><div class="field"><label for="q-parts">Parts (USD)</label><input id="q-parts" type="number" min="0" step="0.5" inputmode="decimal" value="0"></div></div><p class="muted">The full quote goes to the customer before any repair starts. Commission is ${esc(m.p.commissionRate)}% of labour only.</p>`, "Technician's quote", "quote", "Send quote to customer");
+      return f(`<p>Start the job once the customer lets the technician begin.</p>`, "Start work", "start", "Work started");
+    case "quoted":
+      return f(`<p>Customer has the quote: <b>${usd(m.cust2)}</b> payable after the work.</p>`, "Customer's answer", "approve", "Customer approved", `<button class="btn" type="button" data-act="defer">Customer will repair later</button>`);
+    case "deferred":
+      return f(`<p>When the customer is ready, resume the repair. Ask ${esc(tech?.name || "the original technician")} first; if they decline or don't answer within ${esc(m.p.firstRefusalHours)} hours, reassign.</p>`, "Deferred repair", "resume", "Resume with same technician", `<button class="btn" type="button" data-act="reassign">Reassign to another technician</button><button class="btn" type="button" data-act="calloutonly">Close on call-out only</button>`);
+    case "approved": return f(`<p>Quote approved. Tell the technician to start.</p>`, "Start work", "start", "Work started");
+    case "working":
+      return f(`${m.isMaid ? `<div class="fields"><div class="field"><label for="w-hours">Hours worked</label><input id="w-hours" type="number" min="0.5" step="0.5" inputmode="decimal" value="${esc(job.maidHours)}"></div></div>` : ""}<div class="fields"><div class="field full"><label for="w-notes">What was done</label><textarea id="w-notes" placeholder="Work done, parts fitted, warranty given."></textarea></div></div><label class="check"><input type="checkbox" id="w-cust"> Customer confirmed on WhatsApp that the work is complete</label>`, "Finish the job", "complete", "Mark complete");
+    case "completed":
+      return f(`<p>Customer pays <b>${usd(m.cust2)}</b> to the Basa seBasa EcoCash number.</p><div class="fields"><div class="field"><label for="p2-ref">EcoCash reference</label><input id="p2-ref" type="text" autocomplete="off" placeholder="e.g. MP260411.1610.B67890"></div></div><label class="check"><input type="checkbox" id="p2-ok"> I checked this reference and the exact amount in the EcoCash merchant statement</label>`, "Final payment", "pay", "Payment received");
+    case "paid":
+      { const d = payoutDue(job);
+      return f(`<p>Send <b>${usd(m.payout)}</b> to ${esc(tech?.name || "the technician")} on EcoCash (<span class="mono">${esc(tech?.whatsapp || "")}</span>).</p><p class="${d.overdue ? "err" : "muted"}">${esc(d.label)} · deadline ${esc(fmtDate(new Date(d.due).toISOString()))}</p><div class="fields"><div class="field"><label for="po-ref">Payout EcoCash reference</label><input id="po-ref" type="text" autocomplete="off"></div></div>`, "Pay the technician", "payout", "Payout sent"); }
+    case "paid_out":
+      return f(`<div class="fields"><div class="field"><label for="rv-rating">Customer rating</label><select id="rv-rating"><option value="">Choose</option><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div><div class="field full"><label for="rv-text">Customer's review (their words)</label><textarea id="rv-text"></textarea></div></div>`, "Review and close", "close", "Close job");
+  }
+  return "";
+}
+const onWayForm = (f) => f(`<div class="fields"><div class="field"><label for="ow-eta">ETA (minutes)</label><input id="ow-eta" type="number" min="1" step="1" inputmode="numeric"></div></div><label class="check"><input type="checkbox" id="ow-loc"> Technician is sharing live location on WhatsApp (required)</label>`, "Technician travelling", "onway", "On the way");
+
+function waPanel(job, m, tech) {
+  const merchant = m.p.merchantNumber ? m.p.merchantNumber : "[set the EcoCash merchant number in Pricing]";
+  const c = job.customer || {};
+  const first = (c.name || "").split(" ")[0] || "there";
+  let to = "customer", text = "";
+  switch (job.stage) {
+    case "new": text = `Hi ${first}, thank you for contacting Basa seBasa. We have your ${job.category.toLowerCase()} request (${job.code}) and are matching you with a verified professional near ${c.suburb}. We will confirm shortly.`; break;
+    case "assigned": to = "technician"; text = `New Basa seBasa job ${job.code}\n${job.category} · ${job.type}\nArea: ${c.suburb}${job.distanceKm ? ` (${job.distanceKm} km)` : ""}\nIssue: ${job.description}\n${m.isRepair ? `Call-out: ${usd(m.callout)} (you receive ${usd(m.callout - m.calloutPlatform + m.transport)})` : `Agreed price: ${usd(m.labour + m.parts)}`}\nReply YES to accept or NO to decline.`; break;
+    case "accepted": text = m.isRepair ? `Hi ${first}, ${tech?.name || "your technician"} (Trust Score ${tech ? trust(tech) : "-"}/100) has accepted job ${job.code}.\n\nCall-out fee: ${usd(m.cust1)} (inspection and travel, incl. EcoCash charges).\nPay to Basa seBasa EcoCash: ${merchant}\nReference: ${job.code}\n\nThe technician leaves as soon as payment is confirmed. The full repair quote comes before any work starts.` : `Hi ${first}, ${tech?.name || "your technician"} (Trust Score ${tech ? trust(tech) : "-"}/100) has accepted job ${job.code} at the agreed price. We will share their live location when they leave.`; break;
+    case "callout_paid": text = `Payment received, thank you. ${tech?.name || "Your technician"} is getting ready to leave. You will see their live location here.`; break;
+    case "on_way": text = `${tech?.name || "Your technician"} is on the way${job.etaMinutes ? `, arriving in about ${job.etaMinutes} minutes` : ""}. Live location is shared in this chat.`; break;
+    case "arrived": text = `${tech?.name || "Your technician"} has arrived.`; break;
+    case "quoted": text = `Quote for job ${job.code}\nDiagnosis: ${job.diagnosis}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.cust2 - m.base2)}\nTotal after the work: ${usd(m.cust2)}\n\nReply APPROVE to go ahead, or LATER if you want to repair another time. Your diagnosis stays valid for ${m.p.diagnosisValidDays} days.`; break;
+    case "deferred": text = `No problem, ${first}. Your diagnosis for job ${job.code} is saved until ${new Date(job.diagnosisValidUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}. Message us "RESUME ${job.code}" when you are ready.`; break;
+    case "approved": case "working": text = `Thank you, ${first}. Work on job ${job.code} is under way.`; break;
+    case "completed": text = `Job ${job.code} is complete.\nAmount due: ${usd(m.cust2)}\nPay to Basa seBasa EcoCash: ${merchant}\nReference: ${job.code}\n\nWe pay your technician once your payment is confirmed. Please do not pay the technician directly.`; break;
+    case "paid": to = "technician"; text = `Payment confirmed for ${job.code}. Your payout of ${usd(m.payout)} will reach your EcoCash within ${m.p.payoutWindowHours} hours.`; break;
+    case "paid_out": text = `Thank you for using Basa seBasa, ${first}. How did ${tech?.name || "your technician"} do? Reply with a rating from 1 to 5 and a few words about the job.`; break;
+    default: return "";
+  }
+  return `<div class="wa"><div class="row" style="justify-content:space-between"><span class="label">WhatsApp message to the ${to}</span><button class="btn sm" type="button" data-copy="wa-text">Copy</button></div><pre id="wa-text">${esc(text)}</pre></div>`;
+}
+
+async function onSubmit(form) {
+  const job = S.jobs.find((j) => j.id === S.jobId); if (!job) return;
+  const act = form.dataset.form; const err = $("#err-" + act);
+  const fail = (msg) => { err.textContent = msg; err.hidden = false; return false; };
+  const ref = db().doc("jobs/" + job.id);
+  const hist = (stage, note) => [...(job.history || []), histEntry(stage, note)];
+  const go = (stage, patch, note, msg) => write(() => ref.update({ ...patch, stage, updatedAt: new Date().toISOString(), history: hist(stage, note) }), msg);
+  switch (act) {
+    case "assign": {
+      const pick = form.querySelector('input[name="a-tech"]:checked'); if (!pick) return fail("Choose a technician.");
+      const km = $("#a-km").value; if (km === "") return fail("Enter the distance so the travel cost is right.");
+      const patch = { technicianId: pick.value, distanceKm: num(km) };
+      if (job.type === "Installation" || job.type === "Service") {
+        const lab = $("#a-labour").value; if (lab === "" || num(lab) <= 0) return fail("Enter the price agreed with the customer.");
+        patch.quote = { labour: num(lab), parts: num($("#a-parts").value), agreedAt: new Date().toISOString() };
+      }
+      const t = S.techs.find((x) => x.id === pick.value);
+      return go("assigned", patch, `Sent to ${t?.name || "technician"}`, "Job sent to technician");
+    }
+    case "accept": return go("accepted", {}, "", "Marked accepted");
+    case "callout": {
+      const r = $("#p1-ref").value.trim(); if (!r) return fail("Enter the EcoCash reference."); if (!$("#p1-ok").checked) return fail("Confirm you checked the merchant statement.");
+      const m = calc(job, S.pricing);
+      return go("callout_paid", { payment1: { ref: r, amount: m.cust1, at: new Date().toISOString(), by: S.me?.id || null } }, `EcoCash ${r} · ${usd(m.cust1)}`, "Call-out recorded");
+    }
+    case "onway": {
+      if (!$("#ow-loc").checked) return fail("Live location is required before the technician travels.");
+      return go("on_way", { locationShared: true, etaMinutes: num($("#ow-eta").value) || null }, $("#ow-eta").value ? `ETA ${$("#ow-eta").value} min` : "", "Marked on the way");
+    }
+    case "arrive": return go("arrived", {}, "", "Marked arrived");
+    case "quote": {
+      const d = $("#q-diag").value.trim(), l = $("#q-labour").value; if (!d) return fail("Write the diagnosis."); if (l === "" || num(l) < 0) return fail("Enter the labour amount.");
+      return go("quoted", { diagnosis: d, quote: { labour: num(l), parts: num($("#q-parts").value), sentAt: new Date().toISOString() } }, `Labour ${usd(l)} · parts ${usd($("#q-parts").value)}`, "Quote recorded");
+    }
+    case "approve": return go("approved", { quote: { ...job.quote, approvedAt: new Date().toISOString() } }, "", "Quote approved");
+    case "resume": return go("quoted", { resumedAt: new Date().toISOString() }, "Resumed with original technician", "Resumed");
+    case "start": return go("working", { workStartedAt: new Date().toISOString() }, "", "Work started");
+    case "complete": {
+      if (!$("#w-cust").checked) return fail("Get the customer's confirmation on WhatsApp first.");
+      const patch = { workNotes: $("#w-notes").value.trim(), workFinishedAt: new Date().toISOString() };
+      if (job.type === "Maid") { const h = num($("#w-hours").value); if (h <= 0) return fail("Enter the hours worked."); patch.maidHours = h; }
+      return go("completed", patch, patch.workNotes, "Job complete");
+    }
+    case "pay": {
+      const r = $("#p2-ref").value.trim(); if (!r) return fail("Enter the EcoCash reference."); if (!$("#p2-ok").checked) return fail("Confirm you checked the exact amount.");
+      const m = calc(job, S.pricing);
+      return go("paid", { payment2: { ref: r, amount: m.cust2, at: new Date().toISOString(), by: S.me?.id || null }, settled: settlement(job) }, `EcoCash ${r} · ${usd(m.cust2)}`, "Payment recorded");
+    }
+    case "payout": {
+      const r = $("#po-ref").value.trim(); if (!r) return fail("Enter the payout reference.");
+      const m = calc(job, S.pricing);
+      return go("paid_out", { payout: { ref: r, amount: m.payout, at: new Date().toISOString(), by: S.me?.id || null }, settled: job.settled || settlement(job) }, `${usd(m.payout)} · ${r}`, "Payout recorded");
+    }
+    case "close": {
+      const rt = $("#rv-rating").value; const patch = {};
+      if (rt) patch.review = { rating: num(rt), text: $("#rv-text").value.trim(), at: new Date().toISOString() };
+      return go("closed", patch, rt ? `Rated ${rt}/5` : "Closed without a rating", "Job closed");
+    }
+  }
+}
+// freeze the money split at payment time, so later pricing changes don't rewrite history
+function settlement(job) { const m = calc(job, S.pricing); return { customerTotal: m.customerTotal, payout: m.payout, platform: m.platform, commission: m.commission, calloutPlatform: m.calloutPlatform, absorbed: m.absorbed, charges: m.chargeTotal, rate: m.p.commissionRate }; }
+
+async function onAction(act) {
+  const job = S.jobs.find((j) => j.id === S.jobId);
+  if (act === "delete-job") { if (!confirmStep("delete-job")) return; await write(() => db().doc("jobs/" + job.id).delete(), "Record deleted"); location.hash = "#jobs"; return; }
+  if (!job) return;
+  const ref = db().doc("jobs/" + job.id);
+  const now = new Date().toISOString();
+  const up = (stage, patch, note, msg) => write(() => ref.update({ ...patch, stage, updatedAt: now, history: [...(job.history || []), histEntry(stage, note)] }), msg);
+  if (act === "cancel") { if (!confirmStep("cancel")) return; return up("cancelled", {}, "Cancelled by team", "Job cancelled"); }
+  if (act === "decline") return up("new", { technicianId: null, quote: job.type === "Repair" ? null : job.quote }, "Technician declined", "Back to matching");
+  if (act === "defer") { const until = new Date(Date.now() + S.pricing.diagnosisValidDays * 864e5).toISOString(); return up("deferred", { diagnosisValidUntil: until, deferredAt: now }, "Customer will repair later", "Diagnosis saved"); }
+  if (act === "reassign") { if (!confirmStep("reassign")) return; return up("new", { technicianId: null, previousTechnicianId: job.technicianId, quote: null, reassigned: true }, "Original technician declined or didn't answer", "Back to matching"); }
+  if (act === "calloutonly") { if (!confirmStep("calloutonly")) return; const j2 = { ...job, calloutOnly: true }; return up("paid", { calloutOnly: true, calloutOnlyAt: now, settled: settlement(j2) }, "Closed on call-out only; technician payout due", "Payout due for call-out"); }
+}
+// in-page "press again to confirm" (dialogs are not available inside artifacts)
+function confirmStep(key) { const b = document.querySelector(`[data-act="${key}"]`); if (b && b.dataset.armed === "1") return true; if (b) { b.dataset.armed = "1"; b.dataset.label = b.textContent; b.textContent = "Press again to confirm"; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ""; b.textContent = b.dataset.label; } }, 4000); } return false; }
+const db = () => S.db;
+
+// ---------- new job ----------
+function newJobForm() {
+  return `<form class="panel sheet" data-form="newjob" novalidate>
+    <header><h2>New job</h2><a class="btn quiet" href="#jobs">Cancel</a></header>
+    <p class="muted">Record a request that came in on WhatsApp or by phone.</p>
+    <div class="fields">
+      <div class="field"><label for="n-name">Customer name</label><input id="n-name" type="text" autocomplete="off"></div>
+      <div class="field"><label for="n-wa">WhatsApp number</label><input id="n-wa" type="tel" placeholder="+263 7…" autocomplete="off"></div>
+      <div class="field"><label for="n-suburb">Suburb</label><input id="n-suburb" type="text" list="suburbs" autocomplete="off"><datalist id="suburbs">${SUBURBS.map((s) => `<option value="${s}">`).join("")}</datalist></div>
+      <div class="field"><label for="n-addr">Address or landmark</label><input id="n-addr" type="text" autocomplete="off"></div>
+      <div class="field"><label for="n-cat">Service</label><select id="n-cat">${TRADES.map((t) => `<option>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="n-type">Job type</label><select id="n-type">${JOB_TYPES.map((t) => `<option>${t}</option>`).join("")}</select></div>
+      <div class="field"><label for="n-urg">Urgency</label><select id="n-urg"><option>Normal</option><option>Urgent</option></select></div>
+      <div class="field"><label for="n-src">Came in by</label><select id="n-src"><option>WhatsApp</option><option>Phone call</option><option>Referral</option></select></div>
+      <div class="field" data-maid><label for="n-tier">Maid level</label><select id="n-tier">${Object.entries(MAID_TIERS).map(([k, v]) => `<option value="${k}">${v} · ${usd(S.pricing.maidRates[k])}/h</option>`).join("")}</select></div>
+      <div class="field" data-maid><label for="n-hours">Hours booked</label><input id="n-hours" type="number" min="1" step="0.5" value="4" inputmode="decimal"></div>
+      <div class="field full"><label for="n-desc">What the customer needs</label><textarea id="n-desc" placeholder="e.g. Fridge stopped cooling since Sunday. Photos received."></textarea></div>
+    </div>
+    <p class="muted" id="n-hint"></p>
+    <p class="err" id="err-newjob" hidden></p>
+    <div class="row"><button class="btn primary" type="submit">Create job</button></div>
+  </form>`;
+}
+function syncNewJob() {
+  const cat = $("#n-cat"), type = $("#n-type"); if (!cat) return;
+  if (cat.value === "Maid / cleaning") type.value = "Maid"; else if (type.value === "Maid") type.value = "Repair";
+  const maid = type.value === "Maid";
+  document.querySelectorAll("[data-maid]").forEach((el) => (el.hidden = !maid));
+  const p = S.pricing;
+  $("#n-hint").textContent = maid ? `Hourly booking. ${p.commissionRate}% commission on the hours.` : type.value === "Repair" ? `Repairs start with a ${usd(p.calloutFee)} call-out (Basa seBasa keeps ${usd(p.calloutPlatformShare)}), then a full quote before any work.` : `Installations and services are priced up front when you assign the technician. ${p.commissionRate}% commission on labour.`;
+}
+async function createJob() {
+  const err = $("#err-newjob"); const fail = (m) => { err.textContent = m; err.hidden = false; };
+  const name = $("#n-name").value.trim(), wa = $("#n-wa").value.trim(), suburb = $("#n-suburb").value.trim(), desc = $("#n-desc").value.trim();
+  if (!name || !wa || !suburb || !desc) return fail("Fill in name, WhatsApp number, suburb and what the customer needs.");
+  if (wa.replace(/\D/g, "").length < 9) return fail("Check the WhatsApp number.");
+  const type = $("#n-type").value, cat = $("#n-cat").value;
+  if ((type === "Maid") !== (cat === "Maid / cleaning")) return fail("Maid bookings use the Maid job type.");
+  const now = new Date().toISOString();
+  const job = { code: nextCode(), createdAt: now, updatedAt: now, stage: "new", type, category: cat, urgency: $("#n-urg").value, source: $("#n-src").value,
+    customer: { name, whatsapp: wa, suburb, address: $("#n-addr").value.trim() }, description: desc, technicianId: null, history: [histEntry("new", "Request recorded from " + $("#n-src").value)] };
+  if (type === "Maid") { job.maidTier = $("#n-tier").value; job.maidRate = S.pricing.maidRates[job.maidTier]; job.maidHours = num($("#n-hours").value, 4); }
+  const ref = db().collection("jobs").doc();
+  const ok = await write(() => ref.set(job), `Job ${job.code} created`);
+  if (ok) location.hash = "#job-" + ref.id;
+}
+
+// ---------- technicians ----------
+function viewTechs() {
+  const t = S.editTech;
+  const rows = S.techs.map((x) => { const st = techStats(x); return `<tr>
+    <td><b>${esc(x.name)}</b>${isExample(x) ? '<span class="ex">EXAMPLE</span>' : ""}<br><span class="mono muted">${esc(x.whatsapp)}</span></td>
+    <td>${esc(x.trade)}<br><span class="muted">${esc(x.suburb)} · ${esc(x.years)} yrs</span></td>
+    <td>${checkList(x)}</td>
+    <td class="r"><span class="score">${trust(x)}</span></td>
+    <td class="r">${st.jobs}${st.ratings ? `<br><span class="muted">${st.rating.toFixed(1)} ★</span>` : ""}</td>
+    <td>${pill2(x.status)}</td>
+    <td class="r">${S.readOnly ? "" : `<button class="btn sm" type="button" data-edit-tech="${esc(x.id)}">Edit</button>`}</td></tr>`; }).join("");
+  return `${t ? techForm(t) : ""}
+  <div class="listhead"><h2>Technicians</h2>${S.readOnly ? "" : `<button class="btn" type="button" data-edit-tech="new">Add technician</button>`}</div>
+  <p class="muted" style="margin:-4px 0 12px">Only Verified technicians receive jobs. Verification needs the ID and trade qualification checked in person.</p>
+  <div class="panel tablewrap">${S.techs.length ? `<table class="t"><thead><tr><th>Name</th><th>Trade</th><th>Checks</th><th class="r">Trust</th><th class="r">Jobs</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty"><h3>${S.loaded.techs ? "No technicians yet" : "Loading…"}</h3><p>Add the 2–3 technicians per trade you are recruiting for the pilot.</p></div>`}</div>`;
+}
+const CHECKS = { id: "National ID", qualification: "Trade qualification", police: "Police clearance", references: "References", warranty: "Offers warranty", inspected: "Admin inspected" };
+const checkList = (x) => Object.entries(CHECKS).filter(([k]) => x.checks?.[k]).map(([, v]) => esc(v)).join(", ") || '<span class="muted">None yet</span>';
+const pill2 = (s) => `<span class="pill ${s === "Verified" ? "done" : s === "Suspended" ? "off" : "ops"}">${esc(s || "Pending")}</span>`;
+function techForm(t) {
+  const isNew = t === "new"; const x = isNew ? { checks: {}, status: "Pending" } : S.techs.find((y) => y.id === t) || { checks: {} };
+  return `<form class="panel sheet" data-form="tech" novalidate>
+    <header><h2>${isNew ? "Add technician" : "Edit " + esc(x.name)}</h2><button class="btn quiet" type="button" data-edit-tech="">Close</button></header>
+    <div class="fields">
+      <div class="field"><label for="t-name">Full name</label><input id="t-name" type="text" value="${esc(x.name)}" data-fresh="1"></div>
+      <div class="field"><label for="t-wa">WhatsApp / EcoCash number</label><input id="t-wa" type="tel" value="${esc(x.whatsapp)}" data-fresh="1"></div>
+      <div class="field"><label for="t-trade">Trade</label><select id="t-trade" data-fresh="1">${TRADES.map((y) => `<option ${y === x.trade ? "selected" : ""}>${y}</option>`).join("")}</select></div>
+      <div class="field"><label for="t-suburb">Base suburb</label><input id="t-suburb" type="text" list="suburbs2" value="${esc(x.suburb)}" data-fresh="1"><datalist id="suburbs2">${SUBURBS.map((s) => `<option value="${s}">`).join("")}</datalist></div>
+      <div class="field"><label for="t-years">Years of experience</label><input id="t-years" type="number" min="0" step="1" value="${esc(x.years ?? "")}" data-fresh="1"></div>
+      <div class="field"><label for="t-status">Status</label><select id="t-status" data-fresh="1">${["Pending", "Verified", "Suspended"].map((s) => `<option ${s === (x.status || "Pending") ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+    </div>
+    <fieldset style="border:0;padding:0;margin:0"><legend class="label" style="margin-bottom:8px">Checks done</legend><div class="fields">${Object.entries(CHECKS).map(([k, v]) => `<label class="check"><input type="checkbox" id="t-c-${k}" ${x.checks?.[k] ? "checked" : ""} data-fresh="1"> ${v}</label>`).join("")}</div></fieldset>
+    <p class="err" id="err-tech" hidden></p>
+    <div class="row"><button class="btn primary" type="submit">${isNew ? "Add technician" : "Save changes"}</button>${!isNew && isExample(x) ? `<button class="btn quiet danger" type="button" data-act="delete-tech">Delete example</button>` : ""}</div>
+  </form>`;
+}
+async function saveTech() {
+  const err = $("#err-tech"); const fail = (m) => { err.textContent = m; err.hidden = false; };
+  const isNew = S.editTech === "new"; const prev = isNew ? null : S.techs.find((y) => y.id === S.editTech);
+  const checks = {}; Object.keys(CHECKS).forEach((k) => (checks[k] = $("#t-c-" + k).checked));
+  const body = { name: $("#t-name").value.trim(), whatsapp: $("#t-wa").value.trim(), trade: $("#t-trade").value, suburb: $("#t-suburb").value.trim(), years: num($("#t-years").value), status: $("#t-status").value, checks, updatedAt: new Date().toISOString() };
+  if (!body.name || !body.whatsapp || !body.suburb) return fail("Fill in name, number and suburb.");
+  if (body.status === "Verified" && !(checks.id && checks.qualification)) return fail("Check the National ID and trade qualification before verifying.");
+  const ok = await write(() => isNew ? db().collection("technicians").doc().set({ ...body, createdAt: body.updatedAt }) : db().doc("technicians/" + prev.id).update(body), isNew ? "Technician added" : "Saved");
+  if (ok) { S.editTech = null; render(); }
+}
+
+// ---------- money ----------
+function viewMoney() {
+  const settledJobs = S.jobs.filter((j) => j.settled);
+  const live = (j) => j.settled || settlement(j);
+  const sum = (arr, f) => r2(arr.reduce((s, j) => s + f(j), 0));
+  const collected = r2(sum(S.jobs.filter((j) => j.payment1), (j) => num(j.payment1.amount)) + sum(S.jobs.filter((j) => j.payment2), (j) => num(j.payment2.amount)));
+  const revenue = sum(settledJobs, (j) => num(j.settled.platform));
+  const due = S.jobs.filter((j) => j.stage === "paid");
+  const paidOut = sum(S.jobs.filter((j) => j.payout), (j) => num(j.payout.amount));
+  const absorbed = sum(settledJobs, (j) => num(j.settled.absorbed));
+  const rows = S.jobs.filter((j) => j.payment1 || j.payment2 || j.stage === "paid").map((j) => { const s = live(j); const t = S.techs.find((x) => x.id === j.technicianId); return `<tr>
+    <td><a href="#job-${esc(j.id)}" class="mono">${esc(j.code)}</a>${isExample(j) ? '<span class="ex">EX</span>' : ""}<br><span class="muted">${esc(j.customer?.name)}</span></td>
+    <td>${esc(t?.name || "")}<br><span class="muted">${esc(j.type)}</span></td>
+    <td class="r">${usd(num(j.payment1?.amount) + num(j.payment2?.amount))}</td>
+    <td class="r">${usd(s.platform)}</td>
+    <td class="r">${usd(s.payout)}</td>
+    <td>${j.payout ? pill("paid_out") : j.stage === "paid" ? payPill(j) : '<span class="pill">Job in progress</span>'}<br><span class="mono muted">${esc([j.payment1?.ref, j.payment2?.ref].filter(Boolean).join(" · "))}</span></td></tr>`; }).join("");
+  return `<div class="listhead"><h2>Money</h2></div>
+  <div class="kpis">
+    <div class="kpi lead"><span class="label">Basa seBasa revenue</span><b>${usd(revenue)}</b><span>From fully paid jobs</span></div>
+    <div class="kpi"><span class="label">Collected on EcoCash</span><b>${usd(collected)}</b><span class="muted">All customer payments</span></div>
+    <div class="kpi"><span class="label">Payouts due</span><b>${usd(sum(due, (j) => num(live(j).payout)))}</b><span class="${due.some((j) => payoutDue(j)?.overdue) ? "err" : "muted"}">${due.length} waiting${due.filter((j) => payoutDue(j)?.overdue).length ? ` · ${due.filter((j) => payoutDue(j).overdue).length} overdue` : ` · ${S.pricing.payoutWindowHours} h deadline`}</span></div>
+    <div class="kpi"><span class="label">Paid to technicians</span><b>${usd(paidOut)}</b><span class="muted">EcoCash charges we covered: ${usd(absorbed)}</span></div>
+  </div>
+  <div class="panel tablewrap">${rows ? `<table class="t"><thead><tr><th>Job</th><th>Technician</th><th class="r">Customer paid</th><th class="r">We keep</th><th class="r">Technician gets</th><th>Payout</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="empty"><h3>No payments yet</h3><p>EcoCash payments appear here once you record them on a job.</p></div>`}</div>`;
+}
+
+// ---------- pricing ----------
+function viewPricing() {
+  const p = S.pricing; const ro = S.readOnly ? "disabled" : "";
+  const ex = calc({ type: "Repair", distanceKm: 6, quote: { labour: 40, parts: 0 } }, p);
+  const exM = calc({ type: "Maid", maidHours: 5, maidTier: "standard" }, p);
+  const inp = (id, label, v, step = "0.5", hint = "") => `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="number" min="0" step="${step}" value="${esc(v)}" data-fresh="1" ${ro}>${hint ? `<span class="muted" style="font-size:13px">${hint}</span>` : ""}</div>`;
+  return `<form class="panel sheet" data-form="pricing" novalidate>
+    <header><h2>Pricing</h2>${S.readOnly ? "" : `<button class="btn primary" type="submit">Save pricing</button>`}</header>
+    <p class="muted">These match the Service Provider Agreement. Changing the commission needs 30 days' written notice to technicians. Jobs already paid keep the split they were paid at.</p>
+    <div><span class="label">Commission and call-out</span><div class="fields" style="margin-top:8px">
+      ${inp("s-comm", "Commission on labour (%)", p.commissionRate, "0.5")}
+      ${inp("s-call", "Repair call-out fee (USD)", p.calloutFee)}
+      ${inp("s-callp", "Basa seBasa keeps from call-out (USD)", p.calloutPlatformShare)}
+    </div></div>
+    <div><span class="label">Travel</span><div class="fields" style="margin-top:8px">
+      ${inp("s-free", "Distance included (km)", p.freeKm, "1")}
+      ${inp("s-km", "Each extra km (USD)", p.perKm, "0.05")}
+    </div></div>
+    <div><span class="label">EcoCash charges</span><div class="fields" style="margin-top:8px">
+      ${inp("s-eco", "EcoCash charge rate (%)", p.ecocashChargeRate, "0.05", "Set this from Econet's current merchant and transfer tariff.")}
+      <div class="field"><label for="s-share">Who pays EcoCash charges</label><select id="s-share" data-fresh="1" ${ro}><option value="0" ${!p.platformChargeShare ? "selected" : ""}>Customer pays 100%</option><option value="${esc(p.fallbackChargeShare)}" ${p.platformChargeShare ? "selected" : ""}>Fallback: we absorb ${esc(p.fallbackChargeShare)}%</option></select></div>
+      <div class="field"><label for="s-merch">Basa seBasa EcoCash merchant number</label><input id="s-merch" type="text" value="${esc(p.merchantNumber)}" placeholder="Not set yet" data-fresh="1" ${ro}></div>
+    </div></div>
+    <div><span class="label">Maids, hourly</span><div class="fields" style="margin-top:8px">
+      ${inp("s-m1", "Standard maid (USD/h)", p.maidRates.standard)}
+      ${inp("s-m2", "Verified pro maid (USD/h)", p.maidRates.verified)}
+      ${inp("s-m3", "Premium / home manager (USD/h)", p.maidRates.premium)}
+    </div></div>
+    <div><span class="label">Deferred repairs</span><div class="fields" style="margin-top:8px">
+      ${inp("s-valid", "Diagnosis valid for (days)", p.diagnosisValidDays, "1")}
+      ${inp("s-first", "Original technician's first refusal (hours)", p.firstRefusalHours, "1")}
+    </div></div>
+    <div><span class="label">Technician payouts</span><div class="fields" style="margin-top:8px">
+      ${inp("s-payout", "Pay technicians within (hours of customer paying)", p.payoutWindowHours, "1", "Payouts are sent by hand on EcoCash.")}
+    </div></div>
+    <p class="err" id="err-pricing" hidden></p>
+  </form>
+  <div class="cols">
+    <div class="panel sheet" style="margin:0"><h3>Worked example: USD 40 repair, 6 km</h3>${moneyTable({ type: "Repair", distanceKm: 6, quote: { labour: 40, parts: 0 } }, ex)}<p class="muted" style="margin:0">Call-out ${usd(ex.cust1)} before travel, then ${usd(ex.cust2)} after the work.</p></div>
+    <div class="panel sheet" style="margin:0"><h3>Worked example: 5-hour standard maid</h3>${moneyTable({ type: "Maid", maidHours: 5, maidTier: "standard" }, exM)}</div>
+  </div>`;
+}
+async function savePricing() {
+  const err = $("#err-pricing");
+  const body = { commissionRate: num($("#s-comm").value), calloutFee: num($("#s-call").value), calloutPlatformShare: num($("#s-callp").value), freeKm: num($("#s-free").value), perKm: num($("#s-km").value), ecocashChargeRate: num($("#s-eco").value), platformChargeShare: num($("#s-share").value), fallbackChargeShare: S.pricing.fallbackChargeShare, merchantNumber: $("#s-merch").value.trim(), maidRates: { standard: num($("#s-m1").value), verified: num($("#s-m2").value), premium: num($("#s-m3").value) }, diagnosisValidDays: num($("#s-valid").value, 30), firstRefusalHours: num($("#s-first").value, 24), payoutWindowHours: num($("#s-payout").value, 24), updatedAt: new Date().toISOString(), updatedBy: S.me?.id || null };
+  if (body.commissionRate > 50 || body.calloutPlatformShare > body.calloutFee) { err.textContent = "Check the commission and call-out share."; err.hidden = false; return; }
+  await write(() => db().doc("settings/pricing").set(body), "Pricing saved");
+}
+
+// ---------- events ----------
+document.addEventListener("click", async (e) => {
+  const fb = e.target.closest("[data-filter]"); if (fb) { S.filter = fb.dataset.filter; render(); return; }
+  const et = e.target.closest("[data-edit-tech]"); if (et) { S.editTech = et.dataset.editTech || null; S.skipRestore = true; render(); if (S.editTech) window.scrollTo(0, 0); return; }
+  const ab = e.target.closest("[data-act]"); if (ab) {
+    if (ab.dataset.act === "delete-tech") { if (!confirmStep("delete-tech")) return; const id = S.editTech; if (await write(() => db().doc("technicians/" + id).delete(), "Example deleted")) { S.editTech = null; render(); } return; }
+    onAction(ab.dataset.act); return;
+  }
+  const cp = e.target.closest("[data-copy]"); if (cp) {
+    const el = document.getElementById(cp.dataset.copy);
+    try { await navigator.clipboard.writeText(el.textContent); toast("Copied. Paste it into WhatsApp."); }
+    catch (x) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Copy it with your keyboard or long-press."); }
+  }
+});
+$("#new-job-btn").addEventListener("click", () => { if (location.hash !== "#jobs") history.replaceState(null, "", "#jobs"); S.view = "jobs"; S.newJob = true; S.skipRestore = true; render(); window.scrollTo(0, 0); });
+document.addEventListener("change", (e) => { if (e.target.id === "n-cat" || e.target.id === "n-type") syncNewJob(); });
+document.addEventListener("submit", (e) => {
+  e.preventDefault(); const f = e.target; const k = f.dataset.form;
+  if (k === "newjob") createJob(); else if (k === "tech") saveTech(); else if (k === "pricing") savePricing(); else onSubmit(f);
+});
+
+readHash();
+boot();
+setInterval(() => { if (S.db && S.jobs.some((j) => j.stage === "paid") && !document.activeElement?.closest?.("form")) render(); }, 60000);
+// expose the money maths for checking
+window.__basaCalc = calc;
+})();
+</script>
+
+</body>
+</html>
