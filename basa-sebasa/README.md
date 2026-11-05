@@ -1,9 +1,10 @@
 # Basa seBasa web apps
 
-Four web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
+Five web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
 
 | Folder | What it is | Who uses it |
 | --- | --- | --- |
+| `pro-app/` | **Basa seBasa Pro, the integrated technician app** (installable): apply and get approved, then jobs, Basa Code, appliance passport, quotes, trade checklists, service reports, SOS, offline mode, earnings, Trust Score and Pro levels. Uses real GPS and camera; saves progress on the phone | Technicians |
 | `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
 | `technician-app/` | Technician app (preview): go online, 60-second job requests with earnings shown, live trip map, diagnose and quote on site, job timer, before/after photos, earnings with 24-hour payout tracking, Trust Score profile | Technicians |
 | `onboarding-demo/` | Provider onboarding demo: sign-up with WhatsApp code, details, documents, automatic checks, team document review, reference calls, in-person check, induction and approval with starting Trust Score | Basa seBasa team (demo) |
@@ -45,3 +46,9 @@ WhatsApp Cloud API (Meta) → Basa seBasa server (bot logic, pricing, Paynow Eco
 ## The technician app
 
 `technician-app/index.html` runs in preview mode with sample job requests. In the real app, location must come from the phone's GPS while a job is active, job requests arrive from the server, and every button (accept, on my way, arrived, quote, start, complete) sends an update to the server, which forwards it to the customer on WhatsApp. This is the screen set to rebuild as the Android app.
+
+## Basa seBasa Pro (integrated technician app)
+
+`pro-app/` is an installable web app (PWA): `manifest.webmanifest` makes it installable, `sw.js` keeps it working offline, and it uses the phone's real GPS and camera. It still runs on sample jobs (`PREVIEW = true`) until the server exists.
+
+To connect it: replace the sample job feed (`SAMPLES`, `scheduleRequest`) and the preview "team" steps (`team-next`) with calls to the Basa seBasa server, and set `PREVIEW = false`. To publish on Google Play later, wrap this same app as a Trusted Web Activity (for example with Bubblewrap) or with Capacitor.
