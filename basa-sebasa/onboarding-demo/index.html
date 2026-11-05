@@ -196,24 +196,17 @@ const TRADES = [
 ];
 const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
 const INDUCTION = ["Basa Code at every arrival", "Quote before any repair work", "Service report, photos and warranty", "SOS button and safety line", "No cash, ever: EcoCash through Basa seBasa only", "No jobs taken off the app", "Payouts within 24 hours of the customer paying"];
-const RUBRIC = {
-  "HVAC/Refrigeration": ["Found the fault correctly", "Worked safely: power isolated, gas handled safely", "Used gauges and meters properly", "Explained the fix clearly to the customer"],
-  "Maid / cleaning": ["Cleaned the test room to standard", "Used cleaning chemicals safely", "Respectful conduct in the home", "Followed instructions carefully"],
-  default: ["Completed the practical task correctly", "Worked safely throughout", "Used tools properly", "Explained the work clearly to the customer"],
-};
-const rubric = () => RUBRIC[A.trade] || RUBRIC.default;
 const SLOTS = ["Fri 7 Nov · 10:00 · Avondale office", "Sat 8 Nov · 09:00 · Avondale office", "Mon 10 Nov · 14:00 · Msasa test workshop"];
 const PRO_APP = "https://claude.ai/artifact/C9EpP5ZCHQ9KSzN9mcgPs4";
 
 const fresh = () => ({
-  screen: "intro", phone: "", code: "", codeIn: "", consent: { checks: false, location: false, data: false },
+  screen: "phone", phone: "", code: "", codeIn: "", consent: { checks: false, location: false, data: false },
   name: "", trade: "HVAC/Refrigeration", skills: [], suburb: "", years: "", hours: "Mon–Sat, 7am–6pm", ecoNum: "", ecoName: "", warranty: true, noQual: false,
   docs: {}, refs: [{ name: "", phone: "" }, { name: "", phone: "" }],
   status: "draft", auto: [], fix: null, msgs: [], log: [], submittedAt: 0,
   review: { id: false, qual: false, police: false, askItem: "", askNote: "Photo is blurry. Please retake it in good light." },
-  refCheck: [{ ans: "", notes: "", reply: null }, { ans: "", notes: "", reply: null }], refSent: false, notRelative: false,
-  inperson: { slot: "", idMatch: false, photo: false, rubric: [false, false, false, false], notes: "" }, slotPick: "",
-  secondCheck: false, noConflict: false, appealed: false, proId: "",
+  refCheck: [{ ans: "", notes: "" }, { ans: "", notes: "" }],
+  inperson: { slot: "", idMatch: false, photo: false, safe: false, score: "", notes: "" },
   induction: INDUCTION.map(() => false), signed: false, rejectReason: "", show: "provider", seen: { provider: "", team: "" },
 });
 let A = fresh();
@@ -253,7 +246,7 @@ const HUES = { idFront: 200, idBack: 210, selfie: 30, qual: 140, work: 90, polic
 // ---------- progress model ----------
 const STEPS = ["Sign up", "Details and documents", "Automatic checks", "Document review", "Reference calls", "In-person check", "Induction", "Approved"];
 function stepNow() {
-  return { draft: ["intro", "phone", "otp", "consent"].includes(A.screen) ? 0 : 1, auto: 2, review: 3, fix: 3, references: 4, inperson: 5, induction: 6, decision: 7, approved: 8, rejected: -1 }[A.status];
+  return { draft: A.screen === "phone" || A.screen === "otp" || A.screen === "consent" ? 0 : 1, auto: 2, review: 3, fix: 3, references: 4, inperson: 5, induction: 6, decision: 7, approved: 8, rejected: -1 }[A.status];
 }
 function guide() {
   const s = A.status;
@@ -261,14 +254,14 @@ function guide() {
   if (s === "auto") return ["Automatic checks are running on the provider's phone…", ""];
   if (s === "review") return ["Team desk: review the documents.", A.show === "provider" ? "team" : ""];
   if (s === "fix") return ["Provider phone: fix what the team asked for.", A.show === "team" ? "provider" : ""];
-  if (s === "references") return [A.refSent ? "Team desk: check the referees' answers and confirm." : "Team desk: send the reference requests on WhatsApp.", A.show === "provider" ? "team" : ""];
-  if (s === "inperson") return A.inperson.slot ? ["Team desk: score the in-person check.", A.show === "provider" ? "team" : ""] : ["Provider phone: pick a time for the in-person check.", A.show === "team" ? "provider" : ""];
+  if (s === "references") return ["Team desk: call both referees and log the answers.", A.show === "provider" ? "team" : ""];
+  if (s === "inperson") return [A.inperson.slot ? "Team desk: record the in-person check result." : "Team desk: book the in-person check.", A.show === "provider" ? "team" : ""];
   if (s === "induction") return ["Team desk: run the induction and get the agreement signed.", A.show === "provider" ? "team" : ""];
   if (s === "decision") return ["Team desk: make the final decision.", A.show === "provider" ? "team" : ""];
   if (s === "approved") return ["Approved. See the welcome on the provider phone, or start again to try a failure path.", A.show === "team" ? "provider" : ""];
   return ["Not approved. Start again to try a different path.", A.show === "team" ? "provider" : ""];
 }
-const needs = () => ({ provider: A.status === "draft" || A.status === "fix" || (A.status === "inperson" && !A.inperson.slot), team: ["review", "references", "induction", "decision"].includes(A.status) || (A.status === "inperson" && !!A.inperson.slot) });
+const needs = () => ({ provider: A.status === "draft" || A.status === "fix", team: ["review", "references", "inperson", "induction", "decision"].includes(A.status) });
 
 // ---------- render ----------
 function render() {
@@ -289,10 +282,6 @@ function viewProvider() {
   if (["review", "references", "inperson", "induction", "decision", "rejected"].includes(A.status)) return statusView();
   if (A.status === "fix") return fixView();
   switch (A.screen) {
-    case "intro": return `<h2>Join in about 20 minutes</h2><p class="muted">Have these ready before you start. Your progress is saved, so you can stop and finish later.</p>
-      <div class="card"><ul style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Your National ID</li><li>${trade().tech ? "Your trade certificate, or photos of work you've done" : "Your police clearance"}</li><li>Names and phone numbers of two people you've worked for</li><li>An EcoCash account in your own name</li><li>Good light for clear photos</li></ul></div>
-      <div class="note small">Not comfortable with apps? Visit our Avondale office or message us on WhatsApp and our team will apply with you.</div>
-      <button class="btn gold" type="button" data-act="start">I'm ready, let's start</button>`;
     case "phone": return `<div class="steps"><span class="on"></span><span></span><span></span><span></span></div><h2>Get steady, paid work</h2><p class="muted">Verified pros get jobs near them and are paid on EcoCash within 24 hours.</p>
       <div class="card"><div class="field"><label for="f-phone">Your WhatsApp number</label><input id="f-phone" data-bind="phone" type="tel" inputmode="tel" placeholder="077 123 4567" value="${val("phone")}"></div><p class="err" id="e-phone" hidden></p><button class="btn gold" type="button" data-act="send-code">Send me a code</button></div>`;
     case "otp": return `<div class="steps"><span class="on"></span><span></span><span></span><span></span></div><h2>Enter your code</h2><p class="muted">We sent a 6-digit code to ${esc(A.phone)} on WhatsApp.</p>
@@ -301,7 +290,7 @@ function viewProvider() {
       <div class="card"><label class="check"><input type="checkbox" data-consent="checks" ${A.consent.checks ? "checked" : ""}> I agree to Basa seBasa checking my ID, qualifications and references.</label><label class="check"><input type="checkbox" data-consent="location" ${A.consent.location ? "checked" : ""}> I'll share my location while I'm online or on a job.</label><label class="check"><input type="checkbox" data-consent="data" ${A.consent.data ? "checked" : ""}> I agree my documents are stored privately and seen only by the vetting team.</label><p class="err" id="e-consent" hidden></p><button class="btn gold" type="button" data-act="consent">Continue</button></div>`;
     case "details": {
       const t = trade();
-      return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div><div class="row" style="justify-content:space-between"><h2>About you</h2><span class="pill good">✓ Saved</span></div>
+      return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div><h2>About you</h2>
       <div class="card">
         <div class="field"><label for="f-name">Full name (as on your ID)</label><input id="f-name" data-bind="name" type="text" autocomplete="name" value="${val("name")}"></div>
         <div class="field"><label for="f-trade">Your trade</label><select id="f-trade" data-bind-select="trade">${TRADES.map((x) => `<option value="${esc(x.id)}" ${x.id === A.trade ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
@@ -313,7 +302,7 @@ function viewProvider() {
         ${t.tech ? `<label class="check"><input type="checkbox" data-flag="warranty" ${A.warranty ? "checked" : ""}> I give a warranty on my work</label>` : ""}
         <p class="err" id="e-details" hidden></p><button class="btn gold" type="button" data-act="details">Next: documents</button></div>`;
     }
-    case "docs": return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div><div class="row" style="justify-content:space-between"><h2>Documents</h2><span class="pill good">✓ Saved</span></div><p class="muted">Take clear photos in good light. Use "Sample" to fill the demo quickly.</p>
+    case "docs": return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div><h2>Documents</h2><p class="muted">Take clear photos in good light. Use "Sample" to fill the demo quickly.</p>
       ${trade().tech ? `<label class="check card" style="display:flex"><input type="checkbox" data-flag="noQual" ${A.noQual ? "checked" : ""}> I don't have a certificate. I'll show photos of my past work and do a longer practical test.</label>` : ""}
       <div class="card"><div style="display:grid;gap:8px">${docList().map(docRow).join("")}</div></div>
       <div class="card"><h3>Two referees</h3><p class="muted small">Past customers or employers who can vouch for your work.</p>${A.refs.map((r, i) => `<div class="two"><div class="field"><label for="r${i}n">Referee ${i + 1} name</label><input id="r${i}n" data-ref="${i}" data-k="name" type="text" value="${esc(r.name)}"></div><div class="field"><label for="r${i}p">Phone</label><input id="r${i}p" data-ref="${i}" data-k="phone" type="tel" inputmode="tel" value="${esc(r.phone)}"></div></div>`).join("")}
@@ -332,22 +321,12 @@ function autoView() {
 function timeline() {
   const at = stepNow(), rej = A.status === "rejected";
   const failedAt = rej ? (A.rejectStep ?? 5) : -1;
-  return `<div class="tl">${STEPS.map((s, i) => { const cls = rej ? (i < failedAt ? "done" : i === failedAt ? "no" : "") : i < at ? "done" : i === at ? "now" : ""; const sub = i === 5 && A.inperson.slot && at <= 5 ? A.inperson.slot : i === 3 && at <= 3 ? "Expected by " + byDate(2) : i === 4 && at <= 4 ? "Expected by " + byDate(4) : i === 7 && at < 8 && !rej ? "Decision expected by " + byDate(7) : ""; return `<div class="${cls}"><span>${esc(s)}${sub ? `<small>${esc(sub)}</small>` : ""}</span></div>`; }).join("")}</div>`;
-}
-function byDate(days) { return new Date((A.submittedAt || Date.now()) + days * 864e5).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
-function bookingCard() {
-  return `<div class="action"><h3><span class="tag">Your move</span>Pick a time for your in-person check</h3><p class="muted small">Meet our team, show your original ID${trade().tech ? ", bring your tools and do a short practical test" : " and do a short practical task"}. About 1 to 2 hours.</p>
-    <div style="display:grid;gap:6px">${SLOTS.map((s, i) => `<label class="check" style="border:1.5px solid var(--line);border-radius:10px;padding:10px"><input type="radio" name="slot" data-slot="${i}" ${A.slotPick === s ? "checked" : ""}> ${esc(s)}</label>`).join("")}</div>
-    <p class="err" id="e-pick" hidden></p><button class="btn gold" type="button" data-act="pick-slot">Book this time</button></div>`;
+  return `<div class="tl">${STEPS.map((s, i) => { const cls = rej ? (i < failedAt ? "done" : i === failedAt ? "no" : "") : i < at ? "done" : i === at ? "now" : ""; const sub = i === 5 && A.inperson.slot && at <= 5 ? A.inperson.slot : i === 3 && at === 3 ? "Usually within 48 hours" : ""; return `<div class="${cls}"><span>${esc(s)}${sub ? `<small>${esc(sub)}</small>` : ""}</span></div>`; }).join("")}</div>`;
 }
 function statusView() {
   const rej = A.status === "rejected";
   return `<h2>${rej ? "Application not approved" : "Application received"}</h2>
-    ${rej ? `<div class="note bad">${esc(A.rejectReason)}${A.rejectFake ? "" : " You can apply again in 3 months."}</div>
-      ${A.rejectStep === 5 ? `<div class="card"><h3>Build your skills</h3><p class="muted small">Ask us for the test checklist we use, and the training centres we recommend. Many pros pass on their second try.</p></div>` : ""}
-      ${A.appealed ? `<div class="note">Appeal received. A different team member will review your application within 5 working days.</div>` : A.rejectFake ? "" : `<button class="btn quiet" type="button" data-act="appeal">Appeal this decision</button>`}
-      <p class="muted small">Your documents are deleted 90 days after this decision unless you appeal.</p>` : `<p class="muted">You'll get a WhatsApp message at each step. Most applications are decided within 5 working days.</p>`}
-    ${A.status === "inperson" && !A.inperson.slot ? bookingCard() : ""}
+    ${rej ? `<div class="note bad">${esc(A.rejectReason)}${A.rejectFake ? "" : " You can apply again in 3 months."}</div>` : `<p class="muted">You'll get a WhatsApp message at each step. Most applications are decided within 5 working days.</p>`}
     <div class="card"><h3>Your progress</h3>${timeline()}</div>
     <div class="card"><h3>Messages</h3><div class="msgs">${A.msgs.map((m) => `<div class="msg">${esc(m.text)}<time>${esc(m.at)} · WhatsApp</time></div>`).join("")}</div></div>`;
 }
@@ -363,10 +342,6 @@ function approvedView() {
     <div class="badges" style="justify-content:center">${s.badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}</div></div>
     <div class="card"><div class="row" style="justify-content:space-between"><span><span class="eyebrow">Level</span><b style="display:block;font-size:20px">Bronze</b></span><span style="text-align:right"><span class="eyebrow">Probation</span><b style="display:block;font-size:20px">0 of 5 jobs</b></span></div><p class="muted small">After 5 good jobs (4.5★ or more, no upheld complaints) you become a full pro and can move up to Silver.</p></div>
     <div class="card"><h3>Raise your score</h3><ul style="margin:0;padding-left:20px;display:grid;gap:4px">${!A.docs.police ? "<li>Add a police clearance: +10</li>" : ""}<li>Every 5-star job adds to your score</li><li>Arrive on time and use your Basa Code</li></ul></div>
-    <div class="card" style="background:#14120D;color:#F5F1E6;border-color:#14120D"><div class="row" style="justify-content:space-between"><span class="eyebrow" style="color:#F0AE00">Basa ID card</span><span class="mono" style="color:#B9B2A2">${esc(A.proId)}</span></div>
-      <div style="display:grid;grid-template-columns:72px 1fr;gap:12px;align-items:center">${A.docs.selfie ? `<img src="${A.docs.selfie.url}" alt="" style="width:72px;height:72px;border-radius:12px;object-fit:cover">` : ""}<span><b style="font-size:19px;display:block">${esc(A.name)}</b><span style="color:#B9B2A2;font-size:14px">${esc(trade().name)} · Trust ${s.total} · Bronze</span><br><span style="color:#B9B2A2;font-size:13px">Verified ${esc(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }))} · renews ${esc(new Date(Date.now() + 365 * 864e5).toLocaleDateString("en-GB", { month: "short", year: "numeric" }))}</span></span></div>
-      <p style="color:#B9B2A2;font-size:13px">Show this card at every job. Customers match your photo and your Basa Code before letting you in.</p></div>
-    <div class="card"><span class="eyebrow">What customers see</span><p><b>${esc(A.name.split(" ")[0])} ${esc((A.name.split(" ").pop() || "").charAt(0))}.</b> · ${esc(trade().name)} · ${esc(A.suburb)}</p><div class="badges">${s.badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}<span class="badge">In-person checked</span></div><p class="muted small">Verified by Basa seBasa on ${esc(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }))}. Customers can tap any badge to see what was checked. Your documents are never shown.</p></div>
     <a class="btn gold" href="${PRO_APP}" target="_blank" rel="noopener">Open the Basa seBasa Pro app</a>`;
 }
 
@@ -407,26 +382,21 @@ function actionPanel() {
       <p class="err" id="e-review" hidden></p><button class="btn gold" type="button" data-act="accept-docs">Accept documents</button>
       <details><summary class="muted" style="cursor:pointer;font-weight:600">Ask for something again</summary><div style="display:grid;gap:8px;margin-top:8px"><div class="field"><label for="t-askitem">Which item?</label><select id="t-askitem" data-rbind="askItem"><option value="">Choose</option>${docList().filter((d) => A.docs[d.key]).map((d) => `<option value="${d.key}" ${A.review.askItem === d.key ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></div><div class="field"><label for="t-asknote">Message to the provider</label><textarea id="t-asknote" data-rbind="askNote">${esc(A.review.askNote)}</textarea></div><p class="err" id="e-ask" hidden></p><button class="btn quiet" type="button" data-act="ask">Send request</button></div></details>
       <button class="btn danger" type="button" data-act="reject-fake">Reject: documents look fake</button>`);
-    case "references": return box("5 · References", !A.refSent
-      ? `<p class="muted small">Each referee gets a 1-minute form on WhatsApp: what work was done, quality, honesty, punctuality, would they hire again, and how they know the applicant. Call anyone who doesn't reply within a day.</p><button class="btn gold" type="button" data-act="send-refs">Send reference requests on WhatsApp</button>`
-      : `${A.refs.map((r, i) => { const c = A.refCheck[i], rp = c.reply; return `<div class="ref"><b>${esc(r.name)} · <span class="mono">${esc(r.phone)}</span></b>${rp ? `<div class="facts"><div><small>Knows them as</small>${esc(rp.relation)}</div><div><small>Work done</small>${esc(rp.work)}</div><div><small>Quality</small>${esc(rp.quality)}</div><div><small>Honest and on time</small>${esc(rp.honest)}</div><div><small>Would hire again</small>${esc(rp.again)}</div></div>` : c.manual ? `<div class="field"><label for="rc${i}">Notes from your call</label><input id="rc${i}" data-refnote="${i}" type="text" value="${esc(c.notes)}" placeholder="e.g. Fixed our cold room twice, always on time"></div>` : `<div class="row"><span class="spin"></span><span class="muted small">Waiting for their reply on WhatsApp…</span><button class="btn quiet sm" type="button" data-callref="${i}">Call instead</button></div>`}
-        ${rp || c.manual ? `<div class="seg"><button type="button" class="yes" data-refans="${i}" data-v="yes" aria-pressed="${c.ans === "yes"}">Positive</button><button type="button" class="no" data-refans="${i}" data-v="no" aria-pressed="${c.ans === "no"}">Not positive</button></div>` : ""}</div>`; }).join("")}
-        <label class="check"><input type="checkbox" data-notrel ${A.notRelative ? "checked" : ""}> Neither referee is a relative or lives with the applicant</label>
-        <p class="err" id="e-refs" hidden></p><button class="btn gold" type="button" data-act="log-refs">Confirm references</button>`);
+    case "references": return box("5 · Reference calls", `<p class="muted small">Ask each referee: What work did they do for you? Was it good quality? Were they honest and on time? Would you hire them again?</p>
+      ${A.refs.map((r, i) => `<div class="ref"><b>${esc(r.name)} · <span class="mono">${esc(r.phone)}</span></b><div class="seg"><button type="button" class="yes" data-refans="${i}" data-v="yes" aria-pressed="${A.refCheck[i].ans === "yes"}">Positive</button><button type="button" class="no" data-refans="${i}" data-v="no" aria-pressed="${A.refCheck[i].ans === "no"}">Not positive</button></div><div class="field"><label for="rc${i}">Notes from the call</label><input id="rc${i}" data-refnote="${i}" type="text" value="${esc(A.refCheck[i].notes)}" placeholder="e.g. Fixed our cold room twice, always on time"></div></div>`).join("")}
+      <p class="err" id="e-refs" hidden></p><button class="btn gold" type="button" data-act="log-refs">Log references</button>`);
     case "inperson": return box("6 · In-person check", !A.inperson.slot
-      ? `<div class="row"><span class="spin"></span><span>${esc(firstName())} is choosing a time in the app.</span></div><details><summary class="muted" style="cursor:pointer;font-weight:600">Book for them instead</summary><div style="display:grid;gap:8px;margin-top:8px"><div class="field"><label for="t-slot">Slot</label><select id="t-slot"><option value="">Choose a time</option>${SLOTS.map((s) => `<option>${esc(s)}</option>`).join("")}</select></div><p class="err" id="e-slot" hidden></p><button class="btn quiet" type="button" data-act="book">Book and tell ${esc(firstName())}</button></div></details>`
+      ? `<div class="field"><label for="t-slot">Book a slot</label><select id="t-slot"><option value="">Choose a time</option>${SLOTS.map((s) => `<option>${esc(s)}</option>`).join("")}</select></div><p class="err" id="e-slot" hidden></p><button class="btn gold" type="button" data-act="book">Book and tell ${esc(firstName())}</button>`
       : `<p><b>Booked:</b> ${esc(A.inperson.slot)}</p><p class="note small">Demo: in real life this is recorded on the day of the meeting.</p>
-        <label class="check"><input type="checkbox" data-ip="idMatch" ${A.inperson.idMatch ? "checked" : ""}> Original ID seen and matches the person</label><label class="check"><input type="checkbox" data-ip="photo" ${A.inperson.photo ? "checked" : ""}> Profile photo taken</label>
-        <div class="ref"><b>Practical test: ${esc(trade().name)}${A.noQual ? " (longer test, no certificate)" : ""}</b><p class="muted small">The same checklist for every applicant in this trade. All four must pass; safety can never be skipped.</p>${rubric().map((r, i) => `<label class="check"><input type="checkbox" data-rub="${i}" ${A.inperson.rubric[i] ? "checked" : ""}> ${esc(r)}${i === 1 ? ' <span class="pill bad">Must pass</span>' : ""}</label>`).join("")}</div>
-        <div class="field"><label for="t-ipnotes">Notes</label><input id="t-ipnotes" data-ipnote type="text" value="${esc(A.inperson.notes)}" placeholder="${t.id === "HVAC/Refrigeration" ? "Found the faulty relay in 10 min" : "How the test went"}"></div><p class="err" id="e-ip" hidden></p><div class="two"><button class="btn danger" type="button" data-act="ip-fail">Failed</button><button class="btn gold" type="button" data-act="ip-pass">Passed</button></div>`);
+        <label class="check"><input type="checkbox" data-ip="idMatch" ${A.inperson.idMatch ? "checked" : ""}> Original ID seen and matches the person</label><label class="check"><input type="checkbox" data-ip="photo" ${A.inperson.photo ? "checked" : ""}> Profile photo taken</label><label class="check"><input type="checkbox" data-ip="safe" ${A.inperson.safe ? "checked" : ""}> ${A.trade === "HVAC/Refrigeration" ? "Worked safely: power isolated, gas handled safely" : A.trade === "Maid / cleaning" ? "Used cleaning chemicals safely" : "Worked safely throughout the test"} <span class="pill bad">Must pass</span></label>
+        <div class="two"><div class="field"><label for="t-score">Practical test score</label><select id="t-score" data-ipsel="score"><option value="">Score out of 10</option>${[10, 9, 8, 7, 6, 5, 4, 3].map((n) => `<option ${String(n) === A.inperson.score ? "selected" : ""}>${n}</option>`).join("")}</select></div><div class="field"><label for="t-ipnotes">Notes</label><input id="t-ipnotes" data-ipnote type="text" value="${esc(A.inperson.notes)}" placeholder="${t.id === "HVAC/Refrigeration" ? "Found the faulty relay in 10 min" : "How the test went"}"></div></div>
+        <p class="muted small">Pass mark: 7 out of 10${A.noQual ? " (longer test, no certificate)" : ""}, and safety must pass. A high score can't make up for unsafe work.</p><p class="err" id="e-ip" hidden></p><div class="two"><button class="btn danger" type="button" data-act="ip-fail">Failed</button><button class="btn gold" type="button" data-act="ip-pass">Passed</button></div>`);
     case "induction": return box("7 · Induction", `<p class="muted small">Walk ${esc(firstName())} through the app and the rules.</p>${INDUCTION.map((x, i) => `<label class="check"><input type="checkbox" data-ind="${i}" ${A.induction[i] ? "checked" : ""}> ${esc(x)}</label>`).join("")}
       <label class="check" style="border-top:1px solid var(--line);padding-top:10px"><input type="checkbox" data-signed ${A.signed ? "checked" : ""}> <b>Service Provider Agreement signed</b> (15% commission, 24-hour payouts)</label><p class="err" id="e-ind" hidden></p><button class="btn gold" type="button" data-act="induct">Induction complete</button>`);
     case "decision": { const s = trust(); return box("8 · Decision", `<table class="score">${s.rows.map(([l, p]) => `<tr><td>${esc(l)}</td><td>+${p}</td></tr>`).join("")}<tr class="total"><td>Starting Trust Score</td><td>${s.total}</td></tr></table><p class="muted small">Ratings and completed jobs raise it over time. Level: Bronze, on probation for 5 jobs.</p>
-      <label class="check"><input type="checkbox" data-second ${A.secondCheck ? "checked" : ""}> A second team member has checked this file. Nobody approves alone.</label>
-      <label class="check"><input type="checkbox" data-noconflict ${A.noConflict ? "checked" : ""}> Nobody who vetted this applicant is related to them or was paid by them</label>
-      <p class="err" id="e-dec" hidden></p><div class="two"><button class="btn danger" type="button" data-act="decline">Not approved</button><button class="btn gold" type="button" data-act="approve">Approve</button></div>`); }
-    case "approved": return `<div class="note good"><b>${esc(A.name)} is approved.</b> Status Verified, Bronze level, Trust Score ${trust().total}. Basa ID card ${esc(A.proId)} issued. Checks renew in 12 months.</div>`;
-    case "rejected": return `<div class="note bad"><b>Not approved.</b> ${esc(A.rejectReason)}${A.appealed ? " <b>Appeal received:</b> a different team member must review it." : ""}</div>`;
+      <div class="two"><button class="btn danger" type="button" data-act="decline">Not approved</button><button class="btn gold" type="button" data-act="approve">Approve</button></div>`); }
+    case "approved": return `<div class="note good"><b>${esc(A.name)} is approved.</b> Status Verified, Bronze level, Trust Score ${trust().total}. They can go online now.</div>`;
+    case "rejected": return `<div class="note bad"><b>Not approved.</b> ${esc(A.rejectReason)}</div>`;
   }
   return "";
 }
@@ -439,7 +409,7 @@ function runAuto(after) {
   const nameOk = norm(A.ecoName) === norm(A.name) || norm(A.ecoName).includes(norm(A.name.split(" ").pop() || "x")) && norm(A.ecoName).includes(norm(A.name.split(" ")[0] || "x"));
   A.auto = [
     { label: "All required items sent", ok: true }, { label: "Photos are clear enough to read", ok: true },
-    { label: "Selfie matches the ID photo", ok: true }, { label: "Phone and ID not already registered", ok: true }, { label: "Not on the removed-providers list", ok: true },
+    { label: "Selfie matches the ID photo", ok: true }, { label: "Phone and ID not already registered", ok: true },
     { label: "EcoCash name matches the ID name", ok: nameOk },
   ].map((c) => ({ ...c, state: "wait" }));
   render(); let i = 0;
@@ -468,11 +438,7 @@ document.addEventListener("change", (e) => {
   if (t.dataset.rev) A.review[t.dataset.rev] = t.checked;
   if (t.dataset.rbind) A.review[t.dataset.rbind] = t.value;
   if (t.dataset.ip) A.inperson[t.dataset.ip] = t.checked;
-  if (t.dataset.rub !== undefined) A.inperson.rubric[+t.dataset.rub] = t.checked;
-  if (t.dataset.slot !== undefined) A.slotPick = SLOTS[+t.dataset.slot];
-  if (t.hasAttribute("data-notrel")) A.notRelative = t.checked;
-  if (t.hasAttribute("data-second")) A.secondCheck = t.checked;
-  if (t.hasAttribute("data-noconflict")) A.noConflict = t.checked;
+  if (t.dataset.ipsel) A.inperson.score = t.value;
   if (t.dataset.ind !== undefined) A.induction[+t.dataset.ind] = t.checked;
   if (t.hasAttribute("data-signed")) A.signed = t.checked;
   if (t.dataset.doc) { const f = t.files?.[0]; if (f) { A.docs[t.dataset.doc] = { name: f.name, url: URL.createObjectURL(f), fresh: true }; render(); } }
@@ -484,18 +450,8 @@ document.addEventListener("click", (e) => {
   if (b.dataset.skill) { const s = b.dataset.skill; A.skills = A.skills.includes(s) ? A.skills.filter((x) => x !== s) : [...A.skills, s]; render(); return; }
   if (b.dataset.sample) { const k = b.dataset.sample, d = docList().find((x) => x.key === k); A.docs[k] = { name: "sample-" + k + ".png", url: sampleImage(d.label.split(" (")[0], HUES[k]), fresh: true }; render(); return; }
   if (b.dataset.refans !== undefined) { A.refCheck[+b.dataset.refans].ans = b.dataset.v; render(); return; }
-  if (b.dataset.callref !== undefined) { A.refCheck[+b.dataset.callref].manual = true; render(); return; }
   const act = b.dataset.act; if (!act) return;
   switch (act) {
-    case "start": A.screen = "phone"; render(); break;
-    case "send-refs": {
-      A.refSent = true; log("Reference requests sent on WhatsApp"); msg("We've sent your two referees a short form on WhatsApp. Let them know to expect it."); render();
-      const replies = [{ relation: "Past employer", work: trade().tech ? "Maintained our equipment for 2 years" : "Worked in our home for 3 years", quality: "Excellent", honest: "Yes", again: "Yes" }, { relation: "Customer", work: trade().tech ? "Repaired our fridge and aircon" : "Weekly cleaning", quality: "Very good", honest: "Yes", again: "Yes" }];
-      [0, 1].forEach((i) => setTimeout(() => { if (A.status !== "references" || A.refCheck[i].manual) return; A.refCheck[i].reply = replies[i]; A.refCheck[i].ans = "yes"; log(`${A.refs[i].name} replied on WhatsApp`); render(); }, 2500 + i * 1800));
-      break;
-    }
-    case "pick-slot": if (!A.slotPick) return fail("e-pick", "Choose a time."); A.inperson.slot = A.slotPick; log("Provider booked in-person check: " + A.slotPick); msg(`Booked: ${A.slotPick}. Bring your original ID${trade().tech ? " and your tools" : ""}. We'll remind you the day before.`); toast("Booked. Switch to the team desk to score the check."); render(); break;
-    case "appeal": A.appealed = true; log("Applicant appealed; needs a different reviewer"); msg("We've received your appeal. A different team member will review your application within 5 working days."); render(); break;
     case "send-code": if (A.phone.replace(/\D/g, "").length < 9) return fail("e-phone", "Enter your WhatsApp number."); A.code = String(100000 + Math.floor(Math.random() * 900000)); A.codeIn = ""; A.screen = "otp"; render(); break;
     case "back-phone": A.screen = "phone"; render(); break;
     case "verify-code": if (A.codeIn !== A.code) return fail("e-code", "That code is wrong. Check WhatsApp and try again."); A.screen = "consent"; if (!A.ecoNum) A.ecoNum = A.phone; render(); break;
@@ -529,20 +485,20 @@ document.addEventListener("click", (e) => {
       break;
     case "reject-fake": A.status = "rejected"; A.rejectStep = 3; A.rejectFake = true; A.rejectReason = "The documents could not be verified as genuine."; log("Rejected: documents could not be verified"); msg("We're sorry, we can't approve your application because your documents could not be verified."); render(); break;
     case "log-refs":
-      if (A.refCheck.some((r) => !r.ans)) return fail("e-refs", "Wait for both replies, or call and record the answer.");
-      if (!A.notRelative) return fail("e-refs", "Confirm neither referee is a relative. References from family don't count.");
+      if (A.refCheck.some((r) => !r.ans)) return fail("e-refs", "Record the answer for both referees.");
       if (A.refCheck.some((r) => r.ans === "no")) { A.status = "rejected"; A.rejectStep = 4; A.rejectReason = "One of your references was not positive."; log("Rejected: a reference was not positive"); msg("We're sorry, we can't approve your application this time. You can apply again in 3 months."); render(); break; }
       A.status = "inperson"; log("Both references positive"); msg("Both your referees vouched for you. Next: an in-person check with our team."); render(); break;
     case "book": { const s = $("#t-slot").value; if (!s) return fail("e-slot", "Choose a slot."); A.inperson.slot = s; log("In-person check booked: " + s); msg(`Your in-person check is booked: ${s}. Bring your original ID${trade().tech ? " and your tools" : ""}.`); render(); break; }
     case "ip-pass": {
       if (!A.inperson.idMatch || !A.inperson.photo) return fail("e-ip", "Confirm the original ID matched and the photo was taken.");
-      if (!A.inperson.rubric[1]) return fail("e-ip", "Safety is a must-pass. If they didn't work safely, use Failed.");
-      if (A.inperson.rubric.some((x) => !x)) return fail("e-ip", "All four test points must pass. Otherwise use Failed.");
-      A.status = "induction"; log("In-person check passed (4/4 test points)"); msg("Well done, you passed the in-person check. Last step: a short induction and signing your agreement."); render(); break;
+      if (!A.inperson.safe) return fail("e-ip", "Safety is a must-pass. If they didn't work safely, use Failed, whatever the score.");
+      if (!A.inperson.score) return fail("e-ip", "Enter the practical test score.");
+      if (Number(A.inperson.score) < 7) return fail("e-ip", "A score below 7 is a fail. Use Failed, or check the score.");
+      A.status = "induction"; log(`In-person check passed (${A.inperson.score}/10, worked safely)`); msg("Well done, you passed the in-person check. Last step: a short induction and signing your agreement."); render(); break;
     }
-    case "ip-fail": A.status = "rejected"; A.rejectStep = 5; A.rejectReason = "You didn't pass the in-person check this time."; log(`In-person check failed (${A.inperson.rubric.filter(Boolean).length}/4 test points${A.inperson.rubric[1] ? "" : ", safety not passed"})`); msg("Thank you for coming in. You didn't pass the practical test this time. You can apply again in 3 months."); render(); break;
+    case "ip-fail": A.status = "rejected"; A.rejectStep = 5; A.rejectReason = "You didn't pass the in-person check this time."; log(`In-person check failed${A.inperson.score ? " (" + A.inperson.score + "/10)" : ""}${A.inperson.safe ? "" : ", safety not passed"}`); msg("Thank you for coming in. You didn't pass the practical test this time. You can apply again in 3 months."); render(); break;
     case "induct": if (A.induction.some((x) => !x)) return fail("e-ind", "Cover every point of the induction."); if (!A.signed) return fail("e-ind", "The agreement must be signed."); A.status = "decision"; log("Induction done; agreement signed"); render(); break;
-    case "approve": if (!A.secondCheck || !A.noConflict) return fail("e-dec", "Get a second team member to check the file, and confirm there's no conflict of interest."); A.proId = "BSB-PRO-" + String(140 + Math.floor(Math.random() * 60)).padStart(4, "0"); A.status = "approved"; log(`Approved · Trust Score ${trust().total} · Bronze`); msg(`Congratulations ${firstName()}! You're a verified Basa seBasa pro. Your Basa ID card is in the app. Go online to get your first job.`); toast("Approved. Switch to the provider phone to see the welcome."); render(); break;
+    case "approve": A.status = "approved"; log(`Approved · Trust Score ${trust().total} · Bronze`); msg(`Congratulations ${firstName()}! You're a verified Basa seBasa pro. Open the app and go online to get your first job.`); toast("Approved. Switch to the provider phone to see the welcome."); render(); break;
     case "decline": A.status = "rejected"; A.rejectStep = 7; A.rejectReason = "The team decided not to approve your application."; log("Not approved at final decision"); msg("We're sorry, we can't approve your application this time. You can apply again in 3 months."); render(); break;
   }
 });
