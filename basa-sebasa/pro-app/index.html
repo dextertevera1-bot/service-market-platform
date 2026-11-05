@@ -470,6 +470,127 @@ function scheduleRequest(delay = 4000) {
 function later(ms, fn) { setTimeout(fn, ms); }
 function sim(stage, ms, text, guard) { later(ms, () => { const j = R.job; if (!j || (guard && j.stage !== guard)) return; j.stage = stage; if (text) toast(text); render(); }); }
 
+// =====================================================================
+// PAYMENT RECEIPTS (PDF)
+// =====================================================================
+const ECOCASH_RATE = 2; // % placeholder until set from Econet's tariff, same as the ops desk
+function ref() { const d = new Date(); return "MP" + String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") + "." + String(Math.floor(Math.random() * 9000) + 1000) + "." + "ABCDEFGHJK"[Math.floor(Math.random() * 10)] + String(Math.floor(Math.random() * 90000) + 10000); }
+function makeReceipt(j) {
+  const e = earnings(j), rate = ECOCASH_RATE / 100, repair = j.type === "Repair", paidAt = Date.now();
+  const custLines = [];
+  if (repair) custLines.push(["Call-out (inspection and travel up to " + P.freeKm + " km)", P.callout]);
+  if (e.travel) custLines.push([`Extra travel (${r2(j.km - P.freeKm)} km beyond ${P.freeKm} km)`, e.travel]);
+  if (!j.calloutOnly) {
+    if (j.type === "Maid") custLines.push([`${j.hours} hours x $${j.rate} per hour`, e.labour]);
+    else custLines.push([repair ? "Labour (as quoted and approved)" : "Agreed price", e.labour]);
+    if (e.parts) custLines.push(["Parts (receipt attached to the service report)", e.parts]);
+  }
+  const base1 = repair ? P.callout + e.travel : 0, base2 = j.calloutOnly ? 0 : r2(e.labour + e.parts + (repair ? 0 : e.travel));
+  const charges = r2(base1 * rate + (base2 ? base2 * rate + e.total * rate : 0));
+  if (charges) custLines.push(["EcoCash charges", charges]);
+  const payments = [];
+  if (repair) payments.push({ what: "Call-out", amount: r2(base1 * (1 + rate)), ref: ref() });
+  if (base2) payments.push({ what: repair ? "Repair" : "Job", amount: r2(base2 + base2 * rate + e.total * rate), ref: ref() });
+  const proLines = [];
+  if (e.callout) proLines.push(["Call-out (your share of $" + P.callout + ")", e.callout]);
+  if (e.travel) proLines.push(["Extra travel", e.travel]);
+  if (e.labour) proLines.push([j.type === "Maid" ? "Hours worked" : "Labour", e.labour]);
+  if (e.fee) proLines.push([`Basa seBasa fee (${P.commission}% of ${j.type === "Maid" ? "hours" : "labour"})`, -e.fee]);
+  if (e.parts) proLines.push(["Parts (100% yours)", e.parts]);
+  return { no: "RCPT-" + j.id, job: j.id, paidAt, service: j.item, type: j.type, customer: j.customer, place: `${j.address}, ${j.suburb}, Harare`, pro: S.profile.name, trust: trustFor(S.profile).total, trade: tradeOf(S.profile.trade).name,
+    custLines, custTotal: r2(custLines.reduce((t, l) => t + l[1], 0)), payments, proLines, proTotal: e.total, payoutTo: S.profile.ecoNum, payoutDue: paidAt + P.payoutHours * 36e5,
+    warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", calloutOnly: !!j.calloutOnly, diagnosis: j.quote?.diagnosis || "" };
+}
+// A small built-in PDF writer: no downloads needed, so receipts work offline too.
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const ascii = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—−]/g, "-").replace(/·/g, "-").replace(/…/g, "...").replace(/[^\x20-\x7E]/g, "");
+function makePdf() {
+  const K = 72 / 25.4, H = 841.89, ops = [];
+  const n = (v) => (Math.round(v * 100) / 100).toString();
+  const col = (c) => c.map((v) => n(v / 255)).join(" ");
+  const api = {
+    width(t, size, bold) { const w = bold ? HELVB : HELV; let u = 0; for (const ch of ascii(t)) u += w[ch.charCodeAt(0) - 32] || 556; return (u / 1000) * size / K; },
+    wrap(t, maxW, size, bold) { const words = ascii(t).split(" "), lines = []; let cur = ""; words.forEach((w) => { const tryL = cur ? cur + " " + w : w; if (api.width(tryL, size, bold) > maxW && cur) { lines.push(cur); cur = w; } else cur = tryL; }); if (cur) lines.push(cur); return lines; },
+    rect(x, y, w, h, fill) { ops.push(`${col(fill)} rg ${n(x * K)} ${n(H - (y + h) * K)} ${n(w * K)} ${n(h * K)} re f`); },
+    line(x1, y1, x2, y2, color, width = 0.3) { ops.push(`${col(color)} RG ${n(width * K)} w ${n(x1 * K)} ${n(H - y1 * K)} m ${n(x2 * K)} ${n(H - y2 * K)} l S`); },
+    text(t, x, y, { size = 10, bold = false, color = [20, 18, 13], align = "left" } = {}) {
+      const s2 = ascii(t), w = api.width(s2, size, bold), x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+      ops.push(`BT ${col(color)} rg /${bold ? "F2" : "F1"} ${n(size)} Tf ${n(x0 * K)} ${n(H - y * K)} Td (${s2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj ET`);
+      return w;
+    },
+    blob() {
+      const stream = ops.join("\n"), objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+      ];
+      let out = "%PDF-1.4\n"; const offs = [];
+      objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+      const xref = out.length;
+      out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
+      out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info << /Title (Basa seBasa receipt) /Producer (Basa seBasa Pro) >> >>\nstartxref\n${xref}\n%%EOF`;
+      return new Blob([out], { type: "application/pdf" });
+    },
+  };
+  return api;
+}
+async function buildPdf(r) {
+  const d = makePdf(), W = 210, M = 18, ink = [20, 18, 13], gold = [240, 174, 0], grey = [103, 99, 90], green = [31, 118, 70], cream = [245, 241, 230], rule = [220, 216, 206];
+  const money = (v) => (v < 0 ? "-$" : "$") + Math.abs(r2(v)).toFixed(2);
+  const when = (t) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  d.rect(0, 0, W, 34, ink);
+  d.rect(M, 9, 16, 16, gold); d.text("B", M + 8, 20.5, { size: 16, bold: true, color: ink, align: "center" });
+  let x = M + 21; x += d.text("BASA ", x, 18, { size: 17, bold: true, color: cream }); x += d.text("se", x, 18, { size: 17, bold: true, color: gold }); d.text("BASA", x, 18, { size: 17, bold: true, color: cream });
+  d.text("Verified professionals. Work done right.", M + 21, 24, { size: 8.5, color: [185, 178, 162] });
+  d.text(r.calloutOnly ? "CALL-OUT RECEIPT" : "PAYMENT RECEIPT", W - M, 16, { size: 13, bold: true, color: gold, align: "right" });
+  d.text(r.no, W - M, 22, { size: 9, color: cream, align: "right" }); d.text(when(r.paidAt), W - M, 27, { size: 9, color: cream, align: "right" });
+  let y = 46; const colW = (W - 2 * M) / 2;
+  const label = (t, lx, ly) => d.text(t.toUpperCase(), lx, ly, { size: 7.5, bold: true, color: grey });
+  const val = (t, vx, vy, w) => { const ls = d.wrap(t, w, 10); ls.forEach((l, i) => d.text(l, vx, vy + i * 5, { size: 10 })); return ls.length; };
+  label("Job", M, y); const a1 = val(`${r.job} - ${r.service}`, M, y + 5, colW - 6);
+  label("Professional", M + colW, y); const a2 = val(`${r.pro}, ${r.trade}, Trust Score ${r.trust}`, M + colW, y + 5, colW);
+  y += 6 + 5 * Math.max(a1, a2) + 4;
+  label("Customer", M, y); const b1 = val(`${r.customer}, ${r.place}`, M, y + 5, colW - 6);
+  label("Arrival", M + colW, y); const b2 = val("Basa Code confirmed at the door", M + colW, y + 5, colW);
+  y += 6 + 5 * Math.max(b1, b2) + 4;
+  if (r.diagnosis) { label("Fault found", M, y); y += 6 + 5 * val(r.diagnosis, M, y + 5, W - 2 * M) + 2; }
+  const table = (title, lines, totalLabel, total, color) => {
+    d.line(M, y, W - M, y, rule); y += 7;
+    d.text(title, M, y, { size: 11, bold: true }); y += 6.5;
+    lines.forEach(([l, a]) => { d.text(l, M, y, { size: 10 }); d.text(money(a), W - M, y, { size: 10, align: "right" }); y += 6; });
+    d.line(W - M - 60, y - 2, W - M, y - 2, ink); y += 4;
+    d.text(totalLabel, M, y, { size: 12, bold: true, color }); d.text(money(total), W - M, y, { size: 12, bold: true, color, align: "right" }); y += 8;
+  };
+  table("Paid by the customer", r.custLines, "Total paid", r.custTotal, ink);
+  r.payments.forEach((p) => { d.text(`${p.what}: ${money(p.amount)} by EcoCash to Basa seBasa, reference ${p.ref}`, M, y, { size: 9, color: grey }); y += 5; });
+  y += 3;
+  table("Professional's payout", r.proLines, "Paid to the professional", r.proTotal, green);
+  d.wrap(`Sent to EcoCash ${r.payoutTo} ${Date.now() >= r.payoutDue ? "(paid)" : "by " + when(r.payoutDue)}, within ${P.payoutHours} hours of the customer paying.`, W - 2 * M, 9).forEach((l) => { d.text(l, M, y, { size: 9, color: grey }); y += 5; });
+  y += 4;
+  if (r.warranty) { d.rect(M, y - 4.5, W - 2 * M, 11, [223, 241, 229]); d.text(`Warranty until ${r.warranty}. Free return visit if the same fault comes back.`, M + 4, y + 2.5, { size: 10, bold: true, color: green }); y += 14; }
+  d.line(M, 270, W - M, 270, rule);
+  d.text("All payments go through Basa seBasa on EcoCash. Never pay a professional in cash.", M, 276, { size: 8.5, color: grey });
+  d.text(`Questions? Message Basa seBasa on WhatsApp and quote ${r.job}.`, M, 281, { size: 8.5, color: grey });
+  if (PREVIEW) d.text("Pilot preview: sample transaction, nothing was charged.", W - M, 281, { size: 8.5, color: [134, 95, 0], align: "right" });
+  return d.blob();
+}
+async function downloadReceipt(r) {
+  if (!r) return toast("No receipt for this job.");
+  toast("Making your receipt…");
+  let blob;
+  try { blob = await buildPdf(r); } catch (e) { return toast("Couldn't make the PDF. Try again."); }
+  const filename = `Basa-seBasa-receipt-${r.job}.pdf`;
+  let dl = null;
+  try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+  if (dl) { try { await dl.save({ filename, data: blob }); toast("Receipt saved."); } catch (e) { toast(e?.code === "declined" ? "Download cancelled." : "Downloads aren't available here."); } return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast("Receipt downloaded.");
+}
+
 // real GPS while online or on a job (the browser asks the technician for permission)
 function startGPS() {
   if (R.gpsWatch !== null || !navigator.geolocation) { if (!navigator.geolocation) R.gps = { err: "This phone can't share location" }; return; }
@@ -527,11 +648,11 @@ function jobView(j) {
       <div class="card"><h3>Customer not answering?</h3>${j.waitStart ? `<div class="wait"><span class="spin"></span><span>Waiting: <b id="wait">${fmt(waitLeft(j))}</b> left. Keep calling.</span></div>${waitLeft(j) <= 0 ? `<button class="btn danger" type="button" data-act="noshow">Customer not home: close job</button>` : ""}` : `<p class="muted">Start the ${P.noShowMinutes}-minute wait. If nobody comes, you keep ${j.type === "Repair" ? "the call-out" : "a no-show fee"} and ${esc(f)} is told.</p><button class="btn quiet" type="button" data-act="wait">Start ${P.noShowMinutes}-minute wait</button>`}</div>`;
     case "arrived": return head("Arrival confirmed", j.type === "Repair" ? `Inspect the problem, then send ${esc(f)} a full quote before doing any work.` : `Take a before photo, then start the job timer.`) + (j.type === "Repair" ? quoteForm(j) : startCard(j));
     case "quote_sent": return head("Quote sent", `Waiting for ${esc(f)} to approve.`, `<div class="wait"><span class="spin"></span><span>${esc(f)} sees your diagnosis and the total on WhatsApp.</span></div>`) + `<div class="card"><h3>Your quote</h3>${splitTable(j)}</div>`;
-    case "deferred": return head("Repair saved for later", `${esc(f)} will repair another time. You keep the call-out.`) + `<div class="card"><p>The diagnosis is saved for ${P.diagnosisDays} days. When ${esc(f)} is ready, <b>you get first chance</b> to do the repair.</p><table class="split"><tr class="you"><td>You earned</td><td>${usd(e.upfront)}</td></tr></table><button class="btn gold" type="button" data-act="end-deferred">Back to jobs</button></div>`;
+    case "deferred": return head("Repair saved for later", `${esc(f)} will repair another time. You keep the call-out.`) + `<div class="card"><p>The diagnosis is saved for ${P.diagnosisDays} days. When ${esc(f)} is ready, <b>you get first chance</b> to do the repair.</p><table class="split"><tr class="you"><td>You earned</td><td>${usd(e.upfront)}</td></tr></table><button class="btn quiet" type="button" data-act="receipt-current">Download call-out receipt (PDF)</button><button class="btn gold" type="button" data-act="end-deferred">Back to jobs</button></div>`;
     case "approved": return head("Quote approved", `${esc(f)} said yes. You can start.`) + startCard(j);
     case "working": return head("Job in progress", "") + workView(j, t);
     case "await_payment": return head("Waiting for payment", `${esc(f)} has your service report and is paying on EcoCash.`, `<div class="wait"><span class="spin"></span><span>Don't accept cash. All payments go through Basa seBasa.</span></div>`) + reportCard(j, t);
-    case "rate": return head("Paid. Well done", `${esc(f)} rated you ${"★".repeat(j.rating)}. Your payout is on its way.`) + `<div class="card"><table class="split"><tr class="you"><td>You earn from this job</td><td>${usd(e.total)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours, with the reference on WhatsApp.</p>${j.review ? `<p>"${esc(j.review)}"</p>` : ""}</div>
+    case "rate": return head("Paid. Well done", `${esc(f)} rated you ${"★".repeat(j.rating)}. Your payout is on its way.`) + `<div class="card"><table class="split"><tr class="you"><td>You earn from this job</td><td>${usd(e.total)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours, with the reference on WhatsApp.</p>${j.review ? `<p>"${esc(j.review)}"</p>` : ""}<button class="btn quiet" type="button" data-act="receipt-current">Download receipt (PDF)</button></div>
       <div class="card"><h3>How was ${esc(f)}?</h3><p class="muted small">Your rating helps us protect pros from difficult customers.</p><div class="stars" role="radiogroup" aria-label="Rate the customer">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-crate="${n}" class="${(j.custStars || 0) >= n ? "on" : ""}" aria-label="${n} star${n > 1 ? "s" : ""}">★</button>`).join("")}</div>
         <label class="tick"><input type="checkbox" id="flag"> Report a problem (unsafe, abusive, asked to pay cash)</label><p class="err" id="rate-err" hidden></p><button class="btn gold" type="button" data-act="finish">Finish</button></div>`;
   }
@@ -582,12 +703,12 @@ function viewEarnings() {
   return `<h2>Earnings</h2>
     <div class="kpis"><div class="kpi lead"><span class="eyebrow">This week</span><b>${usd(got)}</b><span class="small">${week.length} jobs</span></div><div class="kpi"><span class="eyebrow">Payout pending</span><b>${usd(pending.reduce((s, d) => s + d.earned, 0))}</b><span class="muted small">Within ${P.payoutHours} h of payment</span></div></div>
     <div class="card"><div class="toprow"><h3>Weekly goal</h3><select id="goal" aria-label="Weekly goal" style="width:auto">${[150, 250, 400, 600].map((g) => `<option value="${g}" ${g === S.pro.weeklyGoal ? "selected" : ""}>$${g}</option>`).join("")}</select></div><div class="goal" aria-hidden="true"><i style="width:${Math.min(100, got / S.pro.weeklyGoal * 100)}%"></i></div><p class="muted small">${got >= S.pro.weeklyGoal ? "Goal reached. Well done." : usd(S.pro.weeklyGoal - got) + " to go this week."}</p></div>
-    <div class="card list"><h3>Payouts</h3>${S.pro.done.length ? S.pro.done.map((d) => { const left = d.at + P.payoutHours * 36e5 - now; return `<div class="row2"><span><b>${esc(d.item)}</b><small>${new Date(d.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${esc(d.id)}</small></span><span class="amt">${usd(d.earned)}<br><span class="pill ${left <= 0 ? "good" : ""}">${left <= 0 ? "Paid to EcoCash" : "Due in " + Math.max(1, Math.round(left / 36e5)) + " h"}</span></span></div>`; }).join("") : `<p class="muted">Your completed jobs and payouts appear here.</p>`}</div>
+    <div class="card list"><h3>Payouts</h3>${S.pro.done.length ? S.pro.done.map((d) => { const left = d.at + P.payoutHours * 36e5 - now; return `<div class="row2"><span><b>${esc(d.item)}</b><small>${new Date(d.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${esc(d.id)}</small></span><span class="amt">${usd(d.earned)}<br><span class="pill ${left <= 0 ? "good" : ""}">${left <= 0 ? "Paid to EcoCash" : "Due in " + Math.max(1, Math.round(left / 36e5)) + " h"}</span>${d.receipt ? `<br><button class="btn quiet sm" type="button" data-receipt="${esc(d.id)}" style="margin-top:6px">Receipt PDF</button>` : ""}</span></div>`; }).join("") : `<p class="muted">Your completed jobs and payouts appear here.</p>`}</div>
     <div class="card"><h3>Your regulars</h3><p class="muted small">When your regular customers book you through Basa seBasa, you get the job first, their warranty stays valid, and every visit grows your Trust Score. Jobs taken outside the app lose all three.</p></div>
     <div class="card"><h3>How you're paid</h3><p class="muted">Customers pay Basa seBasa on EcoCash. We send your share to <span class="mono">${esc(S.profile.ecoNum)}</span> within ${P.payoutHours} hours: ${100 - P.commission}% of labour, all of the parts, $${P.callout - P.calloutPlatform} of each $${P.callout} call-out, and any extra travel.</p></div>`;
 }
 function viewHistory() {
-  return `<h2>History</h2><div class="card list">${S.pro.done.length ? S.pro.done.map((d) => `<div class="row2"><span><b>${esc(d.item)}</b><small>${esc(d.suburb)} · ${esc(d.type)} · ${d.minutes ? d.minutes + " min on the job" : d.noshow ? "customer not home" : "call-out only"}${d.warranty ? " · warranty to " + esc(d.warranty) : ""}</small></span><span class="amt">${d.rating ? "★".repeat(d.rating) : "—"}<br><small>${usd(d.earned)}</small></span></div>`).join("") : `<div class="empty"><h3>No jobs yet</h3><p class="muted">Go online to get your first job.</p></div>`}</div>`;
+  return `<h2>History</h2><div class="card list">${S.pro.done.length ? S.pro.done.map((d) => `<div class="row2"><span><b>${esc(d.item)}</b><small>${esc(d.suburb)} · ${esc(d.type)} · ${d.minutes ? d.minutes + " min on the job" : d.noshow ? "customer not home" : "call-out only"}${d.warranty ? " · warranty to " + esc(d.warranty) : ""}</small></span><span class="amt">${d.rating ? "★".repeat(d.rating) : "—"}<br><small>${usd(d.earned)}</small>${d.receipt ? `<br><button class="btn quiet sm" type="button" data-receipt="${esc(d.id)}" style="margin-top:6px">Receipt PDF</button>` : ""}</span></div>`).join("") : `<div class="empty"><h3>No jobs yet</h3><p class="muted">Go online to get your first job.</p></div>`}</div>`;
 }
 function viewProfile() {
   const p = S.profile, t = trustFor(p), ix = level();
@@ -658,7 +779,7 @@ function runAuto() {
   tick();
 }
 function finishJob(earned, extra = {}) {
-  const j = R.job; S.pro.done.unshift({ id: j.id, item: j.item, type: j.type, suburb: j.suburb, customer: j.customer, at: Date.now(), earned, minutes: j.minutes || 0, rating: j.rating || 0, warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", ...extra });
+  const j = R.job; if (!extra.noReceipt) extra.receipt = j.receipt || makeReceipt(j); delete extra.noReceipt; S.pro.done.unshift({ id: j.id, item: j.item, type: j.type, suburb: j.suburb, customer: j.customer, at: Date.now(), earned, minutes: j.minutes || 0, rating: j.rating || 0, warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", ...extra });
   S.pro.done = S.pro.done.slice(0, 50); save(); R.job = null; R.sos = false; render(); if (S.pro.online) scheduleRequest(5000);
 }
 function goOnline(on) {
@@ -689,6 +810,7 @@ document.addEventListener("click", async (e) => {
   if (b.dataset.skill) { const s = b.dataset.skill; a.skills = a.skills.includes(s) ? a.skills.filter((x) => x !== s) : [...a.skills, s]; save(); render(); return; }
   if (b.dataset.sample) { const d = docList().find((x) => x.key === b.dataset.sample); a.docs[d.key] = { name: "sample-" + d.key + ".png", url: sampleImage(d.label.split(" (")[0], d.hue, a.name) }; save(); render(); return; }
   if (b.dataset.crate) { j.custStars = Number(b.dataset.crate); render(); return; }
+  if (b.dataset.receipt) { downloadReceipt(S.pro.done.find((d) => d.id === b.dataset.receipt)?.receipt); return; }
   const act = b.dataset.act; if (!act) return;
   switch (act) {
     // ---- welcome & onboarding ----
@@ -730,7 +852,7 @@ document.addEventListener("click", async (e) => {
     case "arrived": j.stage = "verify"; render(); break;
     case "verify": { const c = $("#code").value; if (c.length !== 4) return fail("code-err", "Enter the 4-digit code."); if (c !== j.code) return fail("code-err", "That code doesn't match. Check you're at the right house, or call us."); j.stage = "arrived"; j.arrivedAt = Date.now(); send("Arrival confirmed. The customer knows it's really you."); render(); break; }
     case "wait": j.waitStart = Date.now(); send(`${first(j.customer)} has been told you're waiting outside.`); render(); break;
-    case "noshow": j.calloutOnly = true; send("Job closed as customer not home."); finishJob(j.type === "Repair" ? earnings(j).upfront : 3, { noshow: true }); break;
+    case "noshow": j.calloutOnly = true; send("Job closed as customer not home."); finishJob(j.type === "Repair" ? earnings(j).upfront : 3, { noshow: true, noReceipt: j.type !== "Repair" }); break;
     case "quote": {
       const diag = $("#diag").value.trim(), lab = Number($("#labour").value), parts = Number($("#parts").value) || 0;
       if (diag.length < 5) return fail("q-err", "Describe what's wrong so the customer understands."); if (!(lab > 0)) return fail("q-err", "Enter the labour price.");
@@ -748,15 +870,16 @@ document.addEventListener("click", async (e) => {
       if (earnings(j).parts > 0 && !j.receiptPhoto) return fail("done-err", "Add a photo of the parts receipt so the customer sees what they paid for.");
       Object.assign(j, { notes: $("#notes").value.trim(), minutes: Math.max(1, Math.round(workMs(j) / 6e4)), stage: "await_payment" });
       send("Service report sent to the customer."); render();
-      later(7000, () => { if (R.job !== j) return; j.stage = "rate"; j.rating = 5; j.review = "On time, used his Basa Code and explained everything."; toast("Customer paid. Your payout is on its way."); render(); });
+      later(7000, () => { if (R.job !== j) return; j.stage = "rate"; j.receipt = makeReceipt(j); j.rating = 5; j.review = "On time, used his Basa Code and explained everything."; toast("Customer paid. Your payout is on its way."); render(); });
       break;
     }
     case "finish": if (!j.custStars) return fail("rate-err", "Tap the stars to rate the customer."); if ($("#flag").checked) toast("Thanks. Our team will call you about this."); finishJob(earnings(j).total); break;
     case "end-deferred": j.calloutOnly = true; finishJob(earnings(j).upfront); break;
+    case "receipt-current": if (j.stage === "deferred") j.calloutOnly = true; j.receipt = j.receipt || makeReceipt(j); downloadReceipt(j.receipt); break;
     case "sos": R.sos = !R.sos; render(); break;
     case "sos-call": toast(PREVIEW ? "In the live app this calls the Basa seBasa safety line with your location." : "Calling the safety line…"); break;
     case "sos-share": toast(PREVIEW ? "In the live app this sends your live location to your emergency contact." : "Location shared."); break;
-    case "sos-leave": toast("Our team has been told and will contact the customer. Get somewhere safe."); R.sos = false; j.calloutOnly = true; finishJob(earnings(j).upfront); break;
+    case "sos-leave": toast("Our team has been told and will contact the customer. Get somewhere safe."); R.sos = false; j.calloutOnly = true; finishJob(earnings(j).upfront, { noReceipt: true }); break;
     case "chat": toast(PREVIEW ? "In the live app this opens WhatsApp with the customer through a Basa seBasa number." : "Opening WhatsApp…"); break;
     case "net": R.simNet = !R.simNet; if (online() && R.queued) { toast(`Back online. ${R.queued} saved update${R.queued > 1 ? "s" : ""} sent.`); R.queued = 0; } else if (!online()) toast("No network. Keep working; updates are saved."); render(); break;
     case "reset": if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to erase everything"; return; } stopGPS(); S = blank(); R.job = null; R.request = null; save(); location.hash = ""; render(); window.scrollTo(0, 0); break;
