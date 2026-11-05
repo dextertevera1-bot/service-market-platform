@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Basa seBasa Live Link Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: three columns. The customer's chat phone on the left, the Basa seBasa server log in the middle, the technician's Pro app phone on the right. On phones a switch shows one column at a time. */
+:root {
+  --bg: #F4F2EC; --card: #FFFFFF; --sunk: #EAE7DF; --ink: #14120D; --muted: #67635A; --line: #DCD8CE;
+  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D;
+  --good: #1F7646; --good-bg: #DFF1E5; --bad: #A3271D; --bad-bg: #F8E0DC; --warn-bg: #FCEECC;
+  --chat-bg: #E9E3D8; --chat-in: #FFFFFF; --chat-out: #DCF5D0; --chat-head: #0E5E4E; --chat-accent: #0E7C66; --chat-meta: #6F7A74;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  --chat-bg: #10161A; --chat-in: #1E2A30; --chat-out: #11493D; --chat-head: #17262D; --chat-accent: #4FC3A1; --chat-meta: #8FA19A;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  --chat-bg: #10161A; --chat-in: #1E2A30; --chat-out: #11493D; --chat-head: #17262D; --chat-accent: #4FC3A1; --chat-meta: #8FA19A;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.42; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: #14120D; }
+h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.04; margin: 0; text-wrap: balance; }
+h2 { font-size: 28px; text-transform: uppercase; }
+h3 { font-size: 19px; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); }
+
+/* top bar */
+.top { background: #14120D; color: #F5F1E6; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; }
+.top-in { max-width: 1320px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.mark { width: 34px; height: 34px; border-radius: 8px; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 23px; flex: none; }
+.logo b { font-family: var(--display); font-size: 21px; letter-spacing: .02em; white-space: nowrap; }
+.logo b i { font-style: normal; color: #F0AE00; }
+.logo small { display: block; color: #B9B2A2; font-size: 12.5px; }
+.auto { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #CFC9BA; cursor: pointer; }
+.auto input { width: 18px; height: 18px; accent-color: #F0AE00; }
+.reset { border: 1px solid #4A463D; background: transparent; color: #CFC9BA; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.switch { display: none; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; width: 100%; }
+.switch button { flex: 1; border: 0; background: transparent; color: #CFC9BA; padding: 7px 8px; border-radius: 999px; font-weight: 700; font-size: 13.5px; cursor: pointer; position: relative; }
+.switch button[aria-pressed="true"] { background: #F0AE00; color: #14120D; }
+.switch .ping { position: absolute; top: 4px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: #E5483B; }
+.guide { background: var(--gold); color: var(--on-gold); }
+.guide-in { max-width: 1320px; margin: 0 auto; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 600; font-size: 14.5px; }
+.guide button { border: 1.5px solid var(--on-gold); background: transparent; color: var(--on-gold); border-radius: 999px; padding: 3px 12px; font-weight: 700; cursor: pointer; }
+
+.stage { max-width: 1320px; margin: 0 auto; padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr) minmax(0, 380px); gap: 18px; align-items: start; }
+.label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
+.phone { position: relative; border-radius: 26px; overflow: hidden; border: 1px solid var(--line); height: 680px; display: flex; flex-direction: column; background: var(--bg); }
+
+/* customer chat */
+.chat-head { background: var(--chat-head); color: #fff; padding: 12px 14px; display: flex; gap: 10px; align-items: center; flex: none; }
+.chat-head .mark { width: 38px; height: 38px; border-radius: 50%; }
+.chat-head b { display: block; font-size: 16px; }
+.chat-head small { opacity: .8; font-size: 12.5px; }
+.chat { flex: 1; overflow-y: auto; background: var(--chat-bg); padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+.day { align-self: center; background: var(--chat-in); color: var(--chat-meta); font-size: 12px; border-radius: 8px; padding: 3px 10px; margin-bottom: 4px; }
+.msg { max-width: 86%; display: grid; gap: 0; }
+.msg.in { align-self: flex-start; }
+.msg.out { align-self: flex-end; }
+.bubble { padding: 7px 10px 6px; border-radius: 10px; font-size: 14.5px; box-shadow: 0 1px 0 rgba(0,0,0,.08); overflow-wrap: anywhere; }
+.msg.in .bubble { background: var(--chat-in); border-top-left-radius: 2px; }
+.msg.out .bubble { background: var(--chat-out); border-top-right-radius: 2px; }
+.bubble time { display: block; text-align: right; color: var(--chat-meta); font-size: 11px; margin-top: 2px; }
+.bubble b { font-weight: 700; }
+.bubble .link { color: var(--chat-accent); text-decoration: underline; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
+.bubble img { display: block; max-width: 100%; border-radius: 6px; margin-bottom: 4px; }
+.code { font-family: var(--mono); font-size: 22px; letter-spacing: .3em; font-weight: 700; }
+.chat-btns { display: grid; gap: 2px; margin-top: 2px; }
+.chat-btns button { background: var(--chat-in); color: var(--chat-accent); border: 0; border-radius: 8px; padding: 9px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 0 rgba(0,0,0,.08); }
+.chat-btns button:disabled { color: var(--chat-meta); cursor: default; opacity: .7; }
+.chat-btns.list button { text-align: left; display: grid; gap: 1px; padding: 9px 12px; }
+.chat-btns.list small { color: var(--chat-meta); font-weight: 500; font-size: 12.5px; }
+.loc { display: grid; gap: 4px; }
+.loc .minimap { height: 90px; border-radius: 6px; background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(0,0,0,.07) 22px 24px), repeating-linear-gradient(90deg, transparent 0 30px, rgba(0,0,0,.07) 30px 32px), #CFE3D0; display: grid; place-items: center; }
+.pin { width: 16px; height: 16px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #C0392B; border: 2px solid #fff; }
+.doc { display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,.05); border-radius: 8px; padding: 8px 10px; cursor: pointer; border: 0; width: 100%; text-align: left; }
+.doc .pdf { background: #C0392B; color: #fff; font-weight: 800; font-size: 11px; border-radius: 4px; padding: 6px 5px; white-space: nowrap; flex: none; }
+.report { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13.5px; margin-top: 4px; }
+.report dt { color: var(--chat-meta); }
+.report dd { margin: 0; }
+.typing { align-self: flex-start; background: var(--chat-in); border-radius: 10px; padding: 8px 12px; color: var(--chat-meta); font-size: 13px; }
+.composer { display: flex; gap: 6px; padding: 8px; background: var(--chat-bg); border-top: 1px solid rgba(0,0,0,.06); flex: none; }
+.composer input { flex: 1; min-width: 0; border: 0; border-radius: 999px; padding: 10px 14px; background: var(--chat-in); font-size: 15px; }
+.composer button { border: 0; border-radius: 50%; width: 42px; height: 42px; background: var(--chat-accent); color: #fff; font-weight: 800; cursor: pointer; flex: none; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 8px 8px; background: var(--chat-bg); flex: none; }
+.chips button { border: 1px solid var(--chat-accent); background: var(--chat-in); color: var(--chat-accent); border-radius: 999px; padding: 5px 11px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.overlay { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 18px; z-index: 5; }
+.ussd { background: #1E1E1E; color: #EDEDED; border-radius: 12px; padding: 18px; width: 100%; max-width: 300px; display: grid; gap: 12px; font-size: 15px; }
+.ussd input { background: #2B2B2B; border: 1px solid #555; border-radius: 6px; padding: 9px; color: #fff; font-family: var(--mono); letter-spacing: .4em; text-align: center; font-size: 18px; }
+.ussd .row { display: flex; justify-content: flex-end; gap: 18px; }
+.ussd button { background: none; border: 0; color: #7FD4BF; font-weight: 700; letter-spacing: .06em; cursor: pointer; padding: 4px; }
+.track { background: var(--card); border-radius: 16px; padding: 14px; width: 100%; display: grid; gap: 10px; }
+
+/* server log */
+.log { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px; align-content: start; min-height: 680px; max-height: 680px; overflow-y: auto; }
+.log-row { display: grid; grid-template-columns: 44px 84px 1fr; gap: 8px; font-size: 13.5px; align-items: start; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.log-row:last-child { border-bottom: 0; }
+.tag { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-align: center; white-space: nowrap; }
+.tag.wa { background: #DCF5D0; color: #0E5E4E; }
+.tag.server { background: var(--warn-bg); color: var(--gold-deep); }
+.tag.app { background: #14120D; color: #F0AE00; }
+.tag.pay { background: #E3ECF8; color: #1E4E8C; }
+.explain { background: var(--sunk); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+
+/* technician app */
+.pro-head { background: #14120D; color: #F5F1E6; padding: 12px 14px; display: grid; gap: 10px; flex: none; }
+.who { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 18px; flex: none; }
+.who b { display: block; font-size: 16px; }
+.who small { color: #B9B2A2; font-size: 12.5px; }
+.trust { margin-left: auto; text-align: center; }
+.trust b { font-family: var(--display); font-size: 26px; color: #F0AE00; line-height: 1; }
+.trust small { display: block; font-size: 10px; color: #B9B2A2; text-transform: uppercase; letter-spacing: .08em; }
+.status { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 8px 10px; font-size: 13.5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #2FA463; flex: none; }
+.pro-body { flex: 1; overflow-y: auto; padding: 12px; display: grid; gap: 10px; align-content: start; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.card.offer { border: 3px solid var(--gold); }
+.dark { background: #14120D; color: #F5F1E6; border-color: #14120D; }
+.dark .muted { color: #B9B2A2; }
+.btn { display: flex; align-items: center; justify-content: center; width: 100%; border: 2px solid var(--ink); background: transparent; padding: 11px 14px; border-radius: 12px; font-weight: 700; font-size: 15.5px; cursor: pointer; }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.btn.quiet { border-color: var(--line); font-weight: 600; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.earn { background: var(--good-bg); color: var(--good); border-radius: 12px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.earn b { font-family: var(--display); font-size: 28px; font-weight: 800; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.facts div { background: var(--sunk); border-radius: 10px; padding: 7px 8px; min-width: 0; }
+.facts b { display: block; font-size: 15px; }
+.facts small { color: var(--muted); font-size: 12px; }
+.bar { height: 5px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); }
+.field { display: grid; gap: 4px; }
+.field label { font-weight: 600; font-size: 13.5px; }
+.field input, .field textarea { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 10px; font-size: 15px; }
+.field textarea { min-height: 60px; resize: vertical; }
+.field .codein { font-family: var(--mono); font-size: 24px; letter-spacing: .4em; text-align: center; }
+.tick { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.tick input { width: 18px; height: 18px; accent-color: var(--good); }
+.err { color: var(--bad); font-weight: 600; font-size: 13.5px; }
+.map { border-radius: 12px; overflow: hidden; background: #22201A; aspect-ratio: 16 / 10; position: relative; max-width: 100%; }
+.map svg { width: 100%; height: 100%; display: block; }
+.eta { position: absolute; left: 8px; top: 8px; background: #F0AE00; color: #14120D; border-radius: 8px; padding: 4px 8px; font-weight: 700; font-size: 13px; }
+.split { width: 100%; border-collapse: collapse; font-size: 14px; }
+.split td { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.split td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.split tr.you td { color: var(--good); font-weight: 800; font-size: 16px; border-bottom: 0; }
+.wait { display: flex; gap: 10px; align-items: center; background: var(--warn-bg); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.dark .wait { background: rgba(255,255,255,.08); }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); flex: none; }
+@media (prefers-reduced-motion: no-preference) { .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
+.timer { font-family: var(--display); font-weight: 800; font-size: 46px; text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); border-radius: 12px; padding: 11px 16px; font-weight: 600; z-index: 40; max-width: calc(100vw - 32px); text-align: center; }
+
+@media (max-width: 1060px) {
+  .stage { grid-template-columns: minmax(0, 1fr); max-width: 520px; }
+  .switch { display: flex; }
+  .stage[data-show="customer"] .pane:not(.pane-customer), .stage[data-show="server"] .pane:not(.pane-server), .stage[data-show="tech"] .pane:not(.pane-tech) { display: none; }
+  .phone { height: calc(100vh - 190px); min-height: 520px; }
+  .log { min-height: 0; max-height: none; }
+}
+</style>
+
+<header class="top"><div class="top-in">
+  <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>WhatsApp to Pro app: live link demo</small></span></div>
+  <label class="auto"><input type="checkbox" id="auto"> Auto-play the technician</label>
+  <button class="reset" type="button" data-act="reset">Start again</button>
+  <div class="switch" role="group" aria-label="Choose a view"><button type="button" data-show="customer">Customer<span class="ping" id="ping-customer" hidden></span></button><button type="button" data-show="server">Server</button><button type="button" data-show="tech">Technician<span class="ping" id="ping-tech" hidden></span></button></div>
+</div></header>
+<div class="guide"><div class="guide-in"><span id="guide"></span><button type="button" id="guide-go" hidden></button></div></div>
+<div class="stage" id="stage" data-show="customer">
+  <section class="pane pane-customer" aria-label="Customer's phone"><div class="label"><span class="eyebrow">Customer's phone</span><span class="muted small">Chatting on WhatsApp</span></div>
+    <div class="phone"><div class="chat-head"><span class="mark" aria-hidden="true">B</span><span><b>Basa seBasa</b><small>Verified business account · replies instantly</small></span></div>
+      <div class="chat" id="chat" aria-live="polite"></div><div class="chips" id="chips"></div>
+      <form class="composer" id="composer"><input id="typed" type="text" autocomplete="off" placeholder="Message" aria-label="Type a message"><button type="submit" aria-label="Send">➤</button></form>
+      <div id="overlay"></div></div></section>
+  <section class="pane pane-server" aria-label="Basa seBasa server"><div class="label"><span class="eyebrow">Basa seBasa server</span><span class="muted small">What happens behind the scenes</span></div>
+    <div class="log" id="log"></div></section>
+  <section class="pane pane-tech" aria-label="Technician's phone"><div class="label"><span class="eyebrow">Technician's phone</span><span class="muted small">Basa seBasa Pro app</span></div>
+    <div class="phone"><div class="pro-head" id="pro-head"></div><div class="pro-body" id="pro"></div></div></section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const P = { callout: 9, calloutPlatform: 1, commission: 15, rate: 2, freeKm: 10, payoutHours: 24, warrantyDays: 90 };
+const SERVICES = [
+  { id: "hvac", name: "Fridge & aircon", hint: "Fridge not cooling", diag: "Start relay burnt out. Compressor is fine.", labour: 40, parts: 18, checks: ["Power isolated before work", "Leak test done", "Unit cooling at handover"] },
+  { id: "elec", name: "Electrical", hint: "Half the house has no power", diag: "Burnt neutral in the distribution board.", labour: 35, parts: 12, checks: ["Supply isolated and tested dead", "Earth continuity tested", "Covers refitted"] },
+  { id: "plumb", name: "Plumbing", hint: "Geyser leaking", diag: "Geyser thermostat and valve failed.", labour: 30, parts: 25, checks: ["Water and power isolated", "Joints pressure-tested", "Hot water restored"] },
+  { id: "appl", name: "Appliances", hint: "Washing machine won't spin", diag: "Drive belt snapped and motor brush worn.", labour: 30, parts: 15, checks: ["Unplugged before opening", "Full test cycle run", "Panels refitted"] },
+  { id: "auto", name: "Mechanic", hint: "Car won't start", diag: "Starter relay faulty. Battery is fine.", labour: 40, parts: 20, checks: ["Vehicle secured", "Fault confirmed by test", "Run test done"] },
+  { id: "solar", name: "Solar & inverters", hint: "Inverter not switching to battery", diag: "One battery fuse blown and settings wrong.", labour: 35, parts: 5, checks: ["DC and AC isolated", "Voltages checked", "Tested under load"] },
+];
+const PROS = {
+  hvac: [["Tendai M.", 94, 4.9, 128, "Avondale"], ["Kudzai C.", 86, 4.7, 61, "Hatfield"], ["Blessing N.", 74, 4.6, 22, "Glen View"]],
+  elec: [["Farai D.", 96, 4.8, 143, "Belvedere"], ["Simba R.", 80, 4.6, 37, "Greendale"], ["Tinashe K.", 72, 4.5, 15, "Mbare"]],
+  plumb: [["Tatenda G.", 88, 4.7, 88, "Mbare"], ["Nyasha P.", 72, 4.5, 19, "Mabelreign"], ["Kuda S.", 70, 4.6, 12, "Hatfield"]],
+  appl: [["Ruvimbo K.", 92, 4.8, 104, "Eastlea"], ["Tonderai B.", 78, 4.6, 30, "Avondale"], ["Lloyd M.", 70, 4.4, 14, "Highfield"]],
+  auto: [["Tafadzwa B.", 95, 4.8, 156, "Msasa"], ["Brian Z.", 82, 4.7, 48, "Waterfalls"], ["Gift N.", 71, 4.5, 16, "Budiriro"]],
+  solar: [["Takudzwa S.", 91, 4.9, 71, "Mount Pleasant"], ["Ropa C.", 79, 4.6, 26, "Borrowdale"], ["Peter H.", 70, 4.5, 11, "Greendale"]],
+};
+const SUBURBS = ["Avondale", "Borrowdale", "Eastlea", "Glen View", "Greendale", "Hatfield", "Mabelreign", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
+const POS = { Avondale: [-1, 3], Belvedere: [-2.5, .5], Borrowdale: [5, 8], Budiriro: [-9, -6], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Mabelreign: [-5, 4.5], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
+const kmBetween = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.max(1.5, Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2); };
+
+const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
+let S = fresh();
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const usd = (n) => "$" + r2(n).toFixed(2);
+const clock = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const first = (n) => String(n).split(" ")[0];
+const svc = () => SERVICES.find((x) => x.id === S.svc);
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3000); }
+const ref = () => "MP" + new Date().toISOString().slice(2, 10).replace(/-/g, "") + "." + (1000 + Math.floor(Math.random() * 9000)) + "." + "ABCDEFGHJK"[Math.floor(Math.random() * 10)] + (10000 + Math.floor(Math.random() * 90000));
+
+// ---------- money ----------
+function money() {
+  const s = svc(), km = S.pro ? S.pro.km : 0, travel = r2(Math.max(0, km - P.freeKm) * 0.5);
+  const q = S.quote || { labour: s?.labour || 0, parts: s?.parts || 0 };
+  const fee = r2(q.labour * P.commission / 100), payout = r2(P.callout - P.calloutPlatform + travel + q.labour - fee + q.parts), rate = P.rate / 100;
+  const base1 = P.callout + travel, pay1 = r2(base1 * (1 + rate)), base2 = r2(q.labour + q.parts), charges2 = r2(base2 * rate + payout * rate), pay2 = r2(base2 + charges2);
+  return { travel, labour: q.labour, parts: q.parts, fee, payout, pay1, pay2, charges2, base2, calloutShare: P.callout - P.calloutPlatform + travel };
+}
+
+// ---------- chat + log ----------
+function bot(html, extra = {}) { S.chat.push({ from: "in", html, at: clock(), ...extra }); }
+function me(text, extra = {}) { S.chat.push({ from: "out", html: esc(text), at: clock(), ...extra }); }
+function log(who, text) { S.log.unshift({ who, text, at: clock() }); }
+function typing(ms, fn) { S.typing = true; render(); setTimeout(() => { S.typing = false; fn(); render(); }, ms); }
+
+// ---------- what to do next ----------
+function next() {
+  const t = S.t.stage, st = S.step;
+  if (st === "start") return ["customer", "Customer: say hi to Basa seBasa on WhatsApp."];
+  if (["service", "describe", "photo", "location", "confirm", "choose"].includes(st)) return ["customer", "Customer: answer the bot to book a pro."];
+  if (t === "offer") return ["tech", `Technician: ${first(S.pro.name)} has 60 seconds to accept the job.`];
+  if (st === "pay1" && !S.pay) return ["customer", "Customer: pay the call-out with EcoCash."];
+  if (S.pay) return ["customer", "Customer: enter any 4-digit PIN on the EcoCash prompt."];
+  if (t === "ready") return ["tech", "Technician: tap \"I'm on my way\"."];
+  if (t === "travelling") return ["tech", "Technician: travelling. Customer can tap the tracking link. Tap \"I've arrived\" when ready."];
+  if (t === "verify") return ["tech", `Technician: enter the customer's Basa Code (${S.code}, from the chat).`];
+  if (t === "quote") return ["tech", "Technician: send the quote."];
+  if (st === "quote") return ["customer", "Customer: approve the quote, or choose Later."];
+  if (t === "working") return ["tech", "Technician: tick the checks and complete the job."];
+  if (st === "pay2" && !S.pay) return ["customer", "Customer: check the report and pay with EcoCash."];
+  if (st === "rate") return ["customer", "Customer: download the receipt and rate the pro."];
+  if (st === "done") return ["", "Done. Start again to try another service, or choose Later on the quote."];
+  if (st === "deferred") return ["", "Repair saved for later. Start again to try the full job."];
+  return ["", "Watching the server…"];
+}
+
+// ---------- render ----------
+function render() {
+  const [who, text] = next(); $("#guide").textContent = text;
+  const g = $("#guide-go"); const target = who && who !== S.show ? who : ""; g.hidden = !target || matchMedia("(min-width: 1061px)").matches; g.textContent = target === "tech" ? "Show technician" : "Show customer"; g.dataset.show = target;
+  $("#stage").dataset.show = S.show;
+  document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === S.show)));
+  $("#ping-customer").hidden = !(who === "customer" && S.show !== "customer"); $("#ping-tech").hidden = !(who === "tech" && S.show !== "tech");
+  renderChat(); renderLog(); renderPro(); auto();
+}
+function renderChat() {
+  const box = $("#chat"); const lastIn = S.chat.map((m) => m.from).lastIndexOf("in");
+  box.innerHTML = `<span class="day">Today</span>` + S.chat.map((m, i) => {
+    const live = i === lastIn && !m.used;
+    const btns = m.buttons ? `<div class="chat-btns ${m.list ? "list" : ""}">${m.buttons.map((b, k) => `<button type="button" data-chat="${i}:${k}" ${live ? "" : "disabled"}>${b.html || esc(b.label)}</button>`).join("")}</div>` : "";
+    return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
+  }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
+  box.scrollTop = box.scrollHeight;
+  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? [svc().hint] : [];
+  $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
+  $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
+    : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
+  if (S.pay) setTimeout(() => $("#pin")?.focus(), 30);
+  if (S.track) startMap("cmap");
+}
+function renderLog() {
+  const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "Paynow" };
+  $("#log").innerHTML = (S.log.length ? "" : `<div class="explain"><b>This is the "kitchen".</b> Every WhatsApp message the customer sends arrives here, the server decides what happens next, and it talks to the technician's Pro app and to Paynow for EcoCash. Newest events appear at the top.</div>`) +
+    S.log.map((l) => `<div class="log-row"><span class="mono muted">${l.at}</span><span class="tag ${l.who}">${tagName[l.who]}</span><span>${esc(l.text)}</span></div>`).join("");
+}
+function renderPro() {
+  const p = S.pro || { name: "Tendai M.", trust: 94, home: "Avondale" }, t = S.t;
+  $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · Verified</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : t.stage === "paid" || t.stage === "deferred" ? "Online · job finished" : "On a job · " + esc(S.job)}</div>`;
+  $("#pro").innerHTML = proView();
+  if (t.stage === "travelling") startMap("tmap");
+}
+function proView() {
+  const t = S.t, m = money(), f = S.chat.length ? "Customer" : "", s = svc();
+  const head = (title, sub, extra = "") => `<div class="card dark"><span class="mono muted">${esc(S.job)} · ${esc(s?.name || "")} repair</span><h2 style="color:#F5F1E6">${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}</div>`;
+  const cust = `<div class="card"><span class="eyebrow">Customer</span><b>Mrs C. Ndlovu · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km</span><p class="small">${esc(S.desc)}</p></div>`;
+  switch (t.stage) {
+    case "idle": return `<div class="card" style="text-align:center;justify-items:center;padding:30px 16px"><div class="spin" style="width:34px;height:34px"></div><h3>Waiting for jobs</h3><p class="muted small">When a customer books on WhatsApp, the job appears here instantly.</p></div>`;
+    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="muted small">Repair · ${esc(S.suburb)}</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
+    case "await_callout": return head("Waiting for call-out", `The customer is paying ${usd(m.pay1)} on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span>We'll tell you the moment it's paid.</div>`) + cust;
+    case "ready": return head("Call-out paid", "You're cleared to travel. The customer sees you on a live map.") + `<button class="btn gold" type="button" data-act="t-trip">I'm on my way</button>` + cust;
+    case "travelling": return head("On the way", "", mapSvg("tmap")) + `<button class="btn gold" type="button" data-act="t-arrive">I've arrived</button>` + cust;
+    case "verify": return head("Check the Basa Code", "Ask the customer for their 4-digit Basa Code.") + `<div class="card"><div class="field"><label for="tcode">Basa Code</label><input id="tcode" class="codein" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: it's in the customer's chat (${esc(S.code)}).</p><p class="err" id="tcode-err" hidden></p><button class="btn gold" type="button" data-act="t-verify">Confirm arrival</button></div>`;
+    case "quote": return head("Arrival confirmed", "Diagnose, then send the full quote. Never start before it's approved.") + `<div class="card"><div class="field"><label for="qd">What's wrong?</label><textarea id="qd">${esc(s.diag)}</textarea></div><div class="two"><div class="field"><label for="ql">Labour ($)</label><input id="ql" type="number" min="1" value="${s.labour}"></div><div class="field"><label for="qp">Parts ($)</label><input id="qp" type="number" min="0" value="${s.parts}"></div></div><p class="muted small">Warranty: ${P.warrantyDays} days.</p><p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-act="t-quote">Send quote to customer</button></div>`;
+    case "quote_sent": return head("Quote sent", "Waiting for the customer to approve on WhatsApp.", `<div class="wait"><span class="spin"></span>They see the diagnosis and total.</div>`) + `<div class="card">${splitTable(m)}</div>`;
+    case "working": return head("Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">Job complete</button></div>`;
+    case "await_payment": return head("Waiting for payment", "The customer has your service report and is paying on EcoCash.", `<div class="wait"><span class="spin"></span>Never accept cash.</div>`) + `<div class="card">${splitTable(m)}</div>`;
+    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours.</p><button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
+    case "deferred": return head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first chance at the repair for 30 days.") + `<div class="card"><table class="split"><tr class="you"><td>You earned</td><td>${usd(m.calloutShare)}</td></tr></table></div>`;
+    case "declined": return `<div class="card" style="text-align:center;padding:24px 16px"><h3>Job declined</h3><p class="muted small">It went to the next pro straight away.</p></div>`;
+  }
+  return "";
+}
+const splitTable = (m) => `<table class="split"><tr><td>Call-out (your share)</td><td>${usd(m.calloutShare)}</td></tr><tr><td>Labour</td><td>${usd(m.labour)}</td></tr><tr><td>Basa seBasa fee (${P.commission}%)</td><td>-${usd(m.fee)}</td></tr>${m.parts ? `<tr><td>Parts (100% yours)</td><td>${usd(m.parts)}</td></tr>` : ""}<tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table>`;
+function mapSvg(id) { return `<div class="map"><svg viewBox="0 0 320 200" aria-label="Live route"><rect width="320" height="200" fill="#22201A"/><g stroke="#3A362C" stroke-width="8" fill="none" stroke-linecap="round"><path d="M-10 50H330M-10 140H330M70 -10V210M200 -10V210M270 -10V210"/></g><path id="${id}-route" d="M40 170 L70 170 L70 140 L200 140 L200 50 L272 50" stroke="#F0AE00" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/><g transform="translate(272 50)"><circle r="11" fill="#F5F1E6"/><path d="M-5 2 0 -4 5 2V6H-5z" fill="#14120D"/></g><g id="${id}-dot"><circle r="13" fill="#F0AE00" opacity=".25"/><circle r="7" fill="#F0AE00" stroke="#14120D" stroke-width="2"/></g></svg><span class="eta" id="${id}-eta">${S.pro?.eta || 0} min</span></div>`; }
+const TRIP_MS = 18000;
+const maps = {};
+function startMap(id) {
+  cancelAnimationFrame(maps[id]);
+  const route = document.getElementById(id + "-route"), dot = document.getElementById(id + "-dot"); if (!route) return;
+  const len = route.getTotalLength();
+  const tick = () => { if (!document.getElementById(id + "-route")) return; const f = S.t.stage === "travelling" ? Math.min(1, (Date.now() - S.t.tripAt) / TRIP_MS) : 1; const pt = route.getPointAtLength(len * f); dot.setAttribute("transform", `translate(${pt.x} ${pt.y})`); const e = document.getElementById(id + "-eta"); if (e) e.textContent = f >= 1 ? "Arrived" : `${Math.max(1, Math.round(S.pro.eta * (1 - f)))} min away`; if (f < 1) maps[id] = requestAnimationFrame(tick); };
+  tick();
+}
+
+// ---------- the conversation ----------
+function customerSays(text) {
+  if (!text.trim()) return;
+  me(text); log("wa", `Message from customer +263 77 •••• 120: "${text}"`);
+  if (S.step === "start") return typing(700, greet);
+  if (S.step === "describe") { S.desc = text.trim(); return typing(700, askPhoto); }
+  typing(500, () => bot("Please tap one of the options above so I can help you faster."));
+}
+function greet() {
+  log("server", "New conversation. Sent welcome and the service list.");
+  bot("Hi, welcome to <b>Basa seBasa</b>. Every pro is ID-checked, trade-verified and met in person by our team. Pay safely on EcoCash, never in cash.<br><br>What do you need help with?", { list: true, buttons: SERVICES.map((s) => ({ html: `${esc(s.name)}<small>Repairs, installs and servicing</small>`, act: "svc:" + s.id })) });
+  S.step = "service";
+}
+function askPhoto() {
+  log("server", `Problem noted: "${S.desc}". Asked for a photo.`);
+  bot("Thanks. Can you send a photo? It helps the pro bring the right parts.", { buttons: [{ label: "Send a photo", act: "photo" }, { label: "Skip", act: "skip-photo" }] });
+  S.step = "photo";
+}
+function askLocation() {
+  bot("Now share your location so we can find the closest verified pro.", { buttons: [{ label: "Share my location", act: "location" }] });
+  S.step = "location";
+}
+function confirmBooking() {
+  const s = svc();
+  log("server", `Location received: ${S.suburb}. Ready to match.`);
+  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br>Shall we find you a pro?`, { buttons: [{ label: "Find me a pro", act: "find" }, { label: "Cancel", act: "cancel" }] });
+  S.step = "confirm";
+}
+function showMatches() {
+  const list = PROS[S.svc].map(([name, trust, rating, jobs, home]) => { const km = kmBetween(home, S.suburb); return { name, trust, rating, jobs, home, km, eta: Math.round(8 + km * 2.4) }; }).sort((a, b) => a.km * 4 - b.km * 4 + (b.trust - a.trust) / 4);
+  S.matches = list;
+  log("server", `Job ${S.job} created. Matched ${list.length} verified pros by distance and Trust Score.`);
+  bot("Here are the best verified pros near you. Tap one to choose.", { list: true, buttons: list.map((p, i) => ({ html: `${esc(p.name)}${i === 0 ? " · best match" : ""}<small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>`, act: "pro:" + i })) });
+  S.step = "choose";
+}
+function offerTo(i) {
+  S.offerIx = i; S.pro = S.matches[i];
+  S.t = { stage: "offer", expires: Date.now() + 60000 };
+  log("app", `Push notification to ${S.pro.name}'s Pro app: new job ${S.job}, ${S.pro.km} km away. 60 seconds to accept.`);
+}
+function accepted() {
+  S.code = String(1000 + Math.floor(Math.random() * 9000));
+  log("app", `${S.pro.name} accepted ${S.job}.`);
+  log("server", `Basa Code ${S.code} created for this job. Asked customer for the call-out.`);
+  const m = money();
+  bot(`<b>${esc(S.pro.name)}</b> accepted your job.<br>Trust Score ${S.pro.trust} · ★${S.pro.rating} · ${S.pro.jobs} jobs · ID and trade verified.<br><br>Pay the <b>${usd(m.pay1)}</b> call-out to send ${esc(first(S.pro.name))} on the way.`, { buttons: [{ label: `Pay ${usd(m.pay1)} with EcoCash`, act: "pay1" }] });
+  S.t = { stage: "await_callout" }; S.step = "pay1";
+}
+function paid(which) {
+  const m = money(), amount = which === 1 ? m.pay1 : m.pay2, r = ref(); S.refs.push({ what: which === 1 ? "Call-out" : "Repair", amount, ref: r });
+  log("pay", `EcoCash payment confirmed: ${usd(amount)} from 077 •••• 120, reference ${r}.`);
+  if (which === 1) {
+    log("app", `Told ${S.pro.name}: call-out paid, cleared to travel.`);
+    bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. ${esc(first(S.pro.name))} is getting ready.`);
+    S.t = { stage: "ready" }; S.step = "wait";
+  } else {
+    log("server", `Payout of ${usd(m.payout)} to ${S.pro.name} queued: due within ${P.payoutHours} hours. Receipt PDF created.`);
+    log("app", `Told ${S.pro.name}: customer paid ${usd(amount)}.`);
+    bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. Thank you.<br><br>Here's your receipt:<br><button type="button" class="doc" data-act="receipt"><span class="pdf">PDF</span><span><b>Basa-seBasa-receipt-${esc(S.job)}.pdf</b><br><small>1 page · tap to download</small></span></button>`);
+    bot(`How did ${esc(first(S.pro.name))} do? Your rating keeps every pro honest.`, { buttons: [5, 4, 3, 2, 1].map((n) => ({ label: `${"★".repeat(n)}  ${["", "Poor", "Below par", "OK", "Good", "Excellent"][n]}`, act: "rate:" + n })) });
+    S.t = { stage: "paid" }; S.step = "rate";
+  }
+}
+
+// ---------- technician actions ----------
+function techAct(act) {
+  const t = S.t, m = money();
+  switch (act) {
+    case "t-accept": if (t.stage !== "offer") return; typing(400, accepted); break;
+    case "t-decline": {
+      if (t.stage !== "offer") return;
+      log("app", `${S.pro.name} declined.`);
+      const nextIx = (S.offerIx + 1) % S.matches.length;
+      S.t = { stage: "declined" }; render();
+      setTimeout(() => { log("server", `Offered ${S.job} to the next pro, ${S.matches[nextIx].name}.`); bot(`${esc(first(S.pro.name))} isn't available right now, so we've asked <b>${esc(S.matches[nextIx].name)}</b> (Trust ${S.matches[nextIx].trust}, ~${S.matches[nextIx].eta} min away).`); offerTo(nextIx); render(); toast(`The technician view now shows ${S.pro.name}'s phone.`); }, 1500);
+      break;
+    }
+    case "t-trip":
+      S.t = { stage: "travelling", tripAt: Date.now() };
+      log("app", `${S.pro.name} is on the way. Live location every 10 seconds.`);
+      bot(`<b>${esc(first(S.pro.name))} is on the way</b>, about ${S.pro.eta} minutes.<br><button type="button" class="link" data-act="track">Track live: basasebasa.co.zw/t/${esc(S.job)}</button>`);
+      bot(`Your <b>Basa Code</b> for this job:<br><span class="code">${esc(S.code)}</span><br>Only give it to ${esc(first(S.pro.name))} at your door. It proves he's the pro we sent.`);
+      S.step = "onway"; render(); break;
+    case "t-arrive":
+      S.t = { stage: "verify" }; log("app", `${S.pro.name} marked arrival. Waiting for the Basa Code.`);
+      bot(`${esc(first(S.pro.name))} is at your door. He'll ask for your Basa Code.`); render(); break;
+    case "t-verify": {
+      const c = ($("#tcode")?.value || "").trim();
+      if (c !== S.code) { const e = $("#tcode-err"); e.textContent = c.length === 4 ? "That code doesn't match. Check you're at the right house." : "Enter the 4-digit code."; e.hidden = false; return; }
+      S.t = { stage: "quote" }; S.track = false; log("server", "Basa Code matched. Arrival verified.");
+      bot(`${esc(first(S.pro.name))} confirmed your Basa Code. You can let him in. Ask to see his Basa seBasa ID if you like.`); render(); break;
+    }
+    case "t-quote": {
+      const d = ($("#qd")?.value || "").trim(), l = Number($("#ql")?.value), pt = Number($("#qp")?.value) || 0;
+      if (d.length < 5 || !(l > 0)) { const e = $("#q-err"); e.textContent = "Add the diagnosis and the labour price."; e.hidden = false; return; }
+      S.quote = { diag: d, labour: l, parts: pt }; const mm = money();
+      S.t = { stage: "quote_sent" }; log("app", `Quote from ${S.pro.name}: labour ${usd(l)}, parts ${usd(pt)}.`); log("server", `Sent the quote to the customer with Approve and Later buttons.`);
+      bot(`<b>Your quote</b> for ${esc(S.job)}<br>What's wrong: ${esc(d)}<br><br>Labour: ${usd(l)}<br>Parts: ${usd(pt)}<br>EcoCash charges: ${usd(mm.charges2)}<br><b>Total after the work: ${usd(mm.pay2)}</b><br>Warranty: ${P.warrantyDays} days.<br><br>Nothing starts until you approve.`, { buttons: [{ label: "Approve and start", act: "approve" }, { label: "Later", act: "later" }] });
+      S.step = "quote"; render(); break;
+    }
+    case "t-complete": {
+      const s = svc(); const ok = s.checks.every((_, i) => $("#ck" + i)?.checked) && $("#ckp")?.checked;
+      if (!ok) { const e = $("#w-err"); e.textContent = "Tick every check first."; e.hidden = false; return; }
+      const mm = money(), wEnd = new Date(Date.now() + P.warrantyDays * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      S.t = { stage: "await_payment" }; log("app", `${S.pro.name} completed the job. Checks and photos attached.`); log("server", "Service report created and sent. Asked customer for the final payment.");
+      bot(`<b>Job done. Here's your service report</b><dl class="report"><dt>Pro</dt><dd>${esc(S.pro.name)} · Trust ${S.pro.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd><dt>Fault</dt><dd>${esc(S.quote.diag)}</dd><dt>Checks</dt><dd>${s.checks.length}/${s.checks.length} passed, photos attached</dd><dt>Warranty</dt><dd>Until ${wEnd}</dd></dl><br>Please check the work, then pay. We pay ${esc(first(S.pro.name))} after you do. Never pay in cash.`, { buttons: [{ label: `Pay ${usd(mm.pay2)} with EcoCash`, act: "pay2" }] });
+      S.step = "pay2"; render(); break;
+    }
+    case "receipt": downloadReceipt(); break;
+  }
+}
+
+// ---------- auto-play the technician ----------
+let autoKey = "";
+function auto() {
+  if (!$("#auto").checked) return;
+  const st = S.t.stage, key = st + S.job + (S.pro?.name || "");
+  if (key === autoKey) return;
+  const plan = { offer: ["t-accept", 2500], ready: ["t-trip", 2000], travelling: ["t-arrive", TRIP_MS + 300], verify: ["t-verify", 1800], quote: ["t-quote", 2500], working: ["t-complete", 4000] }[st];
+  if (!plan) return; autoKey = key;
+  setTimeout(() => { if (S.t.stage !== st) return; if (st === "verify") { const i = $("#tcode"); if (i) i.value = S.code; } if (st === "working") { svc().checks.forEach((_, i) => { const c = $("#ck" + i); if (c) c.checked = true; }); const p = $("#ckp"); if (p) p.checked = true; } techAct(plan[0]); }, plan[1]);
+}
+
+// ---------- receipt PDF (same layout as the Pro app) ----------
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const ascii = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—−·]/g, "-").replace(/[^\x20-\x7E]/g, "");
+function makePdf() {
+  const K = 72 / 25.4, H = 841.89, ops = [], n = (v) => (Math.round(v * 100) / 100).toString(), col = (c) => c.map((v) => n(v / 255)).join(" ");
+  const api = {
+    width(t, size, bold) { const w = bold ? HELVB : HELV; let u = 0; for (const ch of ascii(t)) u += w[ch.charCodeAt(0) - 32] || 556; return (u / 1000) * size / K; },
+    rect(x, y, w, h, fill) { ops.push(`${col(fill)} rg ${n(x * K)} ${n(H - (y + h) * K)} ${n(w * K)} ${n(h * K)} re f`); },
+    line(x1, y1, x2, y2, color) { ops.push(`${col(color)} RG ${n(0.3 * K)} w ${n(x1 * K)} ${n(H - y1 * K)} m ${n(x2 * K)} ${n(H - y2 * K)} l S`); },
+    text(t, x, y, { size = 10, bold = false, color = [20, 18, 13], align = "left" } = {}) { const s2 = ascii(t), w = api.width(s2, size, bold), x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x; ops.push(`BT ${col(color)} rg /${bold ? "F2" : "F1"} ${n(size)} Tf ${n(x0 * K)} ${n(H - y * K)} Td (${s2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj ET`); return w; },
+    blob() { const stream = ops.join("\n"), objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`]; let out = "%PDF-1.4\n"; const offs = []; objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; }); const x = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("") + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`; return new Blob([out], { type: "application/pdf" }); },
+  };
+  return api;
+}
+async function downloadReceipt() {
+  if (!S.quote || !S.refs.length) return toast("The receipt is ready once the customer has paid.");
+  const d = makePdf(), m = money(), W = 210, M = 18, ink = [20, 18, 13], gold = [240, 174, 0], grey = [103, 99, 90], green = [31, 118, 70], cream = [245, 241, 230], rule = [220, 216, 206];
+  const $m = (v) => (v < 0 ? "-$" : "$") + Math.abs(r2(v)).toFixed(2), when = new Date().toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  d.rect(0, 0, W, 34, ink); d.rect(M, 9, 16, 16, gold); d.text("B", M + 8, 20.5, { size: 16, bold: true, align: "center" });
+  let x = M + 21; x += d.text("BASA ", x, 18, { size: 17, bold: true, color: cream }); x += d.text("se", x, 18, { size: 17, bold: true, color: gold }); d.text("BASA", x, 18, { size: 17, bold: true, color: cream });
+  d.text("Verified professionals. Work done right.", M + 21, 24, { size: 8.5, color: [185, 178, 162] });
+  d.text("PAYMENT RECEIPT", W - M, 16, { size: 13, bold: true, color: gold, align: "right" }); d.text("RCPT-" + S.job, W - M, 22, { size: 9, color: cream, align: "right" }); d.text(when, W - M, 27, { size: 9, color: cream, align: "right" });
+  let y = 48; const L = (t, lx) => d.text(t.toUpperCase(), lx, y, { size: 7.5, bold: true, color: grey });
+  L("Job", M); L("Professional", M + 87); y += 5; d.text(`${S.job} - ${svc().name} repair`, M, y); d.text(`${S.pro.name}, Trust Score ${S.pro.trust}`, M + 87, y); y += 9;
+  L("Customer", M); L("Arrival", M + 87); y += 5; d.text(`Mrs C. Ndlovu, ${S.suburb}, Harare`, M, y); d.text("Basa Code confirmed at the door", M + 87, y); y += 9;
+  L("Fault found", M); y += 5; d.text(S.quote.diag, M, y); y += 9;
+  const table = (title, lines, label, total, color) => { d.line(M, y, W - M, y, rule); y += 7; d.text(title, M, y, { size: 11, bold: true }); y += 6.5; lines.forEach(([l, a]) => { d.text(l, M, y); d.text($m(a), W - M, y, { align: "right" }); y += 6; }); d.line(W - M - 60, y - 2, W - M, y - 2, ink); y += 4; d.text(label, M, y, { size: 12, bold: true, color }); d.text($m(total), W - M, y, { size: 12, bold: true, color, align: "right" }); y += 8; };
+  const cust = [["Call-out (inspection and travel)", P.callout + m.travel], ["Labour (as quoted and approved)", m.labour]]; if (m.parts) cust.push(["Parts", m.parts]); cust.push(["EcoCash charges", r2(m.pay1 - P.callout - m.travel + m.charges2)]);
+  table("Paid by the customer", cust, "Total paid", r2(m.pay1 + m.pay2), ink);
+  S.refs.forEach((p) => { d.text(`${p.what}: ${$m(p.amount)} by EcoCash to Basa seBasa, reference ${p.ref}`, M, y, { size: 9, color: grey }); y += 5; }); y += 3;
+  const pro = [["Call-out (your share)", m.calloutShare], ["Labour", m.labour], [`Basa seBasa fee (${P.commission}% of labour)`, -m.fee]]; if (m.parts) pro.push(["Parts (100% yours)", m.parts]);
+  table("Professional's payout", pro, "Paid to the professional", m.payout, green);
+  d.text(`Sent to the professional's EcoCash within ${P.payoutHours} hours of the customer paying.`, M, y, { size: 9, color: grey }); y += 9;
+  d.rect(M, y - 4.5, W - 2 * M, 11, [223, 241, 229]); d.text(`Warranty: ${P.warrantyDays} days. Free return visit if the same fault comes back.`, M + 4, y + 2.5, { bold: true, color: green });
+  d.line(M, 270, W - M, 270, rule); d.text("All payments go through Basa seBasa on EcoCash. Never pay a professional in cash.", M, 276, { size: 8.5, color: grey }); d.text("Demo: sample transaction, nothing was charged.", M, 281, { size: 8.5, color: [134, 95, 0] });
+  const blob = d.blob(), filename = `Basa-seBasa-receipt-${S.job}.pdf`;
+  let dl = null; try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) {}
+  if (dl) { try { await dl.save({ filename, data: blob }); toast("Receipt saved."); } catch (e) { toast(e?.code === "declined" ? "Download cancelled." : "Downloads aren't available here."); } return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast("Receipt downloaded.");
+}
+
+// ---------- events ----------
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.show) { S.show = b.dataset.show; render(); window.scrollTo(0, 0); return; }
+  if (b.dataset.chip) { customerSays(b.dataset.chip); return; }
+  if (b.dataset.chat) {
+    const [i, k] = b.dataset.chat.split(":").map(Number), m = S.chat[i], opt = m.buttons[k]; m.used = true; const act = opt.act;
+    if (act === "photo") { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.onchange = () => { const f = inp.files?.[0]; if (!f) { m.used = false; return; } const r = new FileReader(); r.onload = () => { S.photo = r.result; me("Photo", { html: `<img src="${r.result}" alt="Photo sent">Photo` }); log("wa", "Photo received from customer, attached to the job."); typing(600, askLocation); }; r.readAsDataURL(f); }; inp.click(); m.used = false; return; }
+    if (act === "location") { log("wa", "Customer tapped Share location."); bot("Which area are you in? (In the real chat, WhatsApp shares your exact pin.)", { list: true, buttons: SUBURBS.map((s2) => ({ html: esc(s2), act: "sub:" + s2 })) }); render(); return; }
+    me(opt.label || opt.html.replace(/<small>.*$/, "").replace(/<[^>]+>/g, ""));
+    if (act.startsWith("svc:")) { S.svc = act.slice(4); log("wa", `Customer chose: ${svc().name}.`); typing(600, () => { bot(`Got it: <b>${esc(svc().name)}</b>. Please describe the problem in a few words.`); S.step = "describe"; }); return; }
+    if (act === "skip-photo") { log("wa", "Customer skipped the photo."); typing(500, askLocation); return; }
+    if (act.startsWith("sub:")) { S.suburb = act.slice(4); S.chat.pop(); S.chat.push({ from: "out", at: clock(), html: `<div class="loc"><div class="minimap"><span class="pin"></span></div><b>Location</b><span>${esc(S.suburb)}, Harare</span></div>` }); log("wa", `Location pin received from customer (${S.suburb}).`); typing(700, confirmBooking); return; }
+    if (act === "find") { typing(1100, showMatches); return; }
+    if (act === "cancel") { log("server", "Customer cancelled before booking."); typing(500, () => { bot("No problem. Message us anytime."); S.step = "done"; }); return; }
+    if (act.startsWith("pro:")) { const i2 = Number(act.slice(4)); offerTo(i2); typing(500, () => bot(`Asking <b>${esc(S.pro.name)}</b> now. Verified pros have 60 seconds to accept.`)); toast("The job just appeared on the technician's phone."); return; }
+    if (act === "pay1" || act === "pay2") { S.pay = { which: act === "pay1" ? 1 : 2, amount: act === "pay1" ? money().pay1 : money().pay2 }; S.chat.pop(); log("pay", `Paynow: EcoCash payment request for ${usd(S.pay.amount)} sent to the customer's phone.`); render(); return; }
+    if (act === "approve") { log("wa", "Customer approved the quote."); log("app", `Told ${S.pro.name}: quote approved, start work.`); S.t = { stage: "working", startedAt: Date.now() }; typing(500, () => bot(`Approved. ${esc(first(S.pro.name))} is starting now.`)); S.step = "work"; return; }
+    if (act === "later") { log("wa", "Customer chose to repair later."); log("server", `Diagnosis saved for 30 days. ${S.pro.name} gets first refusal when the customer resumes.`); S.t = { stage: "deferred" }; typing(500, () => { bot(`No problem. Your diagnosis is saved for <b>30 days</b>, and ${esc(first(S.pro.name))} gets first chance to finish the job. Message "RESUME ${esc(S.job)}" when you're ready. You've only paid the call-out.`); S.step = "deferred"; }); return; }
+    if (act.startsWith("rate:")) { S.rating = Number(act.slice(5)); log("wa", `Customer rated ${S.pro.name} ${S.rating} out of 5.`); log("app", `Rating shown on ${S.pro.name}'s app; Trust Score updates tonight.`); typing(500, () => { bot(`Thank you. Your warranty runs for ${P.warrantyDays} days. Message us anytime to book again.`); S.step = "done"; }); return; }
+    render(); return;
+  }
+  const act = b.dataset.act; if (!act) return;
+  if (act === "reset") { S = fresh(); autoKey = ""; $("#typed").value = ""; render(); window.scrollTo(0, 0); return; }
+  if (act === "pin-cancel") { log("pay", "Customer cancelled the EcoCash prompt."); const w = S.pay.which; S.pay = null; bot("Payment not completed. Tap Pay when you're ready.", { buttons: [{ label: `Pay ${usd(w === 1 ? money().pay1 : money().pay2)} with EcoCash`, act: w === 1 ? "pay1" : "pay2" }] }); render(); return; }
+  if (act === "track") { S.track = true; log("server", "Customer opened the live tracking page."); render(); return; }
+  if (act === "track-close") { S.track = false; render(); return; }
+  techAct(act);
+});
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (e.target.id === "composer") { const v = $("#typed").value; $("#typed").value = ""; customerSays(v); }
+  if (e.target.id === "ussd") { const pin = $("#pin").value; if (!/^\d{4}$/.test(pin)) { const er = $("#pin-err"); er.textContent = "Enter a 4-digit PIN."; er.hidden = false; return; } const w = S.pay.which; S.pay = null; render(); typing(1400, () => paid(w)); }
+});
+document.addEventListener("change", (e) => { if (e.target.id === "auto") { autoKey = ""; render(); } });
+setInterval(() => {
+  if (S.t.stage === "offer") { const left = Math.max(0, Math.ceil((S.t.expires - Date.now()) / 1000)), c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = left / 60 * 100 + "%"; if (left <= 0) techAct("t-decline"); }
+  if (S.t.stage === "working") { const el = $("#timer"); if (el) { const s = Math.floor((Date.now() - S.t.startedAt) / 1000); el.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); } }
+}, 1000);
+matchMedia("(min-width: 1061px)").addEventListener?.("change", render);
+render();
+})();
+</script>
+
+</body>
+</html>

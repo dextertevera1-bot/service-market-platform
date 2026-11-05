@@ -8,6 +8,7 @@ Five web apps built for the Basa seBasa launch in Harare. Each is a single HTML 
 | `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
 | `technician-app/` | Technician app (preview): go online, 60-second job requests with earnings shown, live trip map, diagnose and quote on site, job timer, before/after photos, earnings with 24-hour payout tracking, Trust Score profile | Technicians |
 | `onboarding-demo/` | Provider onboarding demo: sign-up with WhatsApp code, details, documents, automatic checks, team document review, reference calls, in-person check, induction and approval with starting Trust Score | Basa seBasa team (demo) |
+| `whatsapp-link-demo/` | Demo of one job travelling between the customer's WhatsApp chat, the server and the technician's Pro app, with a live server event log | Team, IT, investors |
 | `ops-desk/` | Operations desk: jobs pipeline with enforced stages, technician verification and Trust Score, money ledger, pricing settings, WhatsApp message templates, 24-hour payout deadlines | Basa seBasa team |
 
 ## Business rules built in
