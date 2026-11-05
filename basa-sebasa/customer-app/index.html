@@ -183,6 +183,7 @@ footer b { color: var(--night-fg); }
   .topnav a.hide-sm { display: none; }
 }
 @media (max-width: 520px) { .top .wrap { gap: 8px; } .topnav a { padding: 7px 7px; font-size: 14px; } .mark { width: 32px; height: 32px; font-size: 22px; } .logo b { font-size: 20px; } .pro { grid-template-columns: 46px minmax(0, 1fr) auto; } .avatar { width: 46px; height: 46px; } }
+.codecard{border:2px solid var(--gold,#F0AE00)}.bigcode{font-size:44px;font-weight:700;letter-spacing:.25em;margin:4px 0 8px}.ticks{margin:8px 0;padding-left:20px;display:grid;gap:4px}
 </style>
 
 <header class="top"><div class="wrap">
@@ -307,19 +308,19 @@ const Sim = {
   later(job, ms, fn) { clearTimeout(this.timers[job.id]); this.timers[job.id] = setTimeout(() => { fn(); save(); emit(job); }, ms / DEMO_SPEED); },
   go(job, stage, text) { job.stage = stage; addEvent(job, stage, text); },
   start(job) {
-    this.later(job, 2500, () => { this.go(job, "accepted", `${job.pro.name} accepted your job.`);
+    this.later(job, 2500, () => { job.basaCode = job.basaCode || String(1000 + Math.floor(Math.random() * 9000)); this.go(job, "accepted", `${job.pro.name} accepted your job. Your Basa Code is ${job.basaCode}.`);
       if (job.type === "Repair") this.go(job, "pay_callout", `Pay the ${usd(price(job).pay1)} call-out on EcoCash so ${job.pro.name.split(" ")[0]} can leave.`);
       else this.travel(job);
     });
   },
   travel(job) {
     this.go(job, "on_way", `${job.pro.name} is on the way. Live location is on.`); job.leftAt = Date.now(); job.travelMs = 30000 / DEMO_SPEED;
-    this.later(job, 30000, () => { this.go(job, "arrived", `${job.pro.name} has arrived.`);
+    this.later(job, 30000, () => { this.go(job, "arrived", `${job.pro.name} has arrived and confirmed your Basa Code.`);
       if (job.type === "Repair") this.later(job, 6000, () => { job.quote = { labour: job.service === "Auto mechanic" ? 55 : 40, parts: job.service === "Plumbing" ? 12 : 18, diagnosis: diagnosisFor(job.service) }; this.go(job, "quoted", "Your quote is ready. Nothing starts until you approve."); });
       else this.later(job, 4000, () => { this.go(job, "working", "Work has started."); this.finish(job); });
     });
   },
-  finish(job) { this.later(job, 9000, () => { this.go(job, "pay_final", `Job done. Please check the work, then pay ${usd(price(job).pay2)} on EcoCash.`); }); },
+  finish(job) { this.later(job, 9000, () => { job.report = { at: Date.now(), done: doneFor(job), photos: 2, warrantyDays: job.type === "Maid" ? 0 : WARRANTY_DAYS }; this.go(job, "pay_final", `Job done. Please check the work, then pay ${usd(price(job).pay2)} on EcoCash.`); }); },
   async pay(job, which, ecocash) {
     job.paying = which; emit(job);
     await new Promise((r) => setTimeout(r, 3500 / DEMO_SPEED));
@@ -333,6 +334,8 @@ const Sim = {
   defer(job) { job.deferredUntil = Date.now() + PRICING.diagnosisValidDays * 864e5; this.go(job, "deferred", `No problem. Your diagnosis is saved for ${PRICING.diagnosisValidDays} days, and ${job.pro.name} gets first chance to finish the job.`); save(); emit(job); },
   resume(job) { this.go(job, "quoted", "Welcome back. Here is your saved quote."); save(); emit(job); },
 };
+const WARRANTY_DAYS = 90;
+const doneFor = (job) => job.type === "Maid" ? [`${job.hours} hours of cleaning`, "Rooms checked with you before leaving"] : [job.quote ? "Fixed: " + job.quote.diagnosis.split(".")[0] : "Work done as agreed", "Safety checks done before and after", "Tested with you at handover", "Work area cleaned"];
 const diagnosisFor = (s) => ({ "HVAC/Refrigeration": "Start relay burnt out. The compressor is fine; replacing the relay and checking the gas.", Electrical: "Loose neutral in the distribution board. Re-terminate and fit a new breaker.", Plumbing: "Worn geyser thermostat valve. Replace the valve and reseal the joint.", "Appliance repair": "Drum belt snapped and the motor brush is worn. Replace both.", "Auto mechanic": "Alternator not charging. Replace the regulator and test the battery.", "Solar & inverters": "Battery cells out of balance. Rebalance and update inverter settings." }[s] || "Fault found. Repair as quoted.");
 
 // ================= HELPERS =================
@@ -485,7 +488,9 @@ function viewTrack() {
     <div class="status"><div class="row" style="justify-content:space-between"><span class="mono" style="color:#B9B2A2">${esc(job.code)} · ${esc(svcOf(job.service).name)}</span>${job.stage !== "closed" ? '<span style="font-size:14px"><span class="pulse"></span>Live</span>' : ""}</div>
       <h2>${esc(head[0])}</h2>${head[1] ? `<p class="muted">${esc(head[1])}</p>` : ""}
       ${["on_way", "arrived", "working"].includes(job.stage) || (job.stage === "quoted") ? mapBox(job) : ""}</div>
+    ${job.basaCode && ["accepted", "pay_callout", "paid_callout", "on_way"].includes(job.stage) ? `<div class="card codecard"><p class="eyebrow">Your Basa Code</p><p class="bigcode mono">${esc(job.basaCode)}</p><p class="muted" style="font-size:14px;margin:0">When ${esc(first)} arrives, ask them to show the Basa seBasa app, then give them this code at your door. Never share it by phone or SMS. If anyone else asks for it, don't let them in and message us HELP.</p></div>` : ""}
     ${actionBox(job, pr)}
+    ${job.report && ["pay_final", "review", "closed"].includes(job.stage) ? `<div class="card"><h3>Service report</h3>${job.quote ? `<p><b>Fault found:</b> ${esc(job.quote.diagnosis)}</p>` : ""}<ul class="ticks">${job.report.done.map((d) => `<li>${esc(d)}</li>`).join("")}</ul><p class="muted" style="font-size:14px">${job.report.photos} after photos sent to you on WhatsApp.${job.report.warrantyDays ? ` <b>Warranty until ${new Date(job.report.at + job.report.warrantyDays * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</b>: free return visit if the same fault comes back.` : ""}</p></div>` : ""}
     <div class="card"><h3>Updates</h3><div class="feed" aria-live="polite">${job.feed.slice().reverse().map((f) => `<p>${esc(f.text)}<time>${time(f.at)}</time></p>`).join("")}</div></div>
   </div>
   <aside style="display:grid;gap:16px">
@@ -497,7 +502,7 @@ function viewTrack() {
       ${job.type === "Repair" ? `<tr><td>Call-out${job.paid1 ? "<small>Paid " + time(job.paid1.at) + "</small>" : ""}</td><td>${usd(pr.pay1)}</td></tr>` : ""}
       ${job.quote ? `<tr><td>Repair (labour ${usd(pr.labour)} + parts ${usd(pr.parts)} + EcoCash charges)${job.paid2 ? "<small>Paid " + time(job.paid2.at) + "</small>" : ""}</td><td>${usd(pr.pay2)}</td></tr>` : ""}
       ${job.type !== "Repair" ? `<tr><td>${job.type === "Maid" ? job.hours + " hours" : "Agreed price"} + EcoCash charges${job.paid2 ? "<small>Paid " + time(job.paid2.at) + "</small>" : ""}</td><td>${usd(pr.pay2)}</td></tr>` : ""}
-      <tr class="total"><td>Paid so far</td><td>${usd((job.paid1?.amount || 0) + (job.paid2?.amount || 0))}</td></tr></table></div>
+      <tr class="total"><td>Paid so far</td><td>${usd((job.paid1?.amount || 0) + (job.paid2?.amount || 0))}</td></tr></table>${job.paid2 ? `<button class="btn" type="button" data-receipt style="margin-top:12px;width:100%">Download receipt (PDF)</button>` : ""}</div>
   </aside></div></div>`;
 }
 function mapBox(job) {
@@ -543,6 +548,48 @@ function actionBox(job, pr) {
   return "";
 }
 
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const ascii = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—−·×]/g, "-").replace(/[^\x20-\x7E]/g, "");
+function makePdf() {
+  const K = 72 / 25.4, H = 841.89, ops = [], n = (v) => (Math.round(v * 100) / 100).toString(), col = (c) => c.map((v) => n(v / 255)).join(" ");
+  const api = {
+    width(t, size, bold) { const w = bold ? HELVB : HELV; let u = 0; for (const ch of ascii(t)) u += w[ch.charCodeAt(0) - 32] || 556; return (u / 1000) * size / K; },
+    wrap(t, maxW, size, bold) { const words = ascii(t).split(" "), lines = []; let cur = ""; words.forEach((w) => { const tl = cur ? cur + " " + w : w; if (api.width(tl, size, bold) > maxW && cur) { lines.push(cur); cur = w; } else cur = tl; }); if (cur) lines.push(cur); return lines; },
+    rect(x, y, w, h, fill) { ops.push(`${col(fill)} rg ${n(x * K)} ${n(H - (y + h) * K)} ${n(w * K)} ${n(h * K)} re f`); },
+    line(x1, y1, x2, y2, color) { ops.push(`${col(color)} RG ${n(0.3 * K)} w ${n(x1 * K)} ${n(H - y1 * K)} m ${n(x2 * K)} ${n(H - y2 * K)} l S`); },
+    text(t, x, y, { size = 10, bold = false, color = [20, 18, 13], align = "left" } = {}) { const s2 = ascii(t), w = api.width(s2, size, bold), x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x; ops.push(`BT ${col(color)} rg /${bold ? "F2" : "F1"} ${n(size)} Tf ${n(x0 * K)} ${n(H - y * K)} Td (${s2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj ET`); return w; },
+    blob() { const stream = ops.join("\n"), objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`]; let out = "%PDF-1.4\n"; const offs = []; objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; }); const x = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("") + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`; return new Blob([out], { type: "application/pdf" }); },
+  };
+  return api;
+}
+async function downloadReceipt(job) {
+  const pr = price(job), d = makePdf(), W = 210, M = 18, ink = [20, 18, 13], gold = [240, 174, 0], grey = [103, 99, 90], green = [31, 118, 70], cream = [245, 241, 230], rule = [220, 216, 206];
+  const $m = (v) => "$" + r2(v).toFixed(2), when = (t) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  d.rect(0, 0, W, 34, ink); d.rect(M, 9, 16, 16, gold); d.text("B", M + 8, 20.5, { size: 16, bold: true, align: "center" });
+  let x = M + 21; x += d.text("BASA ", x, 18, { size: 17, bold: true, color: cream }); x += d.text("se", x, 18, { size: 17, bold: true, color: gold }); d.text("BASA", x, 18, { size: 17, bold: true, color: cream });
+  d.text("Verified professionals. Work done right.", M + 21, 24, { size: 8.5, color: [185, 178, 162] });
+  d.text("PAYMENT RECEIPT", W - M, 16, { size: 13, bold: true, color: gold, align: "right" }); d.text("RCPT-" + job.code, W - M, 22, { size: 9, color: cream, align: "right" }); d.text(when(job.paid2.at), W - M, 27, { size: 9, color: cream, align: "right" });
+  let y = 48; const L = (t, lx) => d.text(t.toUpperCase(), lx, y, { size: 7.5, bold: true, color: grey });
+  L("Job", M); L("Professional", M + 87); y += 5; d.text(`${job.code} - ${svcOf(job.service).name} ${job.type.toLowerCase()}`, M, y); d.text(`${job.pro.name}, Trust Score ${job.pro.trust}`, M + 87, y); y += 9;
+  L("Customer", M); L("Arrival", M + 87); y += 5; d.text(`${job.name || "Customer"}, ${job.suburb}, Harare`, M, y); d.text("Basa Code confirmed at the door", M + 87, y); y += 9;
+  if (job.quote) { L("Fault found", M); y += 5; d.wrap(job.quote.diagnosis, W - 2 * M, 10).forEach((l) => { d.text(l, M, y); y += 5; }); y += 4; }
+  const lines = []; if (job.type === "Repair") lines.push([`Call-out (inspection and travel up to ${PRICING.freeKm} km)`, pr.callout]); if (pr.transport) lines.push(["Extra travel", pr.transport]);
+  if (job.type === "Maid") lines.push([`${job.hours} hours`, pr.labour]); else if (pr.labour) lines.push([job.quote ? "Labour (as quoted and approved)" : "Agreed price", pr.labour]); if (pr.parts) lines.push(["Parts", pr.parts]);
+  lines.push(["EcoCash charges", r2(pr.fee1 + pr.fee2)]);
+  d.line(M, y, W - M, y, rule); y += 7; d.text("What you paid", M, y, { size: 11, bold: true }); y += 6.5;
+  lines.forEach(([l, a]) => { d.text(l, M, y); d.text($m(a), W - M, y, { align: "right" }); y += 6; });
+  const total = r2((job.paid1?.amount || 0) + job.paid2.amount); d.line(W - M - 60, y - 2, W - M, y - 2, ink); y += 4; d.text("Total paid", M, y, { size: 12, bold: true }); d.text($m(total), W - M, y, { size: 12, bold: true, align: "right" }); y += 8;
+  [["Call-out", job.paid1], ["Final payment", job.paid2]].filter(([, p2]) => p2).forEach(([w, p2]) => { d.text(`${w}: ${$m(p2.amount)} by EcoCash from ${p2.number} to Basa seBasa`, M, y, { size: 9, color: grey }); y += 5; }); y += 6;
+  if (job.report?.warrantyDays) { d.rect(M, y - 4.5, W - 2 * M, 11, [223, 241, 229]); d.text(`Warranty until ${new Date(job.report.at + job.report.warrantyDays * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}. Free return visit if the same fault comes back.`, M + 4, y + 2.5, { size: 10, bold: true, color: green }); y += 14; }
+  d.line(M, 270, W - M, 270, rule); d.text("All payments go through Basa seBasa on EcoCash. Never pay a professional in cash.", M, 276, { size: 8.5, color: grey }); d.text(`Questions? Message Basa seBasa on WhatsApp and quote ${job.code}.`, M, 281, { size: 8.5, color: grey });
+  d.text("Preview: sample transaction, nothing was charged.", W - M, 281, { size: 8.5, color: [134, 95, 0], align: "right" });
+  const blob = d.blob(), filename = `Basa-seBasa-receipt-${job.code}.pdf`;
+  let dl = null; try { dl = await window.claude?.use("downloads"); } catch (e) {}
+  try { if (dl) { await dl.save({ filename, data: blob }); toast("Receipt saved."); return; } } catch (e) { if (e?.code === "declined") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast("Receipt downloaded.");
+}
+
 // ================= OTHER PAGES =================
 function viewBookings() {
   return `<div class="wrap page"><p class="eyebrow">My jobs</p><h2 style="margin-bottom:16px">Your bookings</h2>
@@ -582,6 +629,7 @@ document.addEventListener("click", async (e) => {
   if (t.hasAttribute("data-approve") && job) { await API.approveQuote(job); return; }
   if (t.hasAttribute("data-defer") && job) { await API.deferQuote(job); return; }
   if (t.hasAttribute("data-resume") && job) { Sim.resume(job); return; }
+  if (t.hasAttribute("data-receipt") && job) { await downloadReceipt(job); return; }
   if (t.dataset.star && job) { job.draftRating = Number(t.dataset.star); const keep = captureInputs(); render(); restoreInputs(keep); return; }
 });
 document.addEventListener("change", (e) => { if (e.target.id === "b-photo") { B.photo = e.target.files?.[0]?.name || ""; readStep(); render(); } if (e.target.id === "b-tier" || e.target.id === "b-hours") { readStep(); $(".summary").innerHTML = summary(); } });

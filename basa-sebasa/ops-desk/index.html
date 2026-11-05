@@ -382,12 +382,13 @@ function jobDetail(job) {
     <div class="dhead"><div><a class="btn sm quiet back" href="#jobs">← All jobs</a><div class="label"><span class="mono">${esc(job.code)}</span> · ${esc(job.type)} · ${esc(job.urgency || "Normal")}${isExample(job) ? '<span class="ex">EXAMPLE</span>' : ""}</div><h2>${esc(job.category)} · ${esc(c.suburb)}</h2></div>${payPill(job)}</div>
     ${job.stage !== "cancelled" ? `<div class="track" aria-label="Progress">${track}</div>` : ""}
     <div class="cols">
-      <div class="box"><span class="label">Customer</span><p><b>${esc(c.name)}</b></p><p class="mono">${esc(c.whatsapp)}</p><p class="muted">${esc([c.address, c.suburb].filter(Boolean).join(", "))}</p><p>${esc(job.description)}</p></div>
+      <div class="box"><span class="label">Customer</span><p><b>${esc(c.name)}</b></p><p class="mono">${esc(c.whatsapp)}</p><p class="muted">${esc([c.address, c.suburb].filter(Boolean).join(", "))}</p><p>${esc(job.description)}</p>${job.basaCode ? `<p>Basa Code: <b class="mono">${esc(job.basaCode)}</b> <span class="muted">(customer only, never the technician)</span></p>` : ""}</div>
       <div class="box"><span class="label">Technician</span>${tech ? `<p><b>${esc(tech.name)}</b> · Trust ${trust(tech)}/100</p><p class="mono">${esc(tech.whatsapp)}</p><p class="muted">${esc(tech.trade)} · ${esc(tech.suburb)}</p>` : `<p class="muted">Not assigned yet.</p>`}
         ${job.distanceKm ? `<p class="muted">${esc(job.distanceKm)} km away${job.etaMinutes ? ` · ETA ${esc(job.etaMinutes)} min` : ""}${job.locationShared ? " · live location shared" : ""}</p>` : ""}</div>
       <div class="box"><span class="label">Money</span>${moneyTable(job, m)}</div>
     </div>
     ${job.diagnosis ? `<div class="box"><span class="label">Diagnosis</span><p>${esc(job.diagnosis)}</p>${job.stage === "deferred" ? `<p class="muted">Valid until ${esc(new Date(job.diagnosisValidUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" }))}. ${esc(tech?.name || "The original technician")} gets first refusal for ${esc(S.pricing.firstRefusalHours)} hours when the customer resumes.</p>` : ""}</div>` : ""}
+    ${(job.payment2 || (job.calloutOnly && job.payment1)) && job.stage !== "paid" ? `<div class="row"><button class="btn sm" type="button" data-act="receipt">Download receipt (PDF)</button><span class="muted" style="font-size:13px">For the customer or your records.</span></div>` : ""}
     ${actionPanel(job, m, tech)}
     ${waPanel(job, m, tech)}
     <div><h3 style="margin-bottom:6px">History</h3><div class="hist">${(job.history || []).slice().reverse().map((h) => `<div><span class="muted num">${esc(fmtDate(h.at))}</span><span><b>${esc((STAGE[h.stage] || [h.stage])[0])}</b>${h.note ? ` · ${esc(h.note)}` : ""}${h.by ? ` · <span class="muted" data-person="${esc(h.by)}">Team member</span>` : ""}</span></div>`).join("")}</div></div>
@@ -428,7 +429,7 @@ function actionPanel(job, m, tech) {
       if (m.isRepair) return f(`<p>Customer pays the call-out of <b>${usd(m.cust1)}</b> to the Basa seBasa EcoCash number before the technician travels.</p><div class="fields"><div class="field"><label for="p1-ref">EcoCash reference</label><input id="p1-ref" type="text" autocomplete="off" placeholder="e.g. MP260411.1432.A12345"></div></div><label class="check"><input type="checkbox" id="p1-ok"> I checked this reference and amount in the EcoCash merchant statement</label>`, "Call-out payment", "callout", "Call-out received");
       return onWayForm(f);
     case "callout_paid": return onWayForm(f);
-    case "on_way": return f(`<p>Mark arrival when the technician confirms they are on site.</p>`, "Arrival", "arrive", "Technician arrived");
+    case "on_way": return f(`<p>At the door, the customer gives the technician their Basa Code. The technician reads it back to you.</p>${job.basaCode ? `<div class="fields"><div class="field"><label for="ar-code">Code the technician read back</label><input id="ar-code" type="text" inputmode="numeric" maxlength="4" autocomplete="off"></div></div>${job.codeTries ? `<p class="err">${job.codeTries >= 3 ? "Three wrong codes. Stop the job: call the customer and the technician before anyone goes in." : `Wrong code entered ${job.codeTries === 1 ? "once" : "twice"}. Ask the technician to check the address and call the customer.`}</p>` : ""}` : ""}`, "Arrival", "arrive", "Arrival confirmed", `<button class="btn" type="button" data-act="noshow">Customer not home after 15 min</button>`);
     case "arrived":
       if (m.isRepair) return f(`<div class="fields"><div class="field full"><label for="q-diag">Diagnosis</label><textarea id="q-diag" placeholder="e.g. Compressor not starting; start relay burnt."></textarea></div><div class="field"><label for="q-labour">Labour (USD)</label><input id="q-labour" type="number" min="0" step="0.5" inputmode="decimal"></div><div class="field"><label for="q-parts">Parts (USD)</label><input id="q-parts" type="number" min="0" step="0.5" inputmode="decimal" value="0"></div></div><p class="muted">The full quote goes to the customer before any repair starts. Commission is ${esc(m.p.commissionRate)}% of labour only.</p>`, "Technician's quote", "quote", "Send quote to customer");
       return f(`<p>Start the job once the customer lets the technician begin.</p>`, "Start work", "start", "Work started");
@@ -438,7 +439,7 @@ function actionPanel(job, m, tech) {
       return f(`<p>When the customer is ready, resume the repair. Ask ${esc(tech?.name || "the original technician")} first; if they decline or don't answer within ${esc(m.p.firstRefusalHours)} hours, reassign.</p>`, "Deferred repair", "resume", "Resume with same technician", `<button class="btn" type="button" data-act="reassign">Reassign to another technician</button><button class="btn" type="button" data-act="calloutonly">Close on call-out only</button>`);
     case "approved": return f(`<p>Quote approved. Tell the technician to start.</p>`, "Start work", "start", "Work started");
     case "working":
-      return f(`${m.isMaid ? `<div class="fields"><div class="field"><label for="w-hours">Hours worked</label><input id="w-hours" type="number" min="0.5" step="0.5" inputmode="decimal" value="${esc(job.maidHours)}"></div></div>` : ""}<div class="fields"><div class="field full"><label for="w-notes">What was done</label><textarea id="w-notes" placeholder="Work done, parts fitted, warranty given."></textarea></div></div><label class="check"><input type="checkbox" id="w-cust"> Customer confirmed on WhatsApp that the work is complete</label>`, "Finish the job", "complete", "Mark complete");
+      return f(`${m.isMaid ? `<div class="fields"><div class="field"><label for="w-hours">Hours worked</label><input id="w-hours" type="number" min="0.5" step="0.5" inputmode="decimal" value="${esc(job.maidHours)}"></div></div>` : ""}<div class="fields"><div class="field full"><label for="w-notes">What was done</label><textarea id="w-notes" placeholder="Work done, parts fitted, warranty given."></textarea></div></div><label class="check"><input type="checkbox" id="w-photo"> Technician sent after photos${m.parts ? " and the parts receipt" : ""} on WhatsApp</label><label class="check"><input type="checkbox" id="w-cust"> Customer confirmed on WhatsApp that the work is complete</label>`, "Finish the job", "complete", "Mark complete");
     case "completed":
       return f(`<p>Customer pays <b>${usd(m.cust2)}</b> to the Basa seBasa EcoCash number.</p><div class="fields"><div class="field"><label for="p2-ref">EcoCash reference</label><input id="p2-ref" type="text" autocomplete="off" placeholder="e.g. MP260411.1610.B67890"></div></div><label class="check"><input type="checkbox" id="p2-ok"> I checked this reference and the exact amount in the EcoCash merchant statement</label>`, "Final payment", "pay", "Payment received");
     case "paid":
@@ -451,27 +452,29 @@ function actionPanel(job, m, tech) {
 }
 const onWayForm = (f) => f(`<div class="fields"><div class="field"><label for="ow-eta">ETA (minutes)</label><input id="ow-eta" type="number" min="1" step="1" inputmode="numeric"></div></div><label class="check"><input type="checkbox" id="ow-loc"> Technician is sharing live location on WhatsApp (required)</label>`, "Technician travelling", "onway", "On the way");
 
+const first2 = (n) => String(n || "").split(" ")[0];
 function waPanel(job, m, tech) {
   const merchant = m.p.merchantNumber ? m.p.merchantNumber : "[set the EcoCash merchant number in Pricing]";
   const c = job.customer || {};
   const first = (c.name || "").split(" ")[0] || "there";
-  let to = "customer", text = "";
+  let to = "customer", text = "", extra = null;
   switch (job.stage) {
     case "new": text = `Hi ${first}, thank you for contacting Basa seBasa. We have your ${job.category.toLowerCase()} request (${job.code}) and are matching you with a verified professional near ${c.suburb}. We will confirm shortly.`; break;
     case "assigned": to = "technician"; text = `New Basa seBasa job ${job.code}\n${job.category} · ${job.type}\nArea: ${c.suburb}${job.distanceKm ? ` (${job.distanceKm} km)` : ""}\nIssue: ${job.description}\n${m.isRepair ? `Call-out: ${usd(m.callout)} (you receive ${usd(m.callout - m.calloutPlatform + m.transport)})` : `Agreed price: ${usd(m.labour + m.parts)}`}\nReply YES to accept or NO to decline.`; break;
     case "accepted": text = m.isRepair ? `Hi ${first}, ${tech?.name || "your technician"} (Trust Score ${tech ? trust(tech) : "-"}/100) has accepted job ${job.code}.\n\nCall-out fee: ${usd(m.cust1)} (inspection and travel, incl. EcoCash charges).\nPay to Basa seBasa EcoCash: ${merchant}\nReference: ${job.code}\n\nThe technician leaves as soon as payment is confirmed. The full repair quote comes before any work starts.` : `Hi ${first}, ${tech?.name || "your technician"} (Trust Score ${tech ? trust(tech) : "-"}/100) has accepted job ${job.code} at the agreed price. We will share their live location when they leave.`; break;
     case "callout_paid": text = `Payment received, thank you. ${tech?.name || "Your technician"} is getting ready to leave. You will see their live location here.`; break;
-    case "on_way": text = `${tech?.name || "Your technician"} is on the way${job.etaMinutes ? `, arriving in about ${job.etaMinutes} minutes` : ""}. Live location is shared in this chat.`; break;
-    case "arrived": text = `${tech?.name || "Your technician"} has arrived.`; break;
+    case "on_way": text = `${tech?.name || "Your technician"} is on the way${job.etaMinutes ? `, arriving in about ${job.etaMinutes} minutes` : ""}. Live location is shared in this chat.${job.basaCode ? `\n\nYour Basa Code: ${job.basaCode}\nOnly give it to ${first2(tech?.name) || "your technician"} at your door. It proves they are the pro we sent.` : ""}`; break;
+    case "arrived": text = `${tech?.name || "Your technician"} has arrived${job.codeVerified ? " and confirmed your Basa Code" : ""}. You can let them in.`; break;
     case "quoted": text = `Quote for job ${job.code}\nDiagnosis: ${job.diagnosis}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.cust2 - m.base2)}\nTotal after the work: ${usd(m.cust2)}\n\nReply APPROVE to go ahead, or LATER if you want to repair another time. Your diagnosis stays valid for ${m.p.diagnosisValidDays} days.`; break;
     case "deferred": text = `No problem, ${first}. Your diagnosis for job ${job.code} is saved until ${new Date(job.diagnosisValidUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}. Message us "RESUME ${job.code}" when you are ready.`; break;
     case "approved": case "working": text = `Thank you, ${first}. Work on job ${job.code} is under way.`; break;
     case "completed": text = `Job ${job.code} is complete.\nAmount due: ${usd(m.cust2)}\nPay to Basa seBasa EcoCash: ${merchant}\nReference: ${job.code}\n\nWe pay your technician once your payment is confirmed. Please do not pay the technician directly.`; break;
-    case "paid": to = "technician"; text = `Payment confirmed for ${job.code}. Your payout of ${usd(m.payout)} will reach your EcoCash within ${m.p.payoutWindowHours} hours.`; break;
+    case "paid": text = `Payment received for job ${job.code}, thank you. Your receipt is attached.${job.calloutOnly ? "" : " Your warranty is on the service report."}`; extra = ["technician", `Payment confirmed for ${job.code}. Your payout of ${usd(m.payout)} will reach your EcoCash within ${m.p.payoutWindowHours} hours.`]; break;
     case "paid_out": text = `Thank you for using Basa seBasa, ${first}. How did ${tech?.name || "your technician"} do? Reply with a rating from 1 to 5 and a few words about the job.`; break;
     default: return "";
   }
-  return `<div class="wa"><div class="row" style="justify-content:space-between"><span class="label">WhatsApp message to the ${to}</span><button class="btn sm" type="button" data-copy="wa-text">Copy</button></div><pre id="wa-text">${esc(text)}</pre></div>`;
+  const panel = (who, words, id) => `<div class="wa"><div class="row" style="justify-content:space-between"><span class="label">WhatsApp message to the ${who}</span><button class="btn sm" type="button" data-copy="${id}">Copy</button></div><pre id="${id}">${esc(words)}</pre>${who === "customer" && job.stage === "paid" ? `<button class="btn sm" type="button" data-act="receipt">Download the receipt PDF to attach</button>` : ""}</div>`;
+  return panel(to, text, "wa-text") + (extra ? panel(extra[0], extra[1], "wa-text2") : "");
 }
 
 async function onSubmit(form) {
@@ -493,7 +496,7 @@ async function onSubmit(form) {
       const t = S.techs.find((x) => x.id === pick.value);
       return go("assigned", patch, `Sent to ${t?.name || "technician"}`, "Job sent to technician");
     }
-    case "accept": return go("accepted", {}, "", "Marked accepted");
+    case "accept": return go("accepted", { basaCode: String(1000 + Math.floor(Math.random() * 9000)) }, "Basa Code created for the customer", "Marked accepted");
     case "callout": {
       const r = $("#p1-ref").value.trim(); if (!r) return fail("Enter the EcoCash reference."); if (!$("#p1-ok").checked) return fail("Confirm you checked the merchant statement.");
       const m = calc(job, S.pricing);
@@ -503,7 +506,10 @@ async function onSubmit(form) {
       if (!$("#ow-loc").checked) return fail("Live location is required before the technician travels.");
       return go("on_way", { locationShared: true, etaMinutes: num($("#ow-eta").value) || null }, $("#ow-eta").value ? `ETA ${$("#ow-eta").value} min` : "", "Marked on the way");
     }
-    case "arrive": return go("arrived", {}, "", "Marked arrived");
+    case "arrive": {
+      if (job.basaCode) { const v = ($("#ar-code").value || "").trim(); if (v !== job.basaCode) { const tries = (job.codeTries || 0) + 1; await write(() => ref.update({ codeTries: tries })); return fail(tries >= 3 ? "Three wrong codes. Stop the job: call the customer and the technician before anyone goes in." : "That code doesn't match. Ask the technician to check the address and call the customer."); } }
+      return go("arrived", { codeVerified: !!job.basaCode }, job.basaCode ? "Basa Code confirmed at the door" : "", "Arrival confirmed");
+    }
     case "quote": {
       const d = $("#q-diag").value.trim(), l = $("#q-labour").value; if (!d) return fail("Write the diagnosis."); if (l === "" || num(l) < 0) return fail("Enter the labour amount.");
       return go("quoted", { diagnosis: d, quote: { labour: num(l), parts: num($("#q-parts").value), sentAt: new Date().toISOString() } }, `Labour ${usd(l)} · parts ${usd($("#q-parts").value)}`, "Quote recorded");
@@ -512,6 +518,7 @@ async function onSubmit(form) {
     case "resume": return go("quoted", { resumedAt: new Date().toISOString() }, "Resumed with original technician", "Resumed");
     case "start": return go("working", { workStartedAt: new Date().toISOString() }, "", "Work started");
     case "complete": {
+      if (!$("#w-photo").checked) return fail("Get the after photos from the technician first. They protect everyone if there's a dispute.");
       if (!$("#w-cust").checked) return fail("Get the customer's confirmation on WhatsApp first.");
       const patch = { workNotes: $("#w-notes").value.trim(), workFinishedAt: new Date().toISOString() };
       if (job.type === "Maid") { const h = num($("#w-hours").value); if (h <= 0) return fail("Enter the hours worked."); patch.maidHours = h; }
@@ -541,9 +548,15 @@ async function onAction(act) {
   const job = S.jobs.find((j) => j.id === S.jobId);
   if (act === "delete-job") { if (!confirmStep("delete-job")) return; await write(() => db().doc("jobs/" + job.id).delete(), "Record deleted"); location.hash = "#jobs"; return; }
   if (!job) return;
+  if (act === "receipt") return downloadReceipt(job);
   const ref = db().doc("jobs/" + job.id);
   const now = new Date().toISOString();
   const up = (stage, patch, note, msg) => write(() => ref.update({ ...patch, stage, updatedAt: now, history: [...(job.history || []), histEntry(stage, note)] }), msg);
+  if (act === "noshow") {
+    if (!confirmStep("noshow")) return;
+    if (job.type === "Repair" && job.payment1) { const j2 = { ...job, calloutOnly: true }; return up("paid", { calloutOnly: true, calloutOnlyAt: now, noShow: true, settled: settlement(j2) }, "Customer not home after 15 minutes; technician keeps the call-out", "Closed: customer not home"); }
+    return up("cancelled", { noShow: true }, "Customer not home after 15 minutes", "Closed: customer not home");
+  }
   if (act === "cancel") { if (!confirmStep("cancel")) return; return up("cancelled", {}, "Cancelled by team", "Job cancelled"); }
   if (act === "decline") return up("new", { technicianId: null, quote: job.type === "Repair" ? null : job.quote }, "Technician declined", "Back to matching");
   if (act === "defer") { const until = new Date(Date.now() + S.pricing.diagnosisValidDays * 864e5).toISOString(); return up("deferred", { diagnosisValidUntil: until, deferredAt: now }, "Customer will repair later", "Diagnosis saved"); }
@@ -553,6 +566,53 @@ async function onAction(act) {
 // in-page "press again to confirm" (dialogs are not available inside artifacts)
 function confirmStep(key) { const b = document.querySelector(`[data-act="${key}"]`); if (b && b.dataset.armed === "1") return true; if (b) { b.dataset.armed = "1"; b.dataset.label = b.textContent; b.textContent = "Press again to confirm"; setTimeout(() => { if (b.isConnected) { b.dataset.armed = ""; b.textContent = b.dataset.label; } }, 4000); } return false; }
 const db = () => S.db;
+
+// ---------- receipts (built-in PDF writer) ----------
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const ascii = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—−·×]/g, "-").replace(/[^\x20-\x7E]/g, "");
+function makePdf() {
+  const K = 72 / 25.4, H = 841.89, ops = [], n = (v) => (Math.round(v * 100) / 100).toString(), col = (c) => c.map((v) => n(v / 255)).join(" ");
+  const api = {
+    width(t, size, bold) { const w = bold ? HELVB : HELV; let u = 0; for (const ch of ascii(t)) u += w[ch.charCodeAt(0) - 32] || 556; return (u / 1000) * size / K; },
+    wrap(t, maxW, size, bold) { const words = ascii(t).split(" "), lines = []; let cur = ""; words.forEach((w) => { const tl = cur ? cur + " " + w : w; if (api.width(tl, size, bold) > maxW && cur) { lines.push(cur); cur = w; } else cur = tl; }); if (cur) lines.push(cur); return lines; },
+    rect(x, y, w, h, fill) { ops.push(`${col(fill)} rg ${n(x * K)} ${n(H - (y + h) * K)} ${n(w * K)} ${n(h * K)} re f`); },
+    line(x1, y1, x2, y2, color) { ops.push(`${col(color)} RG ${n(0.3 * K)} w ${n(x1 * K)} ${n(H - y1 * K)} m ${n(x2 * K)} ${n(H - y2 * K)} l S`); },
+    text(t, x, y, { size = 10, bold = false, color = [20, 18, 13], align = "left" } = {}) { const s2 = ascii(t), w = api.width(s2, size, bold), x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x; ops.push(`BT ${col(color)} rg /${bold ? "F2" : "F1"} ${n(size)} Tf ${n(x0 * K)} ${n(H - y * K)} Td (${s2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj ET`); return w; },
+    blob() { const stream = ops.join("\n"), objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`]; let out = "%PDF-1.4\n"; const offs = []; objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; }); const x = out.length; out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("") + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`; return new Blob([out], { type: "application/pdf" }); },
+  };
+  return api;
+}
+async function downloadReceipt(job) {
+  const m = calc(job, S.pricing), s = job.settled || settlement(job), tech = S.techs.find((t) => t.id === job.technicianId), c = job.customer || {};
+  const d = makePdf(), W = 210, M = 18, ink = [20, 18, 13], gold = [240, 174, 0], grey = [103, 99, 90], green = [31, 118, 70], cream = [245, 241, 230], rule = [220, 216, 206];
+  const $m = (v) => (v < 0 ? "-$" : "$") + Math.abs(r2(v)).toFixed(2), when = (t) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  d.rect(0, 0, W, 34, ink); d.rect(M, 9, 16, 16, gold); d.text("B", M + 8, 20.5, { size: 16, bold: true, align: "center" });
+  let x = M + 21; x += d.text("BASA ", x, 18, { size: 17, bold: true, color: cream }); x += d.text("se", x, 18, { size: 17, bold: true, color: gold }); d.text("BASA", x, 18, { size: 17, bold: true, color: cream });
+  d.text("Verified professionals. Work done right.", M + 21, 24, { size: 8.5, color: [185, 178, 162] });
+  d.text(job.calloutOnly ? "CALL-OUT RECEIPT" : "PAYMENT RECEIPT", W - M, 16, { size: 13, bold: true, color: gold, align: "right" });
+  d.text("RCPT-" + job.code, W - M, 22, { size: 9, color: cream, align: "right" }); d.text(when(job.payment2?.at || job.payment1?.at || Date.now()), W - M, 27, { size: 9, color: cream, align: "right" });
+  let y = 48; const L = (t, lx) => d.text(t.toUpperCase(), lx, y, { size: 7.5, bold: true, color: grey });
+  L("Job", M); L("Professional", M + 87); y += 5; d.text(`${job.code} - ${job.category} ${job.type === "Maid" ? "(hourly)" : job.type.toLowerCase()}`, M, y); d.text(tech ? `${tech.name}, Trust Score ${trust(tech)}` : "Basa seBasa professional", M + 87, y); y += 9;
+  L("Customer", M); L("Arrival", M + 87); y += 5; d.text(`${c.name || ""}, ${c.suburb || ""}, Harare`, M, y); d.text(job.codeVerified ? "Basa Code confirmed at the door" : job.noShow ? "Customer not home" : "Confirmed by the team", M + 87, y); y += 9;
+  if (job.diagnosis) { L("Fault found", M); y += 5; d.wrap(job.diagnosis, W - 2 * M, 10).forEach((l) => { d.text(l, M, y); y += 5; }); y += 4; }
+  const table = (title, lines, label, total, color) => { d.line(M, y, W - M, y, rule); y += 7; d.text(title, M, y, { size: 11, bold: true }); y += 6.5; lines.forEach(([l, a]) => { d.text(l, M, y); d.text($m(a), W - M, y, { align: "right" }); y += 6; }); d.line(W - M - 60, y - 2, W - M, y - 2, ink); y += 4; d.text(label, M, y, { size: 12, bold: true, color }); d.text($m(total), W - M, y, { size: 12, bold: true, color, align: "right" }); y += 8; };
+  const cust = []; if (m.isRepair) cust.push([`Call-out (inspection and travel up to ${m.p.freeKm} km)`, m.callout]); if (m.transport) cust.push(["Extra travel", m.transport]);
+  if (!job.calloutOnly) { if (m.isMaid) cust.push([`${num(job.maidHours)} hours`, m.labour]); else if (m.labour) cust.push([m.isRepair ? "Labour (as quoted and approved)" : "Agreed price", m.labour]); if (m.parts) cust.push(["Parts", m.parts]); }
+  const paidTotal = r2(num(job.payment1?.amount) + num(job.payment2?.amount)), charges = r2(paidTotal - cust.reduce((t, l) => t + l[1], 0)); if (charges > 0) cust.push(["EcoCash charges", charges]);
+  table("Paid by the customer", cust, "Total paid", paidTotal, ink);
+  [["Call-out", job.payment1], [job.calloutOnly ? "" : "Final payment", job.payment2]].filter(([w, p]) => w && p).forEach(([w, p]) => { d.text(`${w}: ${$m(p.amount)} by EcoCash to Basa seBasa, reference ${p.ref}`, M, y, { size: 9, color: grey }); y += 5; }); y += 3;
+  const pro = []; if (m.isRepair) pro.push([`Call-out (your share of $${m.p.calloutFee})`, m.callout - m.calloutPlatform]); if (m.transport) pro.push(["Extra travel", m.transport]);
+  if (!job.calloutOnly) { if (m.labour) pro.push([m.isMaid ? "Hours worked" : "Labour", m.labour]); if (m.commission) pro.push([`Basa seBasa fee (${m.p.commissionRate}%)`, -m.commission]); if (m.parts) pro.push(["Parts (100% yours)", m.parts]); }
+  table("Professional's payout", pro, "Paid to the professional", s.payout, green);
+  d.text(job.payout ? `Sent to EcoCash ${tech?.whatsapp || ""} on ${when(job.payout.at)}, reference ${job.payout.ref}.` : `Sent to the professional's EcoCash within ${m.p.payoutWindowHours} hours of the customer paying.`, M, y, { size: 9, color: grey });
+  d.line(M, 270, W - M, 270, rule); d.text("All payments go through Basa seBasa on EcoCash. Never pay a professional in cash.", M, 276, { size: 8.5, color: grey }); d.text(`Questions? Message Basa seBasa on WhatsApp and quote ${job.code}.`, M, 281, { size: 8.5, color: grey });
+  if (isExample(job)) d.text("Example record, not a real payment.", W - M, 281, { size: 8.5, color: [134, 95, 0], align: "right" });
+  const blob = d.blob(), filename = `Basa-seBasa-receipt-${job.code}.pdf`;
+  let dl = null; try { dl = await window.claude.use("downloads"); } catch (e) {}
+  if (!dl) return toast("Downloads aren't available in this view.", true);
+  try { await dl.save({ filename, data: blob }); toast("Receipt saved. Attach it on WhatsApp."); } catch (e) { if (e?.code !== "declined") toast("Couldn't save the receipt.", true); }
+}
 
 // ---------- new job ----------
 function newJobForm() {

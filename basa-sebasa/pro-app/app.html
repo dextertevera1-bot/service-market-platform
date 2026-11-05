@@ -1,0 +1,884 @@
+<title>Basa seBasa Pro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one installable phone app. Centred column (max 480px), dark status header, big tap targets, bottom tab bar once approved. Ink and gold from the Basa seBasa logo; high contrast for sunlight. */
+:root {
+  --bg: #F4F2EC; --card: #FFFFFF; --sunk: #EAE7DF; --ink: #14120D; --muted: #67635A; --line: #DCD8CE;
+  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D;
+  --good: #1F7646; --good-bg: #DFF1E5; --bad: #A3271D; --bad-bg: #F8E0DC; --warn-bg: #FCEECC;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: #14120D; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.02; margin: 0; text-wrap: balance; }
+h2 { font-size: 32px; text-transform: uppercase; }
+h3 { font-size: 21px; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13.5px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); }
+.shell { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.banner { background: var(--gold); color: var(--on-gold); font-size: 12.5px; font-weight: 600; text-align: center; padding-block: 5px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.offline { background: #A3271D; color: #fff; font-size: 13.5px; font-weight: 600; text-align: center; padding-block: 6px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+
+/* header */
+.head { background: #14120D; color: #F5F1E6; padding-block: 14px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; }
+.who { display: flex; align-items: center; gap: 12px; }
+.mark { width: 40px; height: 40px; border-radius: 10px; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 26px; flex: none; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 20px; flex: none; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.who b { font-size: 18px; display: block; line-height: 1.1; }
+.who small { color: #B9B2A2; font-size: 13.5px; }
+.level { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: #F0AE00; color: #14120D; padding: 1px 6px; border-radius: 4px; vertical-align: 2px; margin-left: 4px; }
+.trust { margin-left: auto; text-align: center; }
+.trust b { font-family: var(--display); font-size: 30px; font-weight: 800; color: #F0AE00; line-height: 1; display: block; }
+.trust small { font-size: 10.5px; color: #B9B2A2; text-transform: uppercase; letter-spacing: .08em; }
+.online { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: rgba(255,255,255,.07); border-radius: 14px; padding: 10px 12px; }
+.online span b { display: block; font-size: 16px; }
+.online span small { color: #B9B2A2; font-size: 13px; }
+.switch { position: relative; width: 62px; height: 34px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; z-index: 1; }
+.switch i { position: absolute; inset: 0; border-radius: 17px; background: #4A463D; transition: background .2s; }
+.switch i::after { content: ""; position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #F5F1E6; top: 4px; left: 4px; transition: transform .2s; }
+.switch input:checked + i { background: #2FA463; }
+.switch input:checked + i::after { transform: translateX(28px); }
+
+main { flex: 1; padding-block: 16px 100px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; align-content: start; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 2px solid var(--ink); background: transparent; padding: 14px 18px; border-radius: 14px; font-weight: 700; font-size: 17px; cursor: pointer; text-decoration: none; text-align: center; }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.btn.quiet { border-color: var(--line); font-weight: 600; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { padding: 8px 12px; font-size: 14.5px; border-radius: 11px; width: auto; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toprow { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+@media (prefers-reduced-motion: no-preference) { .btn:active { transform: scale(.98); } .btn { transition: transform .1s; } }
+
+/* forms */
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .lab { font-weight: 600; font-size: 14.5px; }
+input[type=text], input[type=tel], input[type=number], textarea, select { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 12px; padding: 12px; font-size: 16px; }
+input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: none; }
+textarea { min-height: 84px; resize: vertical; }
+.code { font-family: var(--mono); font-size: 28px; letter-spacing: .4em; text-align: center; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; cursor: pointer; }
+.check input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--gold); flex: none; }
+.err { color: var(--bad); font-weight: 600; font-size: 14.5px; }
+.ok { color: var(--good); font-weight: 700; }
+.no { color: var(--muted); }
+.note { background: var(--warn-bg); border-radius: 12px; padding: 10px 12px; font-size: 14.5px; }
+.note.bad { background: var(--bad-bg); color: var(--bad); }
+.note.good { background: var(--good-bg); color: var(--good); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--sunk); }
+.chip.static { cursor: default; background: var(--sunk); border-color: transparent; }
+.chip.hot { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.chip.warm { background: var(--warn-bg); color: var(--gold-deep); border-color: transparent; }
+.steps { display: flex; gap: 4px; }
+.steps span { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.steps span.on { background: var(--gold); }
+.doc { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.doc.done { border-color: var(--good); }
+.thumb { width: 56px; height: 40px; border-radius: 6px; background: var(--sunk); object-fit: cover; display: block; }
+.doc b { display: block; font-size: 14.5px; }
+.doc small { color: var(--muted); font-size: 12.5px; display: block; overflow-wrap: anywhere; }
+.up { position: relative; overflow: hidden; }
+.up input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.autolist { display: grid; gap: 8px; }
+.autolist div { display: flex; gap: 10px; align-items: center; font-size: 15px; }
+.autolist i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; flex: none; background: var(--sunk); color: var(--muted); }
+.autolist i.ok { background: var(--good-bg); color: var(--good); }
+.autolist i.no { background: var(--bad-bg); color: var(--bad); }
+.tl { display: grid; }
+.tl div { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding-bottom: 12px; position: relative; font-size: 15px; }
+.tl div::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); margin-top: 4px; z-index: 1; }
+.tl div::after { content: ""; position: absolute; left: 7px; top: 18px; bottom: 0; width: 2px; background: var(--line); }
+.tl div:last-child::after { display: none; }
+.tl div.done::before { background: var(--good); border-color: var(--good); }
+.tl div.now::before { background: var(--gold); border-color: var(--gold); }
+.tl div.no::before { background: var(--bad); border-color: var(--bad); }
+.tl small { display: block; color: var(--muted); font-size: 12.5px; }
+.msgs { display: grid; gap: 8px; }
+.msg { background: var(--good-bg); border-radius: 12px 12px 12px 4px; padding: 9px 12px; font-size: 14.5px; }
+.msg time { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.big { font-family: var(--display); font-weight: 800; font-size: 60px; line-height: 1; }
+.badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+
+/* jobs */
+.request { border: 3px solid var(--gold); border-radius: 20px; background: var(--card); padding: 18px; display: grid; gap: 14px; }
+.count { font-family: var(--display); font-weight: 800; font-size: 26px; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); transition: width 1s linear; }
+.earn { background: var(--good-bg); color: var(--good); border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.earn b { font-family: var(--display); font-size: 32px; font-weight: 800; line-height: 1; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.facts div { background: var(--sunk); border-radius: 12px; padding: 9px 10px; min-width: 0; }
+.facts b { display: block; font-size: 16.5px; overflow-wrap: anywhere; }
+.facts small { color: var(--muted); font-size: 12.5px; }
+.pill { font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--warn-bg); white-space: nowrap; }
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.passport { border-left: 4px solid var(--gold); background: var(--sunk); padding: 10px 12px; display: grid; gap: 4px; font-size: 14.5px; }
+.passport b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--gold-deep); }
+.stagehead { background: #14120D; color: #F5F1E6; border-radius: 18px; padding: 16px; display: grid; gap: 10px; }
+.stagehead .muted { color: #B9B2A2; }
+.stagehead h2 { color: #F5F1E6; }
+.sos { background: #A3271D; color: #fff; border: 0; border-radius: 999px; font-weight: 800; font-size: 13px; letter-spacing: .06em; padding: 6px 12px; cursor: pointer; }
+.map { border-radius: 14px; overflow: hidden; background: #22201A; aspect-ratio: 16 / 10; max-width: 100%; position: relative; }
+.map svg { width: 100%; height: 100%; display: block; }
+.eta { position: absolute; left: 10px; top: 10px; background: #F0AE00; color: #14120D; border-radius: 10px; padding: 5px 10px; font-weight: 700; font-size: 14px; }
+.gpsbox { position: absolute; right: 10px; bottom: 10px; background: rgba(20,18,13,.85); color: #F5F1E6; border-radius: 8px; padding: 4px 8px; font-size: 12px; }
+.loc { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #B9B2A2; }
+.dotlive { width: 9px; height: 9px; border-radius: 50%; background: #2FA463; flex: none; }
+.dotlive.off { background: #E0A13A; }
+@media (prefers-reduced-motion: no-preference) { .dotlive { animation: blink 1.4s ease-in-out infinite; } @keyframes blink { 50% { opacity: .3; } } }
+.split { width: 100%; border-collapse: collapse; font-size: 15px; }
+.split td { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.split td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.split tr.you td { font-weight: 800; font-size: 18px; border-bottom: 0; color: var(--good); padding-top: 9px; }
+.timer { font-family: var(--display); font-weight: 800; font-size: 60px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
+.wait { display: flex; gap: 12px; align-items: center; background: var(--warn-bg); border-radius: 14px; padding: 12px 14px; }
+.stagehead .wait { background: rgba(255,255,255,.08); }
+.spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); flex: none; }
+@media (prefers-reduced-motion: no-preference) { .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
+.photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.photo { border: 2px dashed var(--line); border-radius: 14px; padding: 14px 10px; text-align: center; font-size: 14px; display: grid; gap: 4px; cursor: pointer; position: relative; min-width: 0; overflow-wrap: anywhere; }
+.photo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.photo.done { border-style: solid; border-color: var(--good); color: var(--good); }
+.checklist { display: grid; gap: 8px; }
+.tick { display: flex; gap: 10px; align-items: center; font-size: 15.5px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+.tick input { width: 22px; height: 22px; accent-color: var(--good); flex: none; }
+.tick:has(input:checked) { border-color: var(--good); background: var(--good-bg); }
+.report { border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; font-size: 14.5px; background: var(--sunk); }
+.report dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.report dt { color: var(--muted); }
+.report dd { margin: 0; overflow-wrap: anywhere; }
+.sheet { border: 2px solid var(--bad); }
+.stars { display: flex; gap: 4px; }
+.stars button { background: none; border: 0; padding: 2px; cursor: pointer; color: var(--line); font-size: 34px; line-height: 1; }
+.stars button.on { color: var(--gold); }
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 2px; min-width: 0; }
+.kpi b { font-family: var(--display); font-size: 30px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.kpi.lead { background: #14120D; color: #F5F1E6; border-color: #14120D; }
+.kpi.lead .eyebrow { color: #F0AE00; }
+.kpi.lead .small { color: #B9B2A2; }
+.goal { height: 10px; border-radius: 5px; background: var(--sunk); overflow: hidden; }
+.goal i { display: block; height: 100%; background: var(--good); }
+.list .row2 { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.list .row2:last-child { border-bottom: 0; }
+.row2 > span:first-child { min-width: 0; }
+.row2 b { display: block; }
+.row2 small { color: var(--muted); font-size: 13px; }
+.row2 .amt { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.checks { display: grid; gap: 8px; }
+.checks div { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+.ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ladder div { border-radius: 10px; padding: 8px 6px; text-align: center; background: var(--sunk); font-size: 12.5px; }
+.ladder div b { display: block; font-size: 14px; }
+.ladder div.me { background: #14120D; color: #F0AE00; }
+.empty { text-align: center; padding: 26px 10px; display: grid; gap: 10px; justify-items: center; }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.tabs nav { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabs a { text-decoration: none; color: var(--muted); display: grid; justify-items: center; gap: 2px; padding: 9px 4px 10px; font-size: 12.5px; font-weight: 600; position: relative; }
+.tabs a svg { width: 24px; height: 24px; }
+.tabs a[aria-current="page"] { color: var(--ink); }
+.tabs a[aria-current="page"]::before { content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 3px; background: var(--gold); border-radius: 0 0 3px 3px; }
+.tabs .dot { position: absolute; top: 6px; right: calc(50% - 18px); width: 9px; height: 9px; border-radius: 50%; background: var(--bad); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); border-radius: 12px; padding: 11px 16px; font-weight: 600; z-index: 40; max-width: calc(100vw - 32px); text-align: center; }
+</style>
+
+<div class="shell">
+  <div class="banner" id="banner">Pilot preview: sample jobs and payments. Nothing real is charged.</div>
+  <div class="offline" id="offline" hidden>No network. Your updates are saved and will send when you're back.</div>
+  <header class="head" id="head"></header>
+  <main id="app"></main>
+</div>
+<div class="tabs" id="tabs" hidden><nav aria-label="App">
+  <a href="#jobs" data-tab="jobs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Jobs<span class="dot" id="jobs-dot" hidden></span></a>
+  <a href="#earnings" data-tab="earnings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/></svg>Earnings</a>
+  <a href="#history" data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>History</a>
+  <a href="#profile" data-tab="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>Profile</a>
+</nav></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+// =====================================================================
+// CONFIG: the same business rules as the ops desk and the contract
+// =====================================================================
+const P = { commission: 15, callout: 9, calloutPlatform: 1, freeKm: 10, perKm: 0.5, payoutHours: 24, acceptSeconds: 60, diagnosisDays: 30, noShowMinutes: 15, noShowFeeOther: 0 /* OPEN DECISION: fee for a non-repair no-show (repairs keep the call-out) */, maxCodeTries: 3, weeklyGoal: 250, probationJobs: 5 };
+const PREVIEW = true; // false once connected to the Basa seBasa server
+const STORE_KEY = "basa-pro-v1";
+
+const TRADES = [
+  { id: "HVAC/Refrigeration", name: "Fridge & aircon", tech: true, skills: ["Domestic fridges", "Split aircons", "Cold rooms", "Inverter fridges"],
+    checklist: ["Isolated power before work", "Leak test done after repair", "Pressures and amps within spec", "Unit cooling at handover", "Work area cleaned", "Showed the customer the result"], safety: "power isolated, gas handled safely" },
+  { id: "Electrical", name: "Electrical", tech: true, skills: ["House wiring", "Fault finding", "DB boards", "Gate motors"],
+    checklist: ["Isolated supply and tested dead", "Correct cable and breaker sizes", "Earth continuity tested", "Covers and plates refitted", "Work area cleaned", "Showed the customer the result"], safety: "supply isolated and tested dead" },
+  { id: "Plumbing", name: "Plumbing", tech: true, skills: ["Geysers", "Leaks", "Pumps & boreholes", "Tanks"],
+    checklist: ["Water isolated before work", "Joints pressure-tested, no leaks", "Geyser element and thermostat checked", "Water restored and flowing", "Work area cleaned", "Showed the customer the result"], safety: "water and power isolated" },
+  { id: "Appliance repair", name: "Appliances", tech: true, skills: ["Washing machines", "Stoves", "Microwaves"],
+    checklist: ["Unplugged before opening", "Faulty part replaced", "Full test cycle run", "Panels refitted", "Work area cleaned", "Showed the customer the result"], safety: "unplugged before opening" },
+  { id: "Auto mechanic", name: "Mechanic", tech: true, skills: ["Diagnostics", "Brakes", "Auto electrical", "Servicing"],
+    checklist: ["Vehicle secured before work", "Fault code or test confirmed", "Parts torqued to spec", "Road test or run test done", "Old parts shown to customer", "Work area cleaned"], safety: "vehicle secured and supported" },
+  { id: "Solar & inverters", name: "Solar", tech: true, skills: ["Panel installs", "Inverters", "Batteries"],
+    checklist: ["DC and AC isolated", "Polarity and voltages checked", "Battery settings configured", "System tested under load", "Cables secured and labelled", "Showed the customer the app or display"], safety: "DC and AC isolated" },
+  { id: "Maid / cleaning", name: "Maids", tech: false, skills: ["House cleaning", "Laundry & ironing", "Cooking"],
+    checklist: ["Agreed rooms all cleaned", "Kitchen and bathrooms done", "Laundry and ironing as asked", "Chemicals stored safely", "Rubbish taken out", "Walked the customer through it"], safety: "cleaning chemicals used safely" },
+];
+const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
+const LEVELS = [
+  { name: "Bronze", need: "Verified pro", perk: "Standard jobs" },
+  { name: "Silver", need: "25 jobs, 4.6★", perk: "Shown higher in matches" },
+  { name: "Gold", need: "100 jobs, 4.8★, no open complaints", perk: "First pick on jobs + Gold badge" },
+  { name: "Master", need: "300 jobs, 4.9★, trains others", perk: "Commercial contracts + training fees" },
+];
+// Sample job requests for the preview, by trade. In the live app these come from the Basa seBasa server.
+const SAMPLES = {
+  "HVAC/Refrigeration": [
+    { type: "Repair", item: "Fridge not cooling", desc: "Samsung double-door fridge stopped cooling on Sunday. Light comes on, motor clicks.", customer: "Chipo N.", custRating: 4.8, custJobs: 3, regular: true, suburb: "Mabelreign", address: "22 Harare Dr, near the shops", km: 5.5, passport: { appliance: "Samsung RT38 fridge", history: [["Mar 2026", "Regassed R600a, replaced thermostat", "another Basa pro"]] } },
+    { type: "Installation", item: "Split aircon installation", desc: "New 12,000 BTU split unit, bedroom on first floor. Unit already bought.", customer: "Farai D.", custRating: 5, custJobs: 1, suburb: "Mount Pleasant", address: "7 Pendennis Rd", km: 4, agreed: 120 },
+    { type: "Repair", item: "Chest freezer tripping power", desc: "Freezer trips the breaker every time it starts. Small shop, urgent.", customer: "Ruvimbo K.", custRating: 4.6, custJobs: 7, suburb: "Mbare", address: "Mbare Musika, stall 14", km: 13, urgent: true, passport: { appliance: "Defy 300L chest freezer", history: [["Jan 2026", "Replaced fan motor", "another Basa pro"]] } },
+  ],
+  "Electrical": [
+    { type: "Repair", item: "Half the house has no power", desc: "Sockets in the bedrooms are dead since the storm. Lights still work.", customer: "Tatenda G.", custRating: 4.9, custJobs: 2, suburb: "Greendale", address: "15 Arcturus Rd", km: 6 },
+    { type: "Installation", item: "Gate motor installation", desc: "Sliding gate, motor already bought. Need it fitted and wired.", customer: "Nyasha P.", custRating: 4.7, custJobs: 1, suburb: "Borrowdale", address: "3 Crowhill Rd", km: 9, agreed: 90 },
+  ],
+  "Plumbing": [
+    { type: "Repair", item: "Geyser leaking", desc: "Water dripping from the ceiling under the geyser since this morning.", customer: "Blessing M.", custRating: 4.8, custJobs: 4, regular: true, suburb: "Avondale", address: "8 King George Rd", km: 3, passport: { appliance: "Kwikot 150L geyser", history: [["Jun 2025", "Replaced thermostat", "another Basa pro"]] } },
+    { type: "Installation", item: "JoJo tank connection", desc: "5,000 L tank on a stand, needs connecting to the house supply with a pump.", customer: "Kuda S.", custRating: 5, custJobs: 1, suburb: "Hatfield", address: "21 Hatfield Rd", km: 8, agreed: 110 },
+  ],
+  "Appliance repair": [
+    { type: "Repair", item: "Washing machine won't spin", desc: "LG front loader fills and washes but won't spin. Error code UE.", customer: "Rutendo C.", custRating: 4.7, custJobs: 2, suburb: "Eastlea", address: "4 Fife Ave", km: 4, passport: { appliance: "LG 8kg front loader", history: [["Feb 2026", "Replaced door seal", "another Basa pro"]] } },
+    { type: "Service", item: "Stove oven not heating", desc: "Oven element glows only on one side. Hob works fine.", customer: "Tinashe M.", custRating: 4.9, custJobs: 3, suburb: "Belvedere", address: "12 Tilbury Rd", km: 5, agreed: 45 },
+  ],
+  "Auto mechanic": [
+    { type: "Repair", item: "Car won't start", desc: "Toyota Wish, clicks but won't start. Battery is new.", customer: "Takudzwa S.", custRating: 4.8, custJobs: 2, suburb: "Msasa", address: "Msasa industrial, gate 3", km: 7 },
+    { type: "Service", item: "Minor service at home", desc: "Honda Fit, oil and filters change. Customer has the parts.", customer: "Memory D.", custRating: 5, custJobs: 1, suburb: "Marlborough", address: "30 Princess Dr", km: 9, agreed: 35 },
+  ],
+  "Solar & inverters": [
+    { type: "Repair", item: "Inverter beeping, no backup", desc: "5 kVA inverter beeps and doesn't switch to battery during load-shedding.", customer: "Simba R.", custRating: 4.8, custJobs: 2, suburb: "Mount Pleasant", address: "9 Lonsdale Rd", km: 6 },
+    { type: "Installation", item: "Add 4 solar panels", desc: "Existing system, adding 4 x 550 W panels to the roof.", customer: "Grace T.", custRating: 4.9, custJobs: 1, suburb: "Greendale", address: "18 Glenara Ave", km: 7, agreed: 140 },
+  ],
+  "Maid / cleaning": [
+    { type: "Maid", item: "Full house clean", desc: "3-bedroom house, kitchen and 2 bathrooms. Saturday morning.", customer: "Farai M.", custRating: 4.9, custJobs: 5, regular: true, suburb: "Borrowdale", address: "41 Borrowdale Rd", km: 5, hours: 5, rate: 5 },
+    { type: "Maid", item: "Laundry and ironing", desc: "Family of four, a week's laundry and ironing.", customer: "Nomsa K.", custRating: 4.7, custJobs: 2, suburb: "Avondale", address: "6 Bath Rd", km: 3, hours: 4, rate: 5 },
+  ],
+};
+const DEMO_PROFILE = { name: "Tendai Moyo", phone: "0771234567", trade: "HVAC/Refrigeration", skills: ["Domestic fridges", "Split aircons"], suburb: "Avondale", years: "7", hours: "Mon–Sat, 7am–6pm", ecoNum: "0771234567", ecoName: "Tendai Moyo", warranty: true, noQual: false, police: false };
+
+// =====================================================================
+// STATE (saved on the phone, so progress survives closing the app)
+// =====================================================================
+const blank = () => ({
+  mode: "welcome", // welcome → apply → status → welcomeApproved → pro
+  apply: { screen: "phone", phone: "", code: "", codeIn: "", consent: { checks: false, location: false, data: false }, name: "", trade: "HVAC/Refrigeration", skills: [], suburb: "", years: "", hours: "Mon–Sat, 7am–6pm", ecoNum: "", ecoName: "", warranty: true, noQual: false, docs: {}, refs: [{ name: "", phone: "" }, { name: "", phone: "" }] },
+  status: "draft", teamStep: 0, slot: "", msgs: [], auto: [], submittedAt: 0,
+  profile: null, approvedAt: 0,
+  pro: { online: false, done: [], sampleIx: 0, weeklyGoal: P.weeklyGoal },
+});
+let S = load();
+function load() { try { const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); if (s && s.mode) return { ...blank(), ...s }; } catch (e) {} return blank(); }
+function save() { try { const c = { ...S }; localStorage.setItem(STORE_KEY, JSON.stringify(c)); } catch (e) {} }
+// things that only live while the app is open
+const R = { tab: "jobs", request: null, job: null, net: navigator.onLine !== false, simNet: true, queued: 0, sos: false, gps: null, gpsWatch: null, installEvt: null };
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+const usd = (n) => "$" + r2(n).toFixed(2);
+const clock = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const first = (n) => String(n || "").trim().split(/\s+/)[0];
+const tradeOf = (id) => TRADES.find((t) => t.id === id) || TRADES[0];
+const dateIn = (days) => new Date(Date.now() + days * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
+const online = () => R.net && R.simNet;
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3400); }
+function fail(id, m) { const e = document.getElementById(id); if (e) { e.textContent = m; e.hidden = false; e.scrollIntoView?.({ block: "nearest" }); } return false; }
+function send(text) { if (online()) { if (text) toast(text); } else { R.queued++; toast("Saved offline. It will send when you're connected."); } }
+function msg(text) { S.msgs.unshift({ at: clock(), text }); }
+const initials = (n) => String(n || "?").split(/\s+/).map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+// shrink photos so they fit on the phone and upload fast on slow networks
+function shrink(file) {
+  return new Promise((res) => { const img = new Image(), url = URL.createObjectURL(file); img.onload = () => { const k = Math.min(1, 640 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL("image/jpeg", 0.72)); }; img.onerror = () => res(""); img.src = url; });
+}
+function sampleImage(label, hue, name) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 200; const g = c.getContext("2d");
+  g.fillStyle = `hsl(${hue} 30% 86%)`; g.fillRect(0, 0, 320, 200); g.fillStyle = `hsl(${hue} 25% 70%)`; g.fillRect(16, 16, 90, 110);
+  g.fillStyle = "#3a352b"; g.font = "bold 19px sans-serif"; g.fillText(label, 118, 46); g.font = "14px sans-serif"; g.fillStyle = "#5a5446";
+  ["Sample document", "Basa seBasa preview", name || "Applicant"].forEach((l, i) => g.fillText(l, 118, 76 + i * 22));
+  return c.toDataURL("image/png");
+}
+
+// =====================================================================
+// ONBOARDING
+// =====================================================================
+function docList(a = S.apply) {
+  const t = tradeOf(a.trade), out = [
+    { key: "idFront", label: "National ID (front)", req: true, hue: 200 },
+    { key: "idBack", label: "National ID (back)", req: true, hue: 210 },
+    { key: "selfie", label: "Selfie holding your ID", req: true, why: "Proves the ID is yours", hue: 30 },
+  ];
+  if (t.tech) {
+    if (!a.noQual) out.push({ key: "qual", label: "Trade certificate or qualification", req: true, hue: 140 });
+    out.push({ key: "work", label: "Photo of your past work", req: a.noQual, why: a.noQual ? "Needed when you have no certificate" : "Optional, helps your profile", hue: 90 });
+  }
+  out.push({ key: "police", label: "Police clearance", req: !t.tech, why: t.tech ? "Optional, adds 10 to your Trust Score" : "Required for home help", hue: 0 });
+  return out;
+}
+const TEAM_STEPS = [
+  { status: "review", label: "Document review", msg: (f) => `Hi ${f}, we've received your Basa seBasa application. Our team reviews it within 48 hours.` },
+  { status: "references", label: "Reference calls", msg: () => "Your documents are approved. Next, we'll call your two referees." },
+  { status: "inperson", label: "In-person check", msg: () => "" },
+  { status: "induction", label: "Induction", msg: () => "Well done, you passed the in-person check, including the safety check. Last step: a short induction and signing your agreement." },
+  { status: "approved", label: "Approved", msg: (f) => `Congratulations ${f}! You're a verified Basa seBasa pro. Go online to get your first job.` },
+];
+const SLOT = "Fri 7 Nov · 10:00 · Basa seBasa office, Avondale";
+const STEPS = ["Sign up", "Details and documents", "Automatic checks", "Document review", "Reference calls", "In-person check", "Induction", "Approved"];
+function trustFor(p) {
+  const t = tradeOf(p.trade);
+  const rows = [["National ID verified", 15, true], [p.noQual ? "Past work verified" : "Trade qualification verified", p.noQual ? 10 : 20, t.tech], ["Two positive references", 10, true], ["Police clearance", 10, !!p.police], ["Passed in-person check", 10, true], ["Offers warranty", 10, t.tech && p.warranty], [`${Number(p.years) || 0} years' experience`, Math.min(10, (Number(p.years) || 0) * 2), true]].filter((r) => r[2]);
+  const done = S.pro.done, rated = done.filter((d) => d.rating), avg = rated.length ? rated.reduce((s, d) => s + d.rating, 0) / rated.length : 0;
+  const ratingPts = rated.length ? Math.round(avg / 5 * 10) : 0, jobPts = Math.round(Math.min(done.length, 20) / 20 * 5);
+  if (ratingPts) rows.push([`Customer ratings (${avg.toFixed(1)}★)`, ratingPts, true]);
+  if (jobPts) rows.push([`${done.length} jobs completed`, jobPts, true]);
+  return { rows, total: Math.min(100, rows.reduce((s, r) => s + r[1], 0)), avg, rated: rated.length };
+}
+const badgesFor = (p) => ["ID checked", tradeOf(p.trade).tech ? (p.noQual ? "Work verified" : "Trade verified") : null, "References", "In-person checked", p.police ? "Police clearance" : null, p.warranty && tradeOf(p.trade).tech ? "Warranty" : null].filter(Boolean);
+
+function viewWelcome() {
+  return `<div class="card" style="background:#14120D;color:#F5F1E6;border-color:#14120D"><span class="eyebrow" style="color:#F0AE00">For skilled professionals in Harare</span><h2 style="color:#F5F1E6;font-size:40px">Get steady, paid work</h2><p style="color:#D9D3C4">Verified pros get jobs near them, show customers exactly what they did, and are paid on EcoCash within 24 hours.</p></div>
+    <div class="card"><div class="checks"><div><span>You keep</span><b>85% of labour, 100% of parts</b></div><div><span>Repair call-out</span><b>$8 of every $9</b></div><div><span>Paid</span><b>Within 24 hours</b></div><div><span>Joining</span><b>Free</b></div></div></div>
+    <div class="card"><h3>What you'll need</h3><ul style="margin:0;padding-left:20px;display:grid;gap:4px"><li>Your National ID</li><li>Your trade certificate, or photos of your work</li><li>Two people you've worked for</li><li>An EcoCash account in your own name</li></ul></div>
+    <button class="btn gold" type="button" data-act="begin">Apply to join</button>
+    ${installCard()}
+    ${PREVIEW ? `<button class="btn quiet" type="button" data-act="demo-pro">Preview: skip to an approved pro</button>` : ""}`;
+}
+function viewApply() {
+  const a = S.apply, t = tradeOf(a.trade);
+  const bar = (n) => `<div class="steps">${[0, 1, 2, 3].map((i) => `<span class="${i < n ? "on" : ""}"></span>`).join("")}</div>`;
+  switch (a.screen) {
+    case "phone": return `${bar(1)}<h2>Your number</h2><p class="muted">We'll send a code on WhatsApp. Your jobs and payouts go to this number.</p>
+      <div class="card"><div class="field"><label for="f-phone">WhatsApp number</label><input id="f-phone" data-bind="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="077 123 4567" value="${esc(a.phone)}"></div><p class="err" id="e-phone" hidden></p><button class="btn gold" type="button" data-act="send-code">Send me a code</button><button class="btn quiet" type="button" data-act="to-welcome">Back</button></div>`;
+    case "otp": return `${bar(1)}<h2>Enter your code</h2><p class="muted">We sent a 6-digit code to ${esc(a.phone)} on WhatsApp.</p>
+      <div class="card"><input id="f-code" class="code" data-bind="codeIn" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" value="${esc(a.codeIn)}" aria-label="6-digit code">${PREVIEW ? `<p class="note small">Preview: your code is <b class="mono">${esc(a.code)}</b></p>` : ""}<p class="err" id="e-code" hidden></p><button class="btn gold" type="button" data-act="verify-code">Verify</button><button class="btn quiet" type="button" data-act="to-phone">Change number</button></div>`;
+    case "consent": return `${bar(2)}<h2>Before you start</h2>
+      <div class="card"><label class="check"><input type="checkbox" data-consent="checks" ${a.consent.checks ? "checked" : ""}> I agree to Basa seBasa checking my ID, qualifications and references.</label><label class="check"><input type="checkbox" data-consent="location" ${a.consent.location ? "checked" : ""}> I'll share my location while I'm online or on a job.</label><label class="check"><input type="checkbox" data-consent="data" ${a.consent.data ? "checked" : ""}> My documents are stored privately and seen only by the vetting team.</label><p class="err" id="e-consent" hidden></p><button class="btn gold" type="button" data-act="consent">Continue</button></div>`;
+    case "details": return `${bar(3)}<div class="toprow"><h2>About you</h2><span class="pill good">✓ Saved</span></div>
+      <div class="card">
+        <div class="field"><label for="f-name">Full name (as on your ID)</label><input id="f-name" data-bind="name" type="text" autocomplete="name" value="${esc(a.name)}"></div>
+        <div class="field"><label for="f-trade">Your trade</label><select id="f-trade" data-bind-select="trade">${TRADES.map((x) => `<option value="${esc(x.id)}" ${x.id === a.trade ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+        <div class="field"><span class="lab">What you're best at</span><div class="chips">${t.skills.map((s) => `<button type="button" class="chip" data-skill="${esc(s)}" aria-pressed="${a.skills.includes(s)}">${esc(s)}</button>`).join("")}</div></div>
+        <div class="two"><div class="field"><label for="f-suburb">Base suburb</label><select id="f-suburb" data-bind-select="suburb"><option value="">Choose</option>${SUBURBS.map((s) => `<option ${s === a.suburb ? "selected" : ""}>${s}</option>`).join("")}</select></div><div class="field"><label for="f-years">Years' experience</label><input id="f-years" data-bind="years" type="number" min="0" inputmode="numeric" value="${esc(a.years)}"></div></div>
+        <div class="field"><label for="f-hours">Working hours</label><input id="f-hours" data-bind="hours" type="text" value="${esc(a.hours)}"></div>
+        <div class="two"><div class="field"><label for="f-econum">EcoCash number</label><input id="f-econum" data-bind="ecoNum" type="tel" inputmode="tel" value="${esc(a.ecoNum)}"></div><div class="field"><label for="f-econame">EcoCash account name</label><input id="f-econame" data-bind="ecoName" type="text" value="${esc(a.ecoName)}"></div></div>
+        <p class="muted small">Payouts only go to an EcoCash account in your own name.</p>
+        ${t.tech ? `<label class="check"><input type="checkbox" data-flag="warranty" ${a.warranty ? "checked" : ""}> I give a warranty on my work</label>` : ""}
+        <p class="err" id="e-details" hidden></p><button class="btn gold" type="button" data-act="details">Next: documents</button></div>`;
+    case "docs": return `${bar(4)}<div class="toprow"><h2>Documents</h2><span class="pill good">✓ Saved</span></div><p class="muted">Take clear photos in good light.${PREVIEW ? " \"Sample\" fills the preview quickly." : ""}</p>
+      ${t.tech ? `<label class="check card" style="display:flex"><input type="checkbox" data-flag="noQual" ${a.noQual ? "checked" : ""}> I don't have a certificate. I'll show photos of my work and do a longer practical test.</label>` : ""}
+      <div class="card"><div style="display:grid;gap:8px">${docList().map(docRow).join("")}</div></div>
+      <div class="card"><h3>Two referees</h3><p class="muted small">People you've worked for who can vouch for you.</p>${a.refs.map((r, i) => `<div class="two"><div class="field"><label for="r${i}n">Referee ${i + 1} name</label><input id="r${i}n" data-ref="${i}" data-k="name" type="text" value="${esc(r.name)}"></div><div class="field"><label for="r${i}p">Phone</label><input id="r${i}p" data-ref="${i}" data-k="phone" type="tel" inputmode="tel" value="${esc(r.phone)}"></div></div>`).join("")}
+        ${PREVIEW ? `<button class="btn quiet sm" type="button" data-act="sample-refs">Fill sample referees</button>` : ""}</div>
+      <p class="err" id="e-docs" hidden></p><button class="btn gold" type="button" data-act="submit">Send application</button><button class="btn quiet" type="button" data-act="to-details">Back</button>`;
+  }
+  return "";
+}
+function docRow(d) {
+  const f = S.apply.docs[d.key];
+  return `<div class="doc ${f ? "done" : ""}">${f ? `<img class="thumb" src="${f.url}" alt="">` : `<span class="thumb" aria-hidden="true"></span>`}<span><b>${esc(d.label)}${d.req ? "" : ' <span class="muted" style="font-weight:500">(optional)</span>'}</b><small>${f ? "✓ " + esc(f.name) : esc(d.why || "Required")}</small></span><span class="row" style="gap:4px"><label class="btn quiet sm up">${f ? "Retake" : "Photo"}<input type="file" accept="image/*" capture="environment" data-doc="${d.key}" aria-label="${esc(d.label)}"></label>${f || !PREVIEW ? "" : `<button class="btn quiet sm" type="button" data-sample="${d.key}">Sample</button>`}</span></div>`;
+}
+function viewStatus() {
+  if (S.status === "auto") return `<h2>Checking your application</h2><div class="card"><div class="autolist">${S.auto.map((c) => `<div>${c.state === "run" ? '<span class="spin"></span>' : `<i class="${c.state === "ok" ? "ok" : c.state === "no" ? "no" : ""}">${c.state === "ok" ? "✓" : c.state === "no" ? "!" : ""}</i>`}<span>${esc(c.label)}</span></div>`).join("")}</div></div>`;
+  const at = 3 + S.teamStep;
+  const by = (d) => new Date((S.submittedAt || Date.now()) + d * 864e5).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const sub = (i) => (i === 3 && at === 3 ? "Expected by " + by(2) : i === 5 && S.slot ? S.slot : i === 7 ? "Decision expected by " + by(7) : "");
+  const next = TEAM_STEPS[S.teamStep + 1];
+  return `<h2>Application received</h2><p class="muted">You'll get a WhatsApp message at each step. Most applications are decided within 5 working days.</p>
+    ${S.status === "inperson" && S.slot ? `<div class="note"><b>Your in-person check:</b> ${esc(S.slot)}. Bring your original ID${tradeOf(S.apply.trade).tech ? " and your tools" : ""}. Working safely is a must-pass.</div>` : ""}
+    <div class="card"><h3>Your progress</h3><div class="tl">${STEPS.map((s, i) => `<div class="${i < at ? "done" : i === at ? "now" : ""}"><span>${esc(s)}${sub(i) ? `<small>${esc(sub(i))}</small>` : ""}</span></div>`).join("")}</div></div>
+    ${PREVIEW && next ? `<div class="card"><span class="eyebrow">Preview only</span><p class="muted small">In real life the Basa seBasa team does this on the ops desk. Tap to play their next step.</p><button class="btn quiet" type="button" data-act="team-next">Team: complete "${esc(TEAM_STEPS[S.teamStep].label)}"</button></div>` : ""}
+    <div class="card"><h3>Messages</h3><div class="msgs">${S.msgs.map((m) => `<div class="msg">${esc(m.text)}<time>${esc(m.at)} · WhatsApp</time></div>`).join("")}</div></div>`;
+}
+function viewApproved() {
+  const p = S.profile, t = trustFor(p);
+  return `<div class="card" style="text-align:center;justify-items:center"><span class="eyebrow">Welcome to Basa seBasa</span><h2>You're a verified pro, ${esc(first(p.name))}</h2><span class="big">${t.total}</span><span class="muted">Your starting Trust Score</span><div class="badges" style="justify-content:center">${badgesFor(p).map((b) => `<span class="badge">${esc(b)}</span>`).join("")}</div></div>
+    <div class="card"><div class="toprow"><span><span class="eyebrow">Level</span><b style="display:block;font-size:20px">Bronze</b></span><span style="text-align:right"><span class="eyebrow">Probation</span><b style="display:block;font-size:20px">0 of ${P.probationJobs} jobs</b></span></div><p class="muted small">After ${P.probationJobs} good jobs (4.5★ or more, no upheld complaints) you become a full pro and can move up to Silver.</p></div>
+    <div class="card"><h3>Your 4 golden rules</h3><ol style="margin:0;padding-left:20px;display:grid;gap:4px"><li>Enter the customer's Basa Code when you arrive</li><li>Quote before any repair work</li><li>Photos and a service report on every job</li><li>Never take cash or jobs outside the app</li></ol></div>
+    <button class="btn gold" type="button" data-act="enter-pro">Start working</button>`;
+}
+
+// =====================================================================
+// PRO APP
+// =====================================================================
+const level = () => { const d = S.pro.done.length, t = trustFor(S.profile); return d >= 300 && t.avg >= 4.9 ? 3 : d >= 100 && t.avg >= 4.8 ? 2 : d >= 25 && t.avg >= 4.6 ? 1 : 0; };
+function earnings(j) {
+  const travel = r2(Math.max(0, j.km - P.freeKm) * P.perKm);
+  const callout = j.type === "Repair" ? P.callout - P.calloutPlatform : 0;
+  const labour = j.calloutOnly ? 0 : j.type === "Repair" ? r2(j.quote?.labour || 0) : j.type === "Maid" ? r2((j.hours || 0) * (j.rate || 5)) : r2(j.agreed || 0);
+  const parts = j.calloutOnly ? 0 : j.type === "Repair" ? r2(j.quote?.parts || 0) : 0;
+  const fee = r2(labour * P.commission / 100);
+  return { travel, callout, labour, parts, fee, total: r2(callout + travel + labour - fee + parts), upfront: r2(callout + travel) };
+}
+function scheduleRequest(delay = 4000) {
+  clearTimeout(R.reqTimer);
+  R.reqTimer = setTimeout(() => { if (!S.pro.online || R.request || R.job) return; const list = SAMPLES[S.profile.trade] || SAMPLES["HVAC/Refrigeration"]; const s = list[S.pro.sampleIx++ % list.length]; save(); R.request = { ...s, id: "BSB-" + (2100 + S.pro.sampleIx + S.pro.done.length), code: String(1000 + Math.floor(Math.random() * 9000)), expires: Date.now() + P.acceptSeconds * 1000 }; try { navigator.vibrate?.([200, 100, 200]); } catch (e) {} render(); }, delay);
+}
+function later(ms, fn) { setTimeout(fn, ms); }
+function sim(stage, ms, text, guard) { later(ms, () => { const j = R.job; if (!j || (guard && j.stage !== guard)) return; j.stage = stage; if (text) toast(text); render(); }); }
+
+// =====================================================================
+// PAYMENT RECEIPTS (PDF)
+// =====================================================================
+const ECOCASH_RATE = 2; // % placeholder until set from Econet's tariff, same as the ops desk
+function ref() { const d = new Date(); return "MP" + String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") + "." + String(Math.floor(Math.random() * 9000) + 1000) + "." + "ABCDEFGHJK"[Math.floor(Math.random() * 10)] + String(Math.floor(Math.random() * 90000) + 10000); }
+function makeReceipt(j) {
+  const e = earnings(j), rate = ECOCASH_RATE / 100, repair = j.type === "Repair", paidAt = Date.now();
+  const custLines = [];
+  if (repair) custLines.push(["Call-out (inspection and travel up to " + P.freeKm + " km)", P.callout]);
+  if (e.travel) custLines.push([`Extra travel (${r2(j.km - P.freeKm)} km beyond ${P.freeKm} km)`, e.travel]);
+  if (!j.calloutOnly) {
+    if (j.type === "Maid") custLines.push([`${j.hours} hours x $${j.rate} per hour`, e.labour]);
+    else custLines.push([repair ? "Labour (as quoted and approved)" : "Agreed price", e.labour]);
+    if (e.parts) custLines.push(["Parts (receipt attached to the service report)", e.parts]);
+  }
+  const base1 = repair ? P.callout + e.travel : 0, base2 = j.calloutOnly ? 0 : r2(e.labour + e.parts + (repair ? 0 : e.travel));
+  const charges = r2(base1 * rate + (base2 ? base2 * rate + e.total * rate : 0));
+  if (charges) custLines.push(["EcoCash charges", charges]);
+  const payments = [];
+  if (repair) payments.push({ what: "Call-out", amount: r2(base1 * (1 + rate)), ref: ref() });
+  if (base2) payments.push({ what: repair ? "Repair" : "Job", amount: r2(base2 + base2 * rate + e.total * rate), ref: ref() });
+  const proLines = [];
+  if (e.callout) proLines.push(["Call-out (your share of $" + P.callout + ")", e.callout]);
+  if (e.travel) proLines.push(["Extra travel", e.travel]);
+  if (e.labour) proLines.push([j.type === "Maid" ? "Hours worked" : "Labour", e.labour]);
+  if (e.fee) proLines.push([`Basa seBasa fee (${P.commission}% of ${j.type === "Maid" ? "hours" : "labour"})`, -e.fee]);
+  if (e.parts) proLines.push(["Parts (100% yours)", e.parts]);
+  return { no: "RCPT-" + j.id, job: j.id, paidAt, service: j.item, type: j.type, customer: j.customer, place: `${j.address}, ${j.suburb}, Harare`, pro: S.profile.name, trust: trustFor(S.profile).total, trade: tradeOf(S.profile.trade).name,
+    custLines, custTotal: r2(custLines.reduce((t, l) => t + l[1], 0)), payments, proLines, proTotal: e.total, payoutTo: S.profile.ecoNum, payoutDue: paidAt + P.payoutHours * 36e5,
+    warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", calloutOnly: !!j.calloutOnly, diagnosis: j.quote?.diagnosis || "" };
+}
+// A small built-in PDF writer: no downloads needed, so receipts work offline too.
+const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const ascii = (t) => String(t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—−]/g, "-").replace(/·/g, "-").replace(/…/g, "...").replace(/[^\x20-\x7E]/g, "");
+function makePdf() {
+  const K = 72 / 25.4, H = 841.89, ops = [];
+  const n = (v) => (Math.round(v * 100) / 100).toString();
+  const col = (c) => c.map((v) => n(v / 255)).join(" ");
+  const api = {
+    width(t, size, bold) { const w = bold ? HELVB : HELV; let u = 0; for (const ch of ascii(t)) u += w[ch.charCodeAt(0) - 32] || 556; return (u / 1000) * size / K; },
+    wrap(t, maxW, size, bold) { const words = ascii(t).split(" "), lines = []; let cur = ""; words.forEach((w) => { const tryL = cur ? cur + " " + w : w; if (api.width(tryL, size, bold) > maxW && cur) { lines.push(cur); cur = w; } else cur = tryL; }); if (cur) lines.push(cur); return lines; },
+    rect(x, y, w, h, fill) { ops.push(`${col(fill)} rg ${n(x * K)} ${n(H - (y + h) * K)} ${n(w * K)} ${n(h * K)} re f`); },
+    line(x1, y1, x2, y2, color, width = 0.3) { ops.push(`${col(color)} RG ${n(width * K)} w ${n(x1 * K)} ${n(H - y1 * K)} m ${n(x2 * K)} ${n(H - y2 * K)} l S`); },
+    text(t, x, y, { size = 10, bold = false, color = [20, 18, 13], align = "left" } = {}) {
+      const s2 = ascii(t), w = api.width(s2, size, bold), x0 = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+      ops.push(`BT ${col(color)} rg /${bold ? "F2" : "F1"} ${n(size)} Tf ${n(x0 * K)} ${n(H - y * K)} Td (${s2.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")}) Tj ET`);
+      return w;
+    },
+    blob() {
+      const stream = ops.join("\n"), objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>",
+        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+      ];
+      let out = "%PDF-1.4\n"; const offs = [];
+      objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+      const xref = out.length;
+      out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
+      out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R /Info << /Title (Basa seBasa receipt) /Producer (Basa seBasa Pro) >> >>\nstartxref\n${xref}\n%%EOF`;
+      return new Blob([out], { type: "application/pdf" });
+    },
+  };
+  return api;
+}
+async function buildPdf(r) {
+  const d = makePdf(), W = 210, M = 18, ink = [20, 18, 13], gold = [240, 174, 0], grey = [103, 99, 90], green = [31, 118, 70], cream = [245, 241, 230], rule = [220, 216, 206];
+  const money = (v) => (v < 0 ? "-$" : "$") + Math.abs(r2(v)).toFixed(2);
+  const when = (t) => new Date(t).toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  d.rect(0, 0, W, 34, ink);
+  d.rect(M, 9, 16, 16, gold); d.text("B", M + 8, 20.5, { size: 16, bold: true, color: ink, align: "center" });
+  let x = M + 21; x += d.text("BASA ", x, 18, { size: 17, bold: true, color: cream }); x += d.text("se", x, 18, { size: 17, bold: true, color: gold }); d.text("BASA", x, 18, { size: 17, bold: true, color: cream });
+  d.text("Verified professionals. Work done right.", M + 21, 24, { size: 8.5, color: [185, 178, 162] });
+  d.text(r.calloutOnly ? "CALL-OUT RECEIPT" : "PAYMENT RECEIPT", W - M, 16, { size: 13, bold: true, color: gold, align: "right" });
+  d.text(r.no, W - M, 22, { size: 9, color: cream, align: "right" }); d.text(when(r.paidAt), W - M, 27, { size: 9, color: cream, align: "right" });
+  let y = 46; const colW = (W - 2 * M) / 2;
+  const label = (t, lx, ly) => d.text(t.toUpperCase(), lx, ly, { size: 7.5, bold: true, color: grey });
+  const val = (t, vx, vy, w) => { const ls = d.wrap(t, w, 10); ls.forEach((l, i) => d.text(l, vx, vy + i * 5, { size: 10 })); return ls.length; };
+  label("Job", M, y); const a1 = val(`${r.job} - ${r.service}`, M, y + 5, colW - 6);
+  label("Professional", M + colW, y); const a2 = val(`${r.pro}, ${r.trade}, Trust Score ${r.trust}`, M + colW, y + 5, colW);
+  y += 6 + 5 * Math.max(a1, a2) + 4;
+  label("Customer", M, y); const b1 = val(`${r.customer}, ${r.place}`, M, y + 5, colW - 6);
+  label("Arrival", M + colW, y); const b2 = val("Basa Code confirmed at the door", M + colW, y + 5, colW);
+  y += 6 + 5 * Math.max(b1, b2) + 4;
+  if (r.diagnosis) { label("Fault found", M, y); y += 6 + 5 * val(r.diagnosis, M, y + 5, W - 2 * M) + 2; }
+  const table = (title, lines, totalLabel, total, color) => {
+    d.line(M, y, W - M, y, rule); y += 7;
+    d.text(title, M, y, { size: 11, bold: true }); y += 6.5;
+    lines.forEach(([l, a]) => { d.text(l, M, y, { size: 10 }); d.text(money(a), W - M, y, { size: 10, align: "right" }); y += 6; });
+    d.line(W - M - 60, y - 2, W - M, y - 2, ink); y += 4;
+    d.text(totalLabel, M, y, { size: 12, bold: true, color }); d.text(money(total), W - M, y, { size: 12, bold: true, color, align: "right" }); y += 8;
+  };
+  table("Paid by the customer", r.custLines, "Total paid", r.custTotal, ink);
+  r.payments.forEach((p) => { d.text(`${p.what}: ${money(p.amount)} by EcoCash to Basa seBasa, reference ${p.ref}`, M, y, { size: 9, color: grey }); y += 5; });
+  y += 3;
+  table("Professional's payout", r.proLines, "Paid to the professional", r.proTotal, green);
+  d.wrap(`Sent to EcoCash ${r.payoutTo} ${Date.now() >= r.payoutDue ? "(paid)" : "by " + when(r.payoutDue)}, within ${P.payoutHours} hours of the customer paying.`, W - 2 * M, 9).forEach((l) => { d.text(l, M, y, { size: 9, color: grey }); y += 5; });
+  y += 4;
+  if (r.warranty) { d.rect(M, y - 4.5, W - 2 * M, 11, [223, 241, 229]); d.text(`Warranty until ${r.warranty}. Free return visit if the same fault comes back.`, M + 4, y + 2.5, { size: 10, bold: true, color: green }); y += 14; }
+  d.line(M, 270, W - M, 270, rule);
+  d.text("All payments go through Basa seBasa on EcoCash. Never pay a professional in cash.", M, 276, { size: 8.5, color: grey });
+  d.text(`Questions? Message Basa seBasa on WhatsApp and quote ${r.job}.`, M, 281, { size: 8.5, color: grey });
+  if (PREVIEW) d.text("Pilot preview: sample transaction, nothing was charged.", W - M, 281, { size: 8.5, color: [134, 95, 0], align: "right" });
+  return d.blob();
+}
+async function downloadReceipt(r) {
+  if (!r) return toast("No receipt for this job.");
+  toast("Making your receipt…");
+  let blob;
+  try { blob = await buildPdf(r); } catch (e) { return toast("Couldn't make the PDF. Try again."); }
+  const filename = `Basa-seBasa-receipt-${r.job}.pdf`;
+  let dl = null;
+  try { dl = window.claude?.use ? await window.claude.use("downloads") : null; } catch (e) { dl = null; }
+  if (dl) { try { await dl.save({ filename, data: blob }); toast("Receipt saved."); } catch (e) { toast(e?.code === "declined" ? "Download cancelled." : "Downloads aren't available here."); } return; }
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast("Receipt downloaded.");
+}
+
+// real GPS while online or on a job (the browser asks the technician for permission)
+function startGPS() {
+  if (R.gpsWatch !== null || !navigator.geolocation) { if (!navigator.geolocation) R.gps = { err: "This phone can't share location" }; return; }
+  try {
+    R.gpsWatch = navigator.geolocation.watchPosition((p) => { R.gps = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy), at: Date.now() }; updateGpsText(); },
+      (e) => { R.gps = { err: e.code === 1 ? "Location permission was refused" : "Location not available here" }; updateGpsText(); }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 });
+  } catch (e) { R.gps = { err: "Location not available here" }; }
+}
+function stopGPS() { if (R.gpsWatch !== null) { try { navigator.geolocation.clearWatch(R.gpsWatch); } catch (e) {} R.gpsWatch = null; } }
+const gpsText = () => !R.gps ? "Finding your location…" : R.gps.err ? R.gps.err + (PREVIEW ? " (preview uses a sample route)" : "") : `Live GPS on · accurate to ${R.gps.acc} m`;
+function updateGpsText() { document.querySelectorAll("[data-gps]").forEach((el) => (el.textContent = gpsText())); }
+
+function headPro() {
+  const p = S.profile, t = trustFor(p), lv = LEVELS[level()];
+  return `<div class="who"><span class="avatar">${p.photo ? `<img src="${p.photo}" alt="">` : esc(initials(p.name))}</span><span><b>${esc(first(p.name))} ${esc((p.name.split(" ").pop() || "").charAt(0))}. <span class="level">${lv.name}</span></b><small>${esc(tradeOf(p.trade).name)} · ${esc(p.suburb)} · Verified</small></span><span class="trust"><b>${t.total}</b><small>Trust</small></span></div>
+    <label class="online" for="online"><span><b>${S.pro.online ? "You're online" : "You're offline"}</b><small>${R.job ? "On a job. New requests are paused." : S.pro.online ? `<span data-gps>${esc(gpsText())}</span>` : "Go online to receive jobs near you."}</small></span><span class="switch"><input type="checkbox" id="online" ${S.pro.online ? "checked" : ""} aria-label="Available for jobs"><i></i></span></label>`;
+}
+function viewJobs() {
+  if (R.request) return requestCard(R.request);
+  if (R.job) return jobView(R.job);
+  const p = S.profile, probation = S.pro.done.length < P.probationJobs;
+  const prob = probation ? `<div class="card"><div class="toprow"><span><span class="eyebrow">Probation</span><b style="display:block;font-size:18px">${S.pro.done.length} of ${P.probationJobs} jobs</b></span><span class="pill">Bronze</span></div><div class="goal"><i style="width:${S.pro.done.length / P.probationJobs * 100}%"></i></div><p class="muted small">Our team calls your first ${P.probationJobs} customers to check how it went.</p></div>` : "";
+  const demand = `<div class="card"><div class="toprow"><h3>Busy near you</h3><span class="muted small">Last hour</span></div><div class="chips"><span class="chip hot">${esc(p.suburb)} · busy</span><span class="chip warm">Mabelreign · busy</span><span class="chip static">Borrowdale · normal</span></div>${p.trade === "HVAC/Refrigeration" || p.trade === "Solar & inverters" ? `<p class="muted small">Load-shedding evenings bring more ${p.trade === "Solar & inverters" ? "inverter and battery" : "fridge and freezer"} call-outs. Stay online after 6pm to catch them.</p>` : ""}</div>`;
+  if (!S.pro.online) return `<div class="card empty"><h3>Go online to start</h3><p class="muted">Flip the switch at the top when you're ready. Your location is shared only while you're online or on a job.</p><button class="btn gold" type="button" data-act="go-online">Go online</button></div>${prob}${weekStrip()}`;
+  return `<div class="card empty"><div class="spin" aria-hidden="true" style="width:40px;height:40px"></div><h3>Looking for jobs</h3><p class="muted">We send you ${esc(tradeOf(p.trade).name.toLowerCase())} jobs near ${esc(p.suburb)}. You'll have ${P.acceptSeconds} seconds to accept each one.</p></div>${prob}${weekStrip()}${demand}`;
+}
+function weekStrip() {
+  const week = S.pro.done.filter((d) => Date.now() - d.at < 7 * 864e5), got = week.reduce((s, d) => s + d.earned, 0);
+  return `<div class="card"><div class="toprow"><span><span class="eyebrow">This week</span><b style="display:block;font-family:var(--display);font-size:28px">${usd(got)} <span class="muted" style="font-size:18px">of ${usd(S.pro.weeklyGoal)}</span></b></span><span class="pill">${week.length} jobs</span></div><div class="goal" aria-hidden="true"><i style="width:${Math.min(100, got / S.pro.weeklyGoal * 100)}%"></i></div></div>`;
+}
+const passportBox = (p) => `<div class="passport"><b>Appliance passport · ${esc(p.appliance)}</b>${p.history.map(([d, w, by]) => `<span>${esc(d)}: ${esc(w)} <span class="muted">(${esc(by)})</span></span>`).join("")}</div>`;
+function requestCard(r) {
+  const e = earnings(r), left = Math.max(0, Math.ceil((r.expires - Date.now()) / 1000)), eta = Math.round(8 + r.km * 2.4);
+  return `<div class="request" role="alertdialog" aria-label="New job request">
+    <div class="toprow"><span class="eyebrow">New job${r.urgent ? " · Urgent" : ""}</span><span class="count" id="count">${left}s</span></div>
+    <div class="bar" aria-hidden="true"><i id="bar" style="width:${(left / P.acceptSeconds) * 100}%"></i></div>
+    <div><h2>${esc(r.item)}</h2><p class="muted" style="margin-top:6px">${esc(r.type === "Maid" ? "Hourly booking" : r.type)} · ${esc(r.suburb)}${r.regular ? ' · <b style="color:var(--good)">Your regular customer</b>' : ""}</p></div>
+    <div class="facts"><div><b>${r.km} km</b><small>away</small></div><div><b>~${eta} min</b><small>to get there</small></div><div><b>${esc(first(r.customer))} ★${r.custRating}</b><small>${r.custJobs} past job${r.custJobs > 1 ? "s" : ""}</small></div></div>
+    <p>${esc(r.desc)}</p>${r.passport ? passportBox(r.passport) : ""}
+    ${r.type === "Repair" ? `<div class="earn"><span><strong>You earn now</strong><br><small style="color:inherit;opacity:.85">Call-out${e.travel ? " + extra travel" : ""}. Repair quoted on site.</small></span><b>${usd(e.upfront)}</b></div>`
+      : `<div class="earn"><span><strong>You earn</strong><br><small style="color:inherit;opacity:.85">${r.type === "Maid" ? `${r.hours} h × $${r.rate}` : usd(e.labour) + " agreed"}, minus ${P.commission}%${e.travel ? ", plus travel" : ""}</small></span><b>${usd(e.total)}</b></div>`}
+    <div class="two"><button class="btn quiet" type="button" data-act="decline">Decline</button><button class="btn gold" type="button" data-act="accept">Accept job</button></div>
+    <p class="muted small" style="text-align:center">Not answering counts as a decline. The job goes to the next pro.</p></div>`;
+}
+function jobView(j) {
+  const e = earnings(j), f = first(j.customer), t = tradeOf(S.profile.trade);
+  const head = (title, sub, extra = "") => `<div class="stagehead"><div class="toprow"><span class="mono" style="color:#B9B2A2">${esc(j.id)} · ${esc(j.type === "Maid" ? "Hourly" : j.type)}</span><button class="sos" type="button" data-act="sos">SOS</button></div><h2>${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}<span class="loc"><span class="dotlive ${online() ? "" : "off"}"></span>${online() ? "Location shared with Basa seBasa" : "Location saved offline"}</span></div>${R.sos ? sosSheet() : ""}`;
+  const cust = `<div class="card"><div class="toprow" style="align-items:start"><span><span class="eyebrow">Customer</span><b style="display:block;font-size:18px">${esc(j.customer)} <span class="muted" style="font-size:14px">★${j.custRating}</span></b><span class="muted">${esc(j.address)}, ${esc(j.suburb)}</span></span><span class="pill">${j.km} km</span></div><p>${esc(j.desc)}</p>${j.passport ? passportBox(j.passport) : ""}
+    <div class="two"><a class="btn quiet sm" style="width:100%" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.address + ", " + j.suburb + ", Harare")}" target="_blank" rel="noopener">Directions</a><button class="btn quiet sm" style="width:100%" type="button" data-act="chat">Message</button></div></div>`;
+  switch (j.stage) {
+    case "await_callout": return head("Waiting for call-out", `${esc(f)} is paying the ${usd(P.callout + e.travel)} call-out on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span><span>We'll tell you the moment it's paid.</span></div>`) + cust;
+    case "ready": return head("Ready to go", j.type === "Repair" ? "Call-out paid. You're cleared to travel." : `Booking confirmed with ${esc(f)}. You're cleared to travel.`) + `<div class="card"><h3>Start your trip</h3><p class="muted">${esc(f)} sees you on the map with your ETA.</p><button class="btn gold" type="button" data-act="trip">I'm on my way</button></div>` + cust;
+    case "travelling": return head(`On the way to ${f}`, "", `<div class="map"><svg viewBox="0 0 320 200" aria-label="Your route"><rect width="320" height="200" fill="#22201A"/><g stroke="#3A362C" stroke-width="8" fill="none" stroke-linecap="round"><path d="M-10 50H330M-10 140H330M70 -10V210M200 -10V210M270 -10V210"/></g><g stroke="#2E2B23" stroke-width="3" fill="none"><path d="M-10 95H330M130 -10V210M-10 180H330M30 0V200"/></g><path id="route" d="M40 170 L70 170 L70 140 L200 140 L200 50 L272 50" stroke="#F0AE00" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 7"/><g transform="translate(272 50)"><circle r="11" fill="#F5F1E6"/><path d="M-5 2 0 -4 5 2V6H-5z" fill="#14120D"/></g><g id="dot"><circle r="13" fill="#F0AE00" opacity=".25"/><circle r="7" fill="#F0AE00" stroke="#14120D" stroke-width="2"/></g></svg><span class="eta" id="eta">${Math.round(8 + j.km * 2.4)} min</span><span class="gpsbox" data-gps>${esc(gpsText())}</span></div>`) + `<button class="btn gold" type="button" data-act="arrived">I've arrived</button>` + cust;
+    case "verify": return head("Check you're at the right place", `Ask ${esc(f)} for their <b>Basa Code</b>. It proves to them you're the real Basa seBasa pro.`) + `<div class="card"><div class="field"><label for="code">${esc(f)}'s 4-digit Basa Code</label><input id="code" class="code" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="····"></div>${PREVIEW ? `<p class="note small">Preview: the customer's code is <b class="mono">${esc(j.code)}</b></p>` : ""}<p class="err" id="code-err" hidden></p><button class="btn gold" type="button" data-act="verify">Confirm arrival</button></div>
+      <div class="card"><h3>Customer not answering?</h3>${j.waitStart ? `<div class="wait"><span class="spin"></span><span>Waiting: <b id="wait">${fmt(waitLeft(j))}</b> left. Keep calling.</span></div>${waitLeft(j) <= 0 ? `<button class="btn danger" type="button" data-act="noshow">Customer not home: close job</button>` : ""}` : `<p class="muted">Start the ${P.noShowMinutes}-minute wait. If nobody comes, ${j.type === "Repair" ? "you keep the call-out" : P.noShowFeeOther ? `you get a ${usd(P.noShowFeeOther)} no-show fee` : "the job is cancelled with no charge"} and ${esc(f)} is told.</p><button class="btn quiet" type="button" data-act="wait">Start ${P.noShowMinutes}-minute wait</button>`}</div>`;
+    case "arrived": return head("Arrival confirmed", j.type === "Repair" ? `Inspect the problem, then send ${esc(f)} a full quote before doing any work.` : `Take a before photo, then start the job timer.`) + (j.type === "Repair" ? quoteForm(j) : startCard(j));
+    case "quote_sent": return head("Quote sent", `Waiting for ${esc(f)} to approve.`, `<div class="wait"><span class="spin"></span><span>${esc(f)} sees your diagnosis and the total on WhatsApp.</span></div>`) + `<div class="card"><h3>Your quote</h3>${splitTable(j)}</div>`;
+    case "deferred": return head("Repair saved for later", `${esc(f)} will repair another time. You keep the call-out.`) + `<div class="card"><p>The diagnosis is saved for ${P.diagnosisDays} days. When ${esc(f)} is ready, <b>you get first chance</b> to do the repair.</p><table class="split"><tr class="you"><td>You earned</td><td>${usd(e.upfront)}</td></tr></table><button class="btn quiet" type="button" data-act="receipt-current">Download call-out receipt (PDF)</button><button class="btn gold" type="button" data-act="end-deferred">Back to jobs</button></div>`;
+    case "approved": return head("Quote approved", `${esc(f)} said yes. You can start.`) + startCard(j);
+    case "working": return head("Job in progress", "") + workView(j, t);
+    case "await_payment": return head("Waiting for payment", `${esc(f)} has your service report and is paying on EcoCash.`, `<div class="wait"><span class="spin"></span><span>Don't accept cash. All payments go through Basa seBasa.</span></div>`) + reportCard(j, t);
+    case "rate": return head("Paid. Well done", `${esc(f)} rated you ${"★".repeat(j.rating)}. Your payout is on its way.`) + `<div class="card"><table class="split"><tr class="you"><td>You earn from this job</td><td>${usd(e.total)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours, with the reference on WhatsApp.</p>${j.review ? `<p>"${esc(j.review)}"</p>` : ""}<button class="btn quiet" type="button" data-act="receipt-current">Download receipt (PDF)</button></div>
+      <div class="card"><h3>How was ${esc(f)}?</h3><p class="muted small">Your rating helps us protect pros from difficult customers.</p><div class="stars" role="radiogroup" aria-label="Rate the customer">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-crate="${n}" class="${(j.custStars || 0) >= n ? "on" : ""}" aria-label="${n} star${n > 1 ? "s" : ""}">★</button>`).join("")}</div>
+        <label class="tick"><input type="checkbox" id="flag"> Report a problem (unsafe, abusive, asked to pay cash)</label><p class="err" id="rate-err" hidden></p><button class="btn gold" type="button" data-act="finish">Finish</button></div>`;
+  }
+  return "";
+}
+const waitLeft = (j) => j.waitStart + (P.noShowMinutes * 60000) / (PREVIEW ? 40 : 1) - Date.now();
+const sosSheet = () => `<div class="card sheet"><h3>Safety</h3><p class="muted small">Use these if you feel unsafe. Our team sees your location straight away.</p><button class="btn danger" type="button" data-act="sos-call">Call the Basa seBasa safety line</button><button class="btn quiet" type="button" data-act="sos-share">Share my live location with a contact</button><button class="btn quiet" type="button" data-act="sos-leave">Leave this job safely</button><button class="btn quiet sm" type="button" data-act="sos">Close</button></div>`;
+const warrantySel = () => `<div class="field"><label for="warranty">Warranty you'll give</label><select id="warranty"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="180">6 months</option></select></div>`;
+function quoteForm(j) {
+  return `<div class="card"><h3>Diagnose and quote</h3>
+    <div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" data-jobphoto="beforePhoto">${j.beforePhoto ? "✓ Fault photo" : "Photo of the fault"}<small class="muted">${j.beforePhoto ? "Added" : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${fmt(Date.now() - j.arrivedAt)}</b><small class="muted">on site</small></div></div>
+    <div class="field"><label for="diag">What's wrong?</label><textarea id="diag" placeholder="e.g. Start relay burnt out. Compressor is fine."></textarea></div>
+    <div class="two"><div class="field"><label for="labour">Labour (USD)</label><input id="labour" type="number" min="0" step="1" inputmode="decimal" placeholder="40"></div><div class="field"><label for="parts">Parts (USD)</label><input id="parts" type="number" min="0" step="1" inputmode="decimal" placeholder="0"></div></div>
+    ${S.profile.warranty ? warrantySel() : ""}
+    <div id="preview">${splitTable({ ...j, quote: { labour: 0, parts: 0 } })}</div>
+    <p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-act="quote">Send quote to ${esc(first(j.customer))}</button>
+    <p class="muted small" style="text-align:center">Never start a repair before the customer approves.</p></div>`;
+}
+function startCard(j) {
+  return `<div class="card"><h3>Start the job</h3><div class="photos"><label class="photo ${j.beforePhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" data-jobphoto="beforePhoto">${j.beforePhoto ? "✓ Before photo" : "Before photo"}<small class="muted">${j.beforePhoto ? "Added" : "Recommended"}</small></label><div class="photo" style="cursor:default;border-style:solid"><b>${j.type === "Maid" ? j.hours + " h" : usd(j.agreed || j.quote?.labour || 0)}</b><small class="muted">${j.type === "Maid" ? "booked" : "agreed price"}</small></div></div>
+    ${j.type !== "Repair" && j.type !== "Maid" && S.profile.warranty ? warrantySel() : ""}
+    <p class="muted">The timer and checklist become the customer's service report.</p><button class="btn gold" type="button" data-act="start">Start job timer</button></div>`;
+}
+function workView(j, t) {
+  const needReceipt = earnings(j).parts > 0;
+  return `<div class="card"><span class="eyebrow" style="text-align:center">Time on the job</span><div class="timer" id="timer">${fmt(workMs(j))}</div><div class="two"><button class="btn quiet sm" style="width:100%" type="button" data-act="pause">${j.pausedAt ? "Resume" : "Pause"}</button><button class="btn quiet sm" style="width:100%" type="button" data-act="chat">Message</button></div></div>
+    <div class="card"><h3>Quality checklist</h3><div class="checklist">${t.checklist.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}</div></div>
+    <div class="card"><h3>Proof of work</h3><div class="photos"><label class="photo ${j.afterPhoto ? "done" : ""}"><input type="file" accept="image/*" capture="environment" data-jobphoto="afterPhoto">${j.afterPhoto ? "✓ After photo" : "After photo"}<small class="muted">${j.afterPhoto ? "Added" : "Required"}</small></label>
+      <label class="photo ${j.receiptPhoto ? "done" : ""}" ${needReceipt ? "" : 'style="opacity:.5"'}><input type="file" accept="image/*" capture="environment" data-jobphoto="receiptPhoto" ${needReceipt ? "" : "disabled"}>${j.receiptPhoto ? "✓ Parts receipt" : "Parts receipt"}<small class="muted">${needReceipt ? (j.receiptPhoto ? "Added" : "Required for parts") : "No parts"}</small></label></div>
+      ${PREVIEW ? `<button class="btn quiet sm" type="button" data-act="sample-photos">Preview: add sample photos</button>` : ""}
+      <div class="field"><label for="notes">What did you do?</label><textarea id="notes" placeholder="${t.id === "Maid / cleaning" ? "e.g. Cleaned all rooms, laundry done, kitchen deep-cleaned." : "e.g. Replaced start relay, leak tested, cooling at 4°C after 30 min."}"></textarea></div><p class="err" id="done-err" hidden></p><button class="btn gold" type="button" data-act="complete">Job complete</button></div>`;
+}
+function reportCard(j, t) {
+  const e = earnings(j);
+  return `<div class="card"><h3>Service report sent</h3><div class="report"><div class="toprow"><b style="font-family:var(--display);font-size:19px;text-transform:uppercase">Basa seBasa service report</b><span class="pill good">Verified visit</span></div><dl>
+    <dt>Job</dt><dd class="mono">${esc(j.id)}</dd><dt>Pro</dt><dd>${esc(S.profile.name)} · Trust ${trustFor(S.profile).total}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd>
+    ${j.quote?.diagnosis ? `<dt>Fault</dt><dd>${esc(j.quote.diagnosis)}</dd>` : ""}<dt>Work done</dt><dd>${esc(j.notes || "As agreed")}</dd><dt>Time on job</dt><dd>${j.minutes} min</dd><dt>Checks</dt><dd>${t.checklist.length}/${t.checklist.length} quality checks</dd>
+    ${e.parts ? `<dt>Parts</dt><dd>${usd(e.parts)} · receipt attached</dd>` : ""}<dt>Photos</dt><dd>${[j.beforePhoto && "before", j.afterPhoto && "after", j.receiptPhoto && "receipt"].filter(Boolean).join(", ")}</dd>
+    ${j.warranty ? `<dt>Warranty</dt><dd><b>Until ${esc(dateIn(j.warranty))}</b>. Free return visit if the same fault comes back.</dd>` : ""}</dl></div>${splitTable(j)}</div>`;
+}
+function splitTable(j) {
+  const e = earnings(j);
+  return `<table class="split">${e.callout ? `<tr><td>Call-out (your share)</td><td>${usd(e.callout)}</td></tr>` : ""}${e.travel ? `<tr><td>Extra travel</td><td>${usd(e.travel)}</td></tr>` : ""}<tr><td>${j.type === "Maid" ? `${j.hours} hours × $${j.rate}` : "Labour"}</td><td>${usd(e.labour)}</td></tr><tr><td>Basa seBasa fee (${P.commission}%)</td><td>−${usd(e.fee)}</td></tr>${e.parts ? `<tr><td>Parts (100% yours)</td><td>${usd(e.parts)}</td></tr>` : ""}<tr class="you"><td>You get</td><td>${usd(e.total)}</td></tr></table>`;
+}
+const workMs = (j) => (j.pausedAt || Date.now()) - j.startedAt - (j.pausedTotal || 0);
+function viewEarnings() {
+  const now = Date.now(), week = S.pro.done.filter((d) => now - d.at < 7 * 864e5), got = week.reduce((s, d) => s + d.earned, 0), pending = S.pro.done.filter((d) => now < d.at + P.payoutHours * 36e5);
+  return `<h2>Earnings</h2>
+    <div class="kpis"><div class="kpi lead"><span class="eyebrow">This week</span><b>${usd(got)}</b><span class="small">${week.length} jobs</span></div><div class="kpi"><span class="eyebrow">Payout pending</span><b>${usd(pending.reduce((s, d) => s + d.earned, 0))}</b><span class="muted small">Within ${P.payoutHours} h of payment</span></div></div>
+    <div class="card"><div class="toprow"><h3>Weekly goal</h3><select id="goal" aria-label="Weekly goal" style="width:auto">${[150, 250, 400, 600].map((g) => `<option value="${g}" ${g === S.pro.weeklyGoal ? "selected" : ""}>$${g}</option>`).join("")}</select></div><div class="goal" aria-hidden="true"><i style="width:${Math.min(100, got / S.pro.weeklyGoal * 100)}%"></i></div><p class="muted small">${got >= S.pro.weeklyGoal ? "Goal reached. Well done." : usd(S.pro.weeklyGoal - got) + " to go this week."}</p></div>
+    <div class="card list"><h3>Payouts</h3>${S.pro.done.length ? S.pro.done.map((d) => { const left = d.at + P.payoutHours * 36e5 - now; return `<div class="row2"><span><b>${esc(d.item)}</b><small>${new Date(d.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · ${esc(d.id)}</small></span><span class="amt">${usd(d.earned)}<br><span class="pill ${left <= 0 ? "good" : ""}">${left <= 0 ? "Paid to EcoCash" : "Due in " + Math.max(1, Math.round(left / 36e5)) + " h"}</span>${d.receipt ? `<br><button class="btn quiet sm" type="button" data-receipt="${esc(d.id)}" style="margin-top:6px">Receipt PDF</button>` : ""}</span></div>`; }).join("") : `<p class="muted">Your completed jobs and payouts appear here.</p>`}</div>
+    <div class="card"><h3>Your regulars</h3><p class="muted small">When your regular customers book you through Basa seBasa, you get the job first, their warranty stays valid, and every visit grows your Trust Score. Jobs taken outside the app lose all three.</p></div>
+    <div class="card"><h3>How you're paid</h3><p class="muted">Customers pay Basa seBasa on EcoCash. We send your share to <span class="mono">${esc(S.profile.ecoNum)}</span> within ${P.payoutHours} hours: ${100 - P.commission}% of labour, all of the parts, $${P.callout - P.calloutPlatform} of each $${P.callout} call-out, and any extra travel.</p></div>`;
+}
+function viewHistory() {
+  return `<h2>History</h2><div class="card list">${S.pro.done.length ? S.pro.done.map((d) => `<div class="row2"><span><b>${esc(d.item)}</b><small>${esc(d.suburb)} · ${esc(d.type)} · ${d.minutes ? d.minutes + " min on the job" : d.noshow ? "customer not home" : "call-out only"}${d.warranty ? " · warranty to " + esc(d.warranty) : ""}</small></span><span class="amt">${d.rating ? "★".repeat(d.rating) : "—"}<br><small>${usd(d.earned)}</small>${d.receipt ? `<br><button class="btn quiet sm" type="button" data-receipt="${esc(d.id)}" style="margin-top:6px">Receipt PDF</button>` : ""}</span></div>`).join("") : `<div class="empty"><h3>No jobs yet</h3><p class="muted">Go online to get your first job.</p></div>`}</div>`;
+}
+function viewProfile() {
+  const p = S.profile, t = trustFor(p), ix = level();
+  const checks = { "National ID": true, [p.noQual ? "Past work verified" : "Trade qualification"]: tradeOf(p.trade).tech, "References": true, "In-person check (incl. safety)": true, "Police clearance": !!p.police, "Offers warranty": tradeOf(p.trade).tech && p.warranty };
+  return `<h2>Profile</h2>
+    <div class="card"><div class="toprow"><span><span class="eyebrow">Trust Score</span><b style="display:block;font-family:var(--display);font-size:54px;line-height:1">${t.total}<span class="muted" style="font-size:22px">/100</span></b></span><span class="pill good">Verified</span></div><table class="split">${t.rows.map(([l, n]) => `<tr><td>${esc(l)}</td><td>+${n}</td></tr>`).join("")}</table></div>
+    <div class="card"><h3>Pro level: ${LEVELS[ix].name}</h3><div class="ladder">${LEVELS.map((l, i) => `<div class="${i === ix ? "me" : ""}"><b>${l.name}</b>${i < ix ? "✓" : i === ix ? "You" : ""}</div>`).join("")}</div><p><b>Your perk:</b> ${esc(LEVELS[ix].perk)}.</p>${LEVELS[ix + 1] ? `<p class="muted small">Next: <b>${esc(LEVELS[ix + 1].name)}</b> at ${esc(LEVELS[ix + 1].need)}.</p>` : ""}</div>
+    <div class="card"><h3>Checks</h3><div class="checks">${Object.entries(checks).map(([k, v]) => `<div><span>${esc(k)}</span><span class="${v ? "ok" : "no"}">${v ? "✓ Checked" : "Not yet"}</span></div>`).join("")}</div>${!p.police ? `<p class="muted small">Add a police clearance for +10. Bring it to the office.</p>` : ""}</div>
+    <div class="card"><h3>Your details</h3><div class="checks"><div><span>Trade</span><span>${esc(tradeOf(p.trade).name)}</span></div><div><span>Skills</span><span style="text-align:right">${esc(p.skills.join(", "))}</span></div><div><span>Based in</span><span>${esc(p.suburb)}</span></div><div><span>Experience</span><span>${esc(p.years)} years</span></div><div><span>Working hours</span><span>${esc(p.hours)}</span></div><div><span>EcoCash</span><span class="mono">${esc(p.ecoNum)}</span></div></div></div>
+    ${installCard()}
+    ${PREVIEW ? `<div class="card"><h3>Preview controls</h3><p class="muted small">Try a power cut or no signal, or start over.</p><button class="btn quiet" type="button" data-act="net">${R.simNet ? "Simulate no network" : "Reconnect network"}</button><button class="btn quiet" type="button" data-act="reset">Start over as a new applicant</button></div>` : ""}`;
+}
+function installCard() {
+  const standalone = matchMedia?.("(display-mode: standalone)").matches || navigator.standalone;
+  if (standalone) return "";
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  return `<div class="card"><h3>Install the app</h3>${R.installEvt ? `<p class="muted small">Add Basa seBasa Pro to your home screen. It opens like any app and works offline.</p><button class="btn quiet" type="button" data-act="install">Install Basa seBasa Pro</button>` : `<p class="muted small">${ios ? "On iPhone: tap Share, then Add to Home Screen." : "On Android: open this page in Chrome, tap the ⋮ menu, then Install app (or Add to home screen)."}</p>`}</div>`;
+}
+
+// =====================================================================
+// RENDER
+// =====================================================================
+function render() {
+  $("#banner").hidden = !PREVIEW;
+  $("#offline").hidden = online();
+  const pro = S.mode === "pro" && S.profile;
+  $("#head").innerHTML = pro ? headPro() : `<div class="who"><span class="mark" aria-hidden="true">B</span><span><b style="font-family:var(--display);font-size:22px">BASA <span style="color:#F0AE00">se</span>BASA <span class="level">Pro</span></b><small>Verified professionals. Work done right.</small></span></div>`;
+  $("#tabs").hidden = !pro;
+  if (pro) { document.querySelectorAll("[data-tab]").forEach((a) => a.dataset.tab === R.tab ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")); $("#jobs-dot").hidden = !(R.tab !== "jobs" && (R.request || R.job)); }
+  const keep = {}; document.querySelectorAll("#app input[id], #app textarea[id], #app select[id]").forEach((el) => { if (el.type === "checkbox") keep[el.id] = el.checked; else if (el.type !== "file") keep[el.id] = el.value; });
+  $("#app").innerHTML = S.mode === "welcome" ? viewWelcome() : S.mode === "apply" ? viewApply() : S.mode === "status" ? viewStatus() : S.mode === "welcomeApproved" ? viewApproved()
+    : R.tab === "earnings" ? viewEarnings() : R.tab === "history" ? viewHistory() : R.tab === "profile" ? viewProfile() : viewJobs();
+  Object.entries(keep).forEach(([k, v]) => { const el = document.getElementById(k); if (!el || el.dataset.bind || el.dataset.ref !== undefined) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
+  if (R.job?.stage === "travelling") startMap();
+}
+let raf = 0;
+function startMap() {
+  cancelAnimationFrame(raf);
+  const j = R.job, route = document.getElementById("route"), dot = document.getElementById("dot"); if (!route) return;
+  const len = route.getTotalLength(), dur = 25000, eta0 = Math.round(8 + j.km * 2.4);
+  const tick = () => { if (!document.getElementById("route") || R.job?.stage !== "travelling") return; const f = Math.min(1, (Date.now() - j.tripAt) / dur), pt = route.getPointAtLength(len * f); dot.setAttribute("transform", `translate(${pt.x} ${pt.y})`); const eta = document.getElementById("eta"); if (eta) eta.textContent = f >= 1 ? "You're here" : `${Math.max(1, Math.round(eta0 * (1 - f)))} min · ${r2(j.km * (1 - f)).toFixed(1)} km`; if (f < 1) raf = requestAnimationFrame(tick); };
+  tick();
+}
+setInterval(() => {
+  if (R.request && S.mode === "pro") {
+    const left = Math.max(0, Math.ceil((R.request.expires - Date.now()) / 1000)), c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = (left / P.acceptSeconds) * 100 + "%";
+    if (left <= 0) { R.request = null; toast("Request expired. It went to the next pro."); render(); scheduleRequest(6000); }
+  }
+  const j = R.job;
+  if (j?.stage === "working") { const t = $("#timer"); if (t) t.textContent = fmt(workMs(j)); }
+  if (j?.stage === "verify" && j.waitStart) { const w = $("#wait"); const left = waitLeft(j); if (w) w.textContent = fmt(left); if (left <= 0 && !j.waitDone) { j.waitDone = true; render(); } }
+}, 1000);
+
+// =====================================================================
+// ACTIONS
+// =====================================================================
+function runAuto() {
+  const a = S.apply; S.mode = "status"; S.status = "auto";
+  const nameOk = a.ecoName.trim().toLowerCase().replace(/\s+/g, " ") === a.name.trim().toLowerCase().replace(/\s+/g, " ");
+  S.auto = [["All required items sent", true], ["Photos are clear enough to read", true], ["Selfie matches the ID photo", true], ["Phone and ID not already registered", true], ["EcoCash name matches the ID name", nameOk]].map(([label, ok]) => ({ label, ok, state: "wait" }));
+  render(); let i = 0;
+  const tick = () => {
+    if (i > 0) S.auto[i - 1].state = S.auto[i - 1].ok ? "ok" : "no";
+    if (i > 0 && !S.auto[i - 1].ok) { S.mode = "apply"; S.status = "draft"; a.screen = "details"; save(); render(); fail("e-details", `Your EcoCash account name "${a.ecoName}" doesn't match your ID name "${a.name}". Payouts can only go to your own account. Fix it and send again.`); return; }
+    if (i === S.auto.length) { S.status = "review"; S.teamStep = 0; S.submittedAt = Date.now(); msg(TEAM_STEPS[0].msg(first(a.name))); save(); render(); return; }
+    S.auto[i].state = "run"; render(); i++; setTimeout(tick, 600);
+  };
+  tick();
+}
+function finishJob(earned, extra = {}) {
+  const j = R.job; if (!extra.noReceipt) extra.receipt = j.receipt || makeReceipt(j); delete extra.noReceipt; S.pro.done.unshift({ id: j.id, item: j.item, type: j.type, suburb: j.suburb, customer: j.customer, at: Date.now(), earned, minutes: j.minutes || 0, rating: j.rating || 0, warranty: j.warranty && !j.calloutOnly ? dateIn(j.warranty) : "", ...extra });
+  S.pro.done = S.pro.done.slice(0, 50); save(); R.job = null; R.sos = false; render(); if (S.pro.online) scheduleRequest(5000);
+}
+function goOnline(on) {
+  S.pro.online = on; save();
+  if (on) { startGPS(); toast("You're online. Location sharing is on."); scheduleRequest(); } else { stopGPS(); R.request = null; toast("You're offline. No new jobs."); }
+  render();
+}
+document.addEventListener("input", (e) => {
+  const t = e.target, a = S.apply;
+  if (t.dataset.bind) { a[t.dataset.bind] = t.id === "f-code" ? (t.value = t.value.replace(/\D/g, "").slice(0, 6)) : t.value; save(); }
+  if (t.dataset.ref !== undefined) { a.refs[+t.dataset.ref][t.dataset.k] = t.value; save(); }
+  if (t.id === "code") t.value = t.value.replace(/\D/g, "").slice(0, 4);
+  if ((t.id === "labour" || t.id === "parts") && R.job) { const prev = $("#preview"); if (prev) prev.innerHTML = splitTable({ ...R.job, quote: { labour: Number($("#labour").value) || 0, parts: Number($("#parts").value) || 0 } }); }
+});
+document.addEventListener("change", async (e) => {
+  const t = e.target, a = S.apply;
+  if (t.id === "online") return goOnline(t.checked);
+  if (t.id === "goal") { S.pro.weeklyGoal = Number(t.value); save(); render(); return; }
+  if (t.dataset.bindSelect) { a[t.dataset.bindSelect] = t.value; if (t.dataset.bindSelect === "trade") { a.skills = []; a.docs = {}; a.noQual = false; } save(); render(); }
+  if (t.dataset.consent) { a.consent[t.dataset.consent] = t.checked; save(); }
+  if (t.dataset.flag) { a[t.dataset.flag] = t.checked; save(); if (t.dataset.flag === "noQual") render(); }
+  if (t.dataset.doc) { const f = t.files?.[0]; if (f) { const url = await shrink(f); if (url) { a.docs[t.dataset.doc] = { name: f.name, url }; save(); render(); } } }
+  if (t.dataset.jobphoto && R.job) { const f = t.files?.[0]; if (f) { R.job[t.dataset.jobphoto] = await shrink(f) || "photo"; send("Photo saved to the job."); render(); } }
+});
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const a = S.apply, j = R.job;
+  if (b.dataset.skill) { const s = b.dataset.skill; a.skills = a.skills.includes(s) ? a.skills.filter((x) => x !== s) : [...a.skills, s]; save(); render(); return; }
+  if (b.dataset.sample) { const d = docList().find((x) => x.key === b.dataset.sample); a.docs[d.key] = { name: "sample-" + d.key + ".png", url: sampleImage(d.label.split(" (")[0], d.hue, a.name) }; save(); render(); return; }
+  if (b.dataset.crate) { j.custStars = Number(b.dataset.crate); render(); return; }
+  if (b.dataset.receipt) { downloadReceipt(S.pro.done.find((d) => d.id === b.dataset.receipt)?.receipt); return; }
+  const act = b.dataset.act; if (!act) return;
+  switch (act) {
+    // ---- welcome & onboarding ----
+    case "begin": S.mode = "apply"; a.screen = a.screen || "phone"; save(); render(); break;
+    case "to-welcome": S.mode = "welcome"; save(); render(); break;
+    case "demo-pro": S.profile = { ...DEMO_PROFILE, photo: "" }; S.approvedAt = Date.now(); S.mode = "welcomeApproved"; save(); render(); window.scrollTo(0, 0); break;
+    case "send-code": if (a.phone.replace(/\D/g, "").length < 9) return fail("e-phone", "Enter your WhatsApp number."); a.code = String(100000 + Math.floor(Math.random() * 900000)); a.codeIn = ""; a.screen = "otp"; save(); render(); break;
+    case "to-phone": a.screen = "phone"; save(); render(); break;
+    case "verify-code": if (a.codeIn !== a.code) return fail("e-code", "That code is wrong. Check WhatsApp and try again."); a.screen = "consent"; if (!a.ecoNum) a.ecoNum = a.phone; save(); render(); break;
+    case "consent": if (!a.consent.checks || !a.consent.location || !a.consent.data) return fail("e-consent", "Tick all three to continue."); a.screen = "details"; save(); render(); break;
+    case "details":
+      if (a.name.trim().split(/\s+/).length < 2) return fail("e-details", "Enter your full name as it appears on your ID.");
+      if (!a.skills.length) return fail("e-details", "Choose at least one thing you're best at.");
+      if (!a.suburb) return fail("e-details", "Choose your base suburb.");
+      if (a.years === "" || Number(a.years) < 0) return fail("e-details", "Enter your years of experience.");
+      if (a.ecoNum.replace(/\D/g, "").length < 9 || !a.ecoName.trim()) return fail("e-details", "Enter your EcoCash number and the name on that account.");
+      a.screen = "docs"; save(); render(); window.scrollTo(0, 0); break;
+    case "to-details": a.screen = "details"; save(); render(); break;
+    case "sample-refs": a.refs = [{ name: "Mr P. Mutasa (past employer)", phone: "077 300 4411" }, { name: "Mrs L. Chiweshe (customer)", phone: "078 552 9020" }]; save(); render(); break;
+    case "submit": {
+      const missing = docList().filter((d) => d.req && !a.docs[d.key]); if (missing.length) return fail("e-docs", "Still needed: " + missing.map((d) => d.label).join(", ") + ".");
+      if (a.refs.some((r) => !r.name.trim() || r.phone.replace(/\D/g, "").length < 9)) return fail("e-docs", "Add a name and phone number for both referees.");
+      window.scrollTo(0, 0); runAuto(); break;
+    }
+    case "team-next": {
+      S.teamStep++; const step = TEAM_STEPS[S.teamStep]; S.status = step.status;
+      if (step.status === "inperson") { S.slot = SLOT; msg(`Both your referees vouched for you. Your in-person check is booked: ${SLOT}. Bring your original ID${tradeOf(a.trade).tech ? " and your tools" : ""}.`); }
+      else msg(step.msg(first(a.name)));
+      if (step.status === "approved") { S.profile = { name: a.name.trim(), phone: a.phone, trade: a.trade, skills: a.skills, suburb: a.suburb, years: a.years, hours: a.hours, ecoNum: a.ecoNum, ecoName: a.ecoName, warranty: tradeOf(a.trade).tech && a.warranty, noQual: a.noQual, police: !!a.docs.police, photo: a.docs.selfie?.url || "" }; S.approvedAt = Date.now(); S.mode = "welcomeApproved"; window.scrollTo(0, 0); }
+      save(); render(); break;
+    }
+    case "enter-pro": S.mode = "pro"; R.tab = "jobs"; save(); location.hash = "#jobs"; render(); break;
+    case "install": if (R.installEvt) { R.installEvt.prompt(); try { await R.installEvt.userChoice; } catch (x) {} R.installEvt = null; render(); } break;
+    // ---- jobs ----
+    case "go-online": goOnline(true); break;
+    case "decline": R.request = null; toast("Declined. We'll send the next job."); render(); scheduleRequest(7000); break;
+    case "accept": { const r = R.request; R.request = null; R.job = { ...r, stage: r.type === "Repair" ? "await_callout" : "ready" }; render(); send(`Accepted. ${first(r.customer)} has been told and given a Basa Code.`); if (r.type === "Repair") sim("ready", 5000, "Call-out paid. You can leave now.", "await_callout"); break; }
+    case "trip": j.stage = "travelling"; j.tripAt = Date.now(); startGPS(); send(`${first(j.customer)} can see you on the map.`); render(); break;
+    case "arrived": j.stage = "verify"; render(); break;
+    case "verify": { const c = $("#code").value; if (c.length !== 4) return fail("code-err", "Enter the 4-digit code."); if (j.codeLocked) return fail("code-err", "Code entry is locked. Our team is calling you now.");
+      if (c !== j.code) { j.codeTries = (j.codeTries || 0) + 1; if (j.codeTries >= P.maxCodeTries) { j.codeLocked = true; send(`Alert sent to the Basa seBasa team: ${P.maxCodeTries} wrong Basa Codes at job ${j.id}. Don't go in. We're calling you and ${first(j.customer)}.`); setTimeout(() => { if (R.job === j && j.stage === "verify") { j.codeLocked = false; j.codeTries = 0; send(`Team update: we spoke to ${first(j.customer)} and confirmed the address. Ask for the code again.`); render(); } }, 9000); return fail("code-err", "Too many wrong codes. Don't go in. Our team has been alerted and will call you."); } return fail("code-err", `That code doesn't match (${j.codeTries} of ${P.maxCodeTries} tries). Check you're at the right house, or call us.`); } j.stage = "arrived"; j.arrivedAt = Date.now(); send("Arrival confirmed. The customer knows it's really you."); render(); break; }
+    case "wait": j.waitStart = Date.now(); send(`${first(j.customer)} has been told you're waiting outside.`); render(); break;
+    case "noshow": j.calloutOnly = true; send("Job closed as customer not home."); finishJob(j.type === "Repair" ? earnings(j).upfront : P.noShowFeeOther, { noshow: true, noReceipt: j.type !== "Repair" }); break;
+    case "quote": {
+      const diag = $("#diag").value.trim(), lab = Number($("#labour").value), parts = Number($("#parts").value) || 0;
+      if (diag.length < 5) return fail("q-err", "Describe what's wrong so the customer understands."); if (!(lab > 0)) return fail("q-err", "Enter the labour price.");
+      j.quote = { labour: lab, parts, diagnosis: diag }; j.warranty = $("#warranty") ? Number($("#warranty").value) : 0; j.stage = "quote_sent"; send("Quote sent to the customer."); render();
+      if (lab + parts > 150) sim("deferred", 6000, "The customer will repair later. You keep the call-out.", "quote_sent"); else sim("approved", 6000, "Quote approved. You can start.", "quote_sent");
+      break;
+    }
+    case "start": if ($("#warranty")) j.warranty = Number($("#warranty").value); j.stage = "working"; j.startedAt = Date.now(); j.pausedTotal = 0; j.pausedAt = null; send("Job timer started."); render(); break;
+    case "pause": if (j.pausedAt) { j.pausedTotal += Date.now() - j.pausedAt; j.pausedAt = null; } else j.pausedAt = Date.now(); render(); break;
+    case "sample-photos": j.afterPhoto = j.afterPhoto || sampleImage("After", 140, S.profile.name); if (earnings(j).parts > 0) j.receiptPhoto = j.receiptPhoto || sampleImage("Receipt", 40, S.profile.name); render(); break;
+    case "complete": {
+      const t = tradeOf(S.profile.trade), checks = t.checklist.filter((_, i) => $("#ck" + i).checked).length;
+      if (checks < t.checklist.length) return fail("done-err", `Tick all ${t.checklist.length} quality checks first.`);
+      if (!j.afterPhoto) return fail("done-err", "Add an after photo. It protects you if there's a dispute.");
+      if (earnings(j).parts > 0 && !j.receiptPhoto) return fail("done-err", "Add a photo of the parts receipt so the customer sees what they paid for.");
+      Object.assign(j, { notes: $("#notes").value.trim(), minutes: Math.max(1, Math.round(workMs(j) / 6e4)), stage: "await_payment" });
+      send("Service report sent to the customer."); render();
+      later(7000, () => { if (R.job !== j) return; j.stage = "rate"; j.receipt = makeReceipt(j); j.rating = 5; j.review = "On time, used his Basa Code and explained everything."; toast("Customer paid. Your payout is on its way."); render(); });
+      break;
+    }
+    case "finish": if (!j.custStars) return fail("rate-err", "Tap the stars to rate the customer."); if ($("#flag").checked) toast("Thanks. Our team will call you about this."); finishJob(earnings(j).total); break;
+    case "end-deferred": j.calloutOnly = true; finishJob(earnings(j).upfront); break;
+    case "receipt-current": if (j.stage === "deferred") j.calloutOnly = true; j.receipt = j.receipt || makeReceipt(j); downloadReceipt(j.receipt); break;
+    case "sos": R.sos = !R.sos; render(); break;
+    case "sos-call": toast(PREVIEW ? "In the live app this calls the Basa seBasa safety line with your location." : "Calling the safety line…"); break;
+    case "sos-share": toast(PREVIEW ? "In the live app this sends your live location to your emergency contact." : "Location shared."); break;
+    case "sos-leave": toast("Our team has been told and will contact the customer. Get somewhere safe."); R.sos = false; j.calloutOnly = true; finishJob(earnings(j).upfront, { noReceipt: true }); break;
+    case "chat": toast(PREVIEW ? "In the live app this opens WhatsApp with the customer through a Basa seBasa number." : "Opening WhatsApp…"); break;
+    case "net": R.simNet = !R.simNet; if (online() && R.queued) { toast(`Back online. ${R.queued} saved update${R.queued > 1 ? "s" : ""} sent.`); R.queued = 0; } else if (!online()) toast("No network. Keep working; updates are saved."); render(); break;
+    case "reset": if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to erase everything"; return; } stopGPS(); S = blank(); R.job = null; R.request = null; save(); location.hash = ""; render(); window.scrollTo(0, 0); break;
+  }
+});
+window.addEventListener("online", () => { R.net = true; if (online() && R.queued) { toast(`Back online. ${R.queued} saved update${R.queued > 1 ? "s" : ""} sent.`); R.queued = 0; } render(); });
+window.addEventListener("offline", () => { R.net = false; render(); });
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); R.installEvt = e; render(); });
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (["jobs", "earnings", "history", "profile"].includes(h)) { R.tab = h; R.sos = false; render(); window.scrollTo(0, 0); } });
+const h0 = location.hash.slice(1); if (["jobs", "earnings", "history", "profile"].includes(h0)) R.tab = h0;
+if (S.mode === "status" && S.status === "auto") { S.status = "review"; S.teamStep = 0; }
+if (S.mode === "pro" && S.pro.online) { startGPS(); scheduleRequest(); }
+render();
+try { if ("serviceWorker" in navigator && location.protocol === "https:" && !/claude\.ai|claudeusercontent/.test(location.hostname)) navigator.serviceWorker.register("sw.js"); } catch (e) {}
+})();
+</script>

@@ -294,7 +294,7 @@ function renderChat() {
     return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
   }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
   box.scrollTop = box.scrollHeight;
-  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? [svc().hint] : [];
+  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? [svc().hint] : S.step === "onway" ? ["Where are you?", "HELP"] : ["service", "start", "describe"].includes(S.step) ? [] : ["HELP"];
   $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
     : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
@@ -351,7 +351,20 @@ function customerSays(text) {
   me(text); log("wa", `Message from customer +263 77 •••• 120: "${text}"`);
   if (S.step === "start") return typing(700, greet);
   if (S.step === "describe") { S.desc = text.trim(); return typing(700, askPhoto); }
-  typing(500, () => bot("Please tap one of the options above so I can help you faster."));
+  const t = text.trim(), pro = S.pro?.name ? first(S.pro.name) : "your pro";
+  if (/^(help|agent|human|person|operator|complain|complaint|problem|emergency)\b|talk to (a|someone)|speak to/i.test(t)) {
+    S.human = true; log("server", `Customer asked for a person. Chat flagged on the ops desk${S.job ? " for " + S.job : ""}.`);
+    return typing(600, () => bot(`I've passed you to a person on the Basa seBasa team. They'll reply in this chat within 10 minutes (7am to 7pm, every day).${S.job ? ` Your job <b>${esc(S.job)}</b> stays exactly as it is.` : ""}<br><br>If you feel unsafe right now, call <b>995</b> first.`));
+  }
+  if (S.human) { log("server", "Message added to the team's chat with this customer."); return typing(400, () => bot("Thanks, the team can see this. A person will reply here shortly.")); }
+  const lastIn = S.chat.map((m) => m.from).lastIndexOf("in"), live = lastIn >= 0 && S.chat[lastIn].buttons && !S.chat[lastIn].used;
+  if (S.step === "onway" && /where|eta|how long|late|coming|arriv/i.test(t)) { log("server", "Answered an ETA question automatically."); return typing(500, () => bot(`${esc(pro)} is on the way, about <b>${S.pro.eta} min</b> out. Tap <b>Track live</b> above to see them on the map. When they arrive, give them your Basa Code <b>${esc(S.code)}</b> at the door.`)); }
+  if (/code/i.test(t) && S.code && ["onway", "wait"].includes(S.step)) return typing(400, () => bot(`Your Basa Code is <b>${esc(S.code)}</b>. Only give it to ${esc(pro)} at your door, never over the phone.`));
+  if (/cash/i.test(t)) return typing(500, () => bot("Please don't pay in cash. All payments go to Basa seBasa on EcoCash, so your money is protected and covered by our warranty. If a pro asks for cash, type HELP."));
+  if (live) return typing(500, () => bot("Please tap one of the options above so I can help you faster. Type <b>HELP</b> any time to talk to a person."));
+  if (["wait", "onway", "work"].includes(S.step)) { log("app", `Customer message forwarded to ${S.pro?.name || "the pro"}: "${t}"`); return typing(500, () => bot(`Got it. I've passed your message to ${esc(pro)}. Type <b>HELP</b> if you need the Basa seBasa team.`)); }
+  if (S.step === "done") return typing(600, greet);
+  typing(500, () => bot("Thanks for your message. Type <b>HELP</b> to talk to a person on the Basa seBasa team."));
 }
 function greet() {
   log("server", "New conversation. Sent welcome and the service list.");
