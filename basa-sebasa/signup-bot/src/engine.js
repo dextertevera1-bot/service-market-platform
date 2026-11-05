@@ -1,0 +1,462 @@
+/*
+ * Basa seBasa sign-up bot: the conversation engine.
+ *
+ * Pure logic, no network and no files. The same code runs on the server (with the
+ * WhatsApp Cloud API) and in the browser simulator, so what you test is what goes live.
+ *
+ *   const out = handle(store, from, input, now)   // one incoming WhatsApp message
+ *   const out = tick(store, now)                  // run every minute (reminders)
+ *
+ * input:  { type: "text", text } | { type: "button", id, title } | { type: "image"|"document", mediaId, mime, filename }
+ *         | { type: "location", lat, lng, name, address }
+ * out:    { messages: [...], effects: [...] }
+ *   message: { to, kind: "text", body } | { to, kind: "buttons", body, buttons: [{ id, title }] }
+ *            | { to, kind: "list", body, button, rows: [{ id, title, description }] }
+ *            optional fallbackTemplate: { name, params } (used when the 24-hour window is closed)
+ *   effect:  { type: "media", appId, field, mediaId } | { type: "delete_files", appId }
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.BasaSignup = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  // ------------------------------------------------------------------ config
+  const DEFAULTS = {
+    brand: "Basa seBasa",
+    founderPhones: [],            // e.g. ["971501234567"]; these numbers can run admin commands
+    botNumber: "263770000000",    // the bot's WhatsApp number, for share links
+    launchDate: "15 December",
+    publicUrl: "",                // where the admin page is served, for document links
+    adminKey: "",
+    harareOffset: 2,              // UTC+2, no daylight saving
+    founderOffset: 4,             // Dubai UTC+4, no daylight saving
+    founderCity: "Dubai",
+    slotDays: [1, 2, 3, 4, 5, 6], // Mon to Sat
+    slotHours: [9, 10, 11, 14, 15, 16], // Harare time
+    slotMinutes: 20,
+    slotLeadHours: 3,
+    slotHorizonDays: 5,
+    reminderMinutes: 60,
+    probationJobs: 5,
+    templates: { alert: "admin_alert", update: "application_update" },
+    trades: [
+      { id: "hvac", name: "Fridge & aircon", open: true, safety: [
+        { q: "Before you open a fridge or aircon to repair it, you:", a: ["Switch off and unplug it, or isolate its supply", "Leave it running so you can see the fault", "Switch it off with the remote only"], correct: 0 },
+        { q: "Refrigerant gas should be:", a: ["Released into the air, it's harmless", "Recovered with proper equipment, never vented", "Topped up without looking for the leak"], correct: 1 } ] },
+      { id: "elec", name: "Electrical", open: true, safety: [
+        { q: "Before working on a circuit, you:", a: ["Switch off at the wall switch only", "Switch off at the breaker and test it's dead", "Work carefully while it's live"], correct: 1 },
+        { q: "A customer asks you to bypass a breaker that keeps tripping. You:", a: ["Bypass it, the customer is paying", "Fit a bigger breaker", "Find and fix the fault that makes it trip"], correct: 2 } ] },
+      { id: "plumb", name: "Plumbing", open: true, safety: [
+        { q: "Before working on an electric geyser, you:", a: ["Switch off its isolator and close the water supply", "Close the water only", "Drain it while the power is on"], correct: 0 },
+        { q: "After fixing a joint, you:", a: ["Leave, the customer will call if it leaks", "Pressure-test it and check for leaks before you go", "Ask the customer to check it tomorrow"], correct: 1 } ] },
+      { id: "solar", name: "Solar & inverters", open: true, safety: [
+        { q: "Before working on an inverter system, you:", a: ["Switch off the AC side only", "Work live, but carefully", "Isolate both the DC side (panels, batteries) and the AC side"], correct: 2 },
+        { q: "Battery cables should be:", a: ["Sized and fused correctly for the current", "Any cable that fits the terminals", "Joined with insulation tape if too short"], correct: 0 } ] },
+      { id: "appl", name: "Appliances", open: false, safety: [
+        { q: "Before you open an appliance, you:", a: ["Unplug it", "Switch it off at the panel only", "Keep it plugged in to test as you go"], correct: 0 },
+        { q: "After a repair, you:", a: ["Leave if it switches on", "Run a full test cycle with the customer", "Ask the customer to test it later"], correct: 1 } ] },
+      { id: "auto", name: "Mechanic", open: false, safety: [
+        { q: "Before working under a car, you:", a: ["Rely on the jack", "Ask someone to hold the car steady", "Use axle stands on firm, level ground"], correct: 2 },
+        { q: "Old parts you replace should be:", a: ["Shown to the customer", "Thrown away before they see them", "Sold for scrap"], correct: 0 } ] },
+      { id: "maid", name: "Cleaning / maid", open: false, safety: [
+        { q: "Mixing bleach with other cleaning products is:", a: ["Fine, it cleans better", "Dangerous: never mix them", "Only a problem in small rooms"], correct: 1 },
+        { q: "If you break something in a client's home, you:", a: ["Tell the client and Basa seBasa straight away", "Hide it and say nothing", "Replace it later without telling anyone"], correct: 0 } ] },
+    ],
+    services: [
+      { id: "hvac", name: "Fridge & aircon" }, { id: "elec", name: "Electrical" }, { id: "plumb", name: "Plumbing" },
+      { id: "solar", name: "Solar & inverters" }, { id: "appl", name: "Appliances" }, { id: "auto", name: "Mechanic" }, { id: "maid", name: "Cleaning / maid" },
+    ],
+  };
+  const YEARS = [["y0", "Less than 1 year"], ["y1", "1 to 3 years"], ["y3", "3 to 5 years"], ["y5", "5 to 10 years"], ["y10", "More than 10 years"]];
+  const LETTERS = ["A", "B", "C"];
+
+  function makeConfig(c = {}) { return { ...DEFAULTS, ...c, templates: { ...DEFAULTS.templates, ...(c.templates || {}) } }; }
+  function newStore() { return { users: {}, apps: {}, waitlist: [], seq: 1000, help: {} }; }
+
+  // ------------------------------------------------------------------ helpers
+  const norm = (s) => String(s || "").trim();
+  const upper = (s) => norm(s).toUpperCase();
+  const digits = (s) => String(s || "").replace(/\D/g, "");
+  const words = (s) => norm(s).toLowerCase().replace(/[^a-z\s'-]/g, " ").split(/\s+/).filter((w) => w.length > 1);
+  const first = (n) => norm(n).split(/\s+/)[0] || "";
+  const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + "…" : String(s));
+  const pretty = (p) => "+" + digits(p);
+  const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function at(ts, offset) { const d = new Date(ts + offset * 36e5); return { d, day: DAYS[d.getUTCDay()], date: d.getUTCDate(), mon: MONTHS[d.getUTCMonth()], hh: String(d.getUTCHours()).padStart(2, "0"), mm: String(d.getUTCMinutes()).padStart(2, "0") }; }
+  const slotShort = (ts, C) => { const t = at(ts, C.harareOffset); return `${t.day} ${t.date} ${t.mon} · ${t.hh}:${t.mm}`; };
+  const slotLong = (ts, C) => { const t = at(ts, C.harareOffset); return `${t.day} ${t.date} ${t.mon} at ${t.hh}:${t.mm}`; };
+  const slotFounder = (ts, C) => { const h = at(ts, C.harareOffset), f = at(ts, C.founderOffset); return `${h.day} ${h.date} ${h.mon} ${h.hh}:${h.mm} Harare (${f.hh}:${f.mm} ${C.founderCity})`; };
+  // Zimbabwe EcoCash numbers are Econet lines: 077 or 078
+  function ecocashNumber(s) { let d = digits(s); if (d.startsWith("263")) d = "0" + d.slice(3); return /^07[78]\d{7}$/.test(d) ? d : null; }
+  function phoneIn(s) { const m = String(s).match(/(\+?\d[\d\s-]{7,15}\d)/); if (!m) return null; let d = digits(m[1]); if (d.startsWith("263")) d = "0" + d.slice(3); return /^0\d{8,9}$/.test(d) ? d : null; }
+  function namesMatch(idName, ecoName) { const a = words(idName), b = words(ecoName); return b.length > 0 && b.every((w) => a.includes(w)) && b.length >= Math.min(2, a.length); }
+  function refCode(text) { const m = String(text).match(/\bcode[:\s#-]*([A-Za-z0-9]{2,15})\b/i); return m ? m[1].toUpperCase() : null; }
+  const trade = (C, id) => C.trades.find((t) => t.id === id);
+
+  // ------------------------------------------------------------------ message builders
+  function Out(C) {
+    const messages = [], effects = [];
+    const o = {
+      messages, effects,
+      text(to, body, extra) { messages.push({ to, kind: "text", body, ...extra }); return o; },
+      buttons(to, body, buttons, extra) { messages.push({ to, kind: "buttons", body, buttons: buttons.slice(0, 3).map(([id, title]) => ({ id, title: clip(title, 20) })), ...extra }); return o; },
+      list(to, body, button, rows, extra) { messages.push({ to, kind: "list", body, button: clip(button, 20), rows: rows.slice(0, 10).map(([id, title, description]) => ({ id, title: clip(title, 24), ...(description ? { description: clip(description, 72) } : {}) })), ...extra }); return o; },
+      founders(body, short) { C.founderPhones.forEach((f) => messages.push({ to: f, kind: "text", body, fallbackTemplate: { name: C.templates.alert, params: [clip(String(short || body.split("\n")[0]).replace(/\s+/g, " "), 900)] } })); return o; },
+      effect(e) { effects.push(e); return o; },
+    };
+    return o;
+  }
+
+  // ------------------------------------------------------------------ the questions, one per step
+  function ask(C, store, u, out, hint) {
+    const to = u.phone, a = u.appId ? store.apps[u.appId] : null, h = hint ? hint + "\n\n" : "";
+    switch (u.step) {
+      case "role":
+        return out.buttons(to, `${h}Welcome to *${C.brand}*: verified home-service professionals in Harare.\n\nAre you a professional looking for work, or do you need a service?`, [["role:pro", "I'm a professional"], ["role:customer", "I need a service"], ["help", "Talk to a person"]]);
+      case "p_intro":
+        return out.buttons(to, `${h}*How ${C.brand} works for pros*\n\n• We send you jobs near you on WhatsApp. You have 60 seconds to accept.\n• Repairs: you get $8 of the $9 call-out, plus $0.50 per km beyond 10 km.\n• Our fee is 15% of labour only. Parts are 100% yours.\n• Customers pay us on EcoCash. We pay you within 24 hours. Never take cash.\n• Your first ${C.probationJobs} jobs are on probation.\n\nSign-up takes about 10 minutes. Have these ready: your national ID, your trade certificate and police clearance if you have them.`, [["p:start", "Start sign-up"], ["help", "Ask a question"]]);
+      case "p_consent":
+        return out.buttons(to, `${h}To check who you are, we keep your name, photos, ID, certificates and EcoCash details. Only the ${C.brand} team sees them. We never share them without your permission, and you can type *DELETE MY DATA* at any time.\n\nDo you agree?`, [["consent:yes", "I agree"], ["consent:no", "Not now"]]);
+      case "p_name":
+        return out.text(to, `${h}What is your full name, exactly as it is on your national ID?`);
+      case "p_trade":
+        return out.list(to, `${h}What is your main trade?`, "Choose trade", C.trades.map((t) => [`trade:${t.id}`, t.name, t.open ? "" : "Opening later. We'll keep your application."]));
+      case "p_years":
+        return out.list(to, `${h}How many years have you worked as a ${trade(C, a.trade).name.toLowerCase()} professional?`, "Choose", YEARS.map(([id, t]) => [`years:${id}`, t]));
+      case "p_area":
+        return out.text(to, `${h}Which suburb do you live or work in? Type it (for example *Avondale*), or share your location with the 📎 button.`);
+      case "p_selfie":
+        return out.text(to, `${h}Please send a clear *selfie*: your face only, in good light, no hat or sunglasses. Customers will see this photo.`);
+      case "p_id":
+        return out.text(to, `${h}Now send a photo of the *front of your national ID*. All four corners must be visible and the writing readable.`);
+      case "p_qual":
+        return out.buttons(to, `${h}Send a photo of your *trade certificate or qualification* (for example a trade test, NC, ND or apprenticeship certificate).`, [["qual:none", "I don't have one"]]);
+      case "p_police":
+        return out.buttons(to, `${h}Send a photo of your *police clearance* if you have one. It adds 10 points to your Trust Score.`, [["police:later", "I don't have it yet"]]);
+      case "p_ecoNum":
+        return out.text(to, `${h}What *EcoCash number* should we pay you on? (It starts with 077 or 078.)`);
+      case "p_ecoName":
+        return out.text(to, `${h}What is the *name on that EcoCash account*?`);
+      case "p_ecoConfirm":
+        return out.buttons(to, `${h}The EcoCash name "${a.ecoName}" doesn't match your ID name "${a.name}". We can only pay into your own account. Is this account registered in your name?`, [["eco:fix", "Change number"], ["eco:mine", "Yes, it's mine"]]);
+      case "p_ref":
+        return out.buttons(to, `${h}Give us *one reference* we can call: a past customer or employer. Type their name and phone number, for example:\n_Tendai Moyo 0772 123 456_`, [["ref:skip", "I can't give one"]]);
+      case "p_safety": {
+        const qn = a.safetyIx || 0, q = trade(C, a.trade).safety[qn];
+        return out.buttons(to, `${h}*Safety question ${qn + 1} of 2*\n${q.q}\n\n${q.a.map((x, i) => `*${LETTERS[i]}*  ${x}`).join("\n")}`, q.a.map((_, i) => [`safe:${i}`, LETTERS[i]]));
+      }
+      case "p_slot": {
+        const slots = freeSlots(C, store, out.now);
+        if (!slots.length) return out.buttons(to, `${h}The last step is a 15-minute *WhatsApp video call* with our team. There are no free times this week; we'll message you with a time.`, [["slot:none", "OK"]]);
+        return out.list(to, `${h}Last step: a 15-minute *WhatsApp video call* with our team. On the call, show your original ID and answer a few questions about how you work safely.\n\nChoose a time (Harare time):`, "Choose a time", [...slots.slice(0, 9).map((ts) => [`slot:${ts}`, slotShort(ts, C)]), ["slot:none", "None of these work", "We'll message you to agree a time"]]);
+      }
+      case "p_review": return out.buttons(to, h + summary(C, a, "pro"), [["submit", "Submit"], ["restart", "Start again"]]);
+      case "p_fix": return out.text(to, `${h}Send the document or photo our team asked for, or type a message for them.`);
+      case "p_done": return status(C, store, u, out);
+      case "c_service":
+        return out.list(to, `${h}Which service do you need?`, "Choose service", C.services.map((s) => [`svc:${s.id}`, s.name]));
+      case "c_area":
+        return out.text(to, `${h}Which suburb are you in? Type it, or share your location with the 📎 button.`);
+      case "c_done": return out.text(to, `${h}You're on the list. We'll message you on ${C.launchDate}. Type *HELP* to talk to a person.`);
+      case "delete_confirm":
+        return out.buttons(to, `${h}This deletes everything we hold about you, including your documents. It can't be undone. Delete now?`, [["del:yes", "Delete my data"], ["del:no", "Keep it"]]);
+    }
+    return out.text(to, `${h}Type *HELP* to talk to a person.`);
+  }
+
+  function summary(C, a, who) {
+    const t = trade(C, a.trade), yrs = (YEARS.find(([id]) => id === a.years) || [])[1] || "";
+    const lines = [`Name: ${a.name}`, `Trade: ${t ? t.name : "-"}${yrs ? `, ${yrs.toLowerCase()}` : ""}`, `Area: ${a.area || "-"}`, `Selfie: ${a.docs.selfie ? "received" : "missing"}`, `ID: ${a.docs.id ? "received" : "missing"}`, `Certificate: ${a.docs.qual ? "received" : "none"}`, `Police clearance: ${a.docs.police ? "received" : "not yet"}`, `EcoCash: ${a.ecoNum} (${a.ecoName})`, `Reference: ${a.ref || "none"}`];
+    if (a.slot) lines.push(`Video call: ${who === "founder" ? slotFounder(a.slot, C) : slotLong(a.slot, C)}`);
+    else if (t && t.open) lines.push("Video call: we'll agree a time");
+    if (who === "founder") {
+      const safe = a.safety || []; lines.push(`Safety pre-check: ${safe.filter(Boolean).length}/${safe.length} right`);
+      if (a.flags.length) lines.push(`⚠ ${a.flags.join("; ")}`);
+      if (a.refCode) lines.push(`Came from creator code: ${a.refCode}`);
+      return `${lines.join("\n")}`;
+    }
+    return `*Please check your details*\n\n${lines.join("\n")}`;
+  }
+
+  function status(C, store, u, out) {
+    const a = u.appId && store.apps[u.appId];
+    if (!a) return out.text(u.phone, "You don't have an application yet. Type *JOIN* to sign up as a professional.");
+    const s = {
+      draft: "Your application isn't finished yet.",
+      submitted: a.slot ? `Application *${a.id}* is in. Your video call is ${slotLong(a.slot, C)} (Harare time). We'll call you on WhatsApp.` : `Application *${a.id}* is in. We'll message you to agree a time for your video call.`,
+      waitlist: `Application *${a.id}* is saved. ${trade(C, a.trade).name} opens soon, and we'll message you first.`,
+      fix: `Application *${a.id}*: our team asked for: ${a.fixNote}`,
+      approved: `You're approved. Welcome to ${C.brand}! Your first ${C.probationJobs} jobs are on probation.`,
+      rejected: `Application *${a.id}* was not approved${a.reason ? `: ${a.reason}` : ""}.`,
+    }[a.status];
+    return out.text(u.phone, s + "\n\nType *HELP* to talk to a person.");
+  }
+
+  // ------------------------------------------------------------------ video call slots
+  const takenSlots = (store) => new Set(Object.values(store.apps).filter((a) => a.slot && ["submitted", "fix"].includes(a.status)).map((a) => a.slot));
+  function slotFree(C, store, ts, now) { return ts >= now + 30 * 6e4 && !takenSlots(store).has(ts); }
+  // up to 3 times a day (morning, midday, afternoon) over the next few working days
+  function freeSlots(C, store, now) {
+    const taken = takenSlots(store), minTs = now + C.slotLeadHours * 36e5, local0 = new Date(now + C.harareOffset * 36e5), picks = [];
+    for (let d = 0, days = 0; d < 14 && days < C.slotHorizonDays; d++) {
+      const day = new Date(Date.UTC(local0.getUTCFullYear(), local0.getUTCMonth(), local0.getUTCDate() + d));
+      if (!C.slotDays.includes(day.getUTCDay())) continue;
+      const list = [];
+      C.slotHours.forEach((h, hi) => { for (let m = 0; m < 60; m += C.slotMinutes) { if (hi === C.slotHours.length - 1 && m > 0) continue; const ts = day.getTime() + (h - C.harareOffset) * 36e5 + m * 6e4; if (ts >= minTs && !taken.has(ts)) list.push(ts); } });
+      if (!list.length) continue;
+      days++;
+      const hourly = list.filter((ts) => new Date(ts).getUTCMinutes() === 0), src = hourly.length >= 3 ? hourly : list;
+      [...new Set([src[0], src[Math.floor(src.length / 2)], src[src.length - 1]])].forEach((ts) => picks.push(ts));
+    }
+    return picks.sort((a, b) => a - b);
+  }
+
+  // ------------------------------------------------------------------ main handler
+  function handle(C0, store, from, input, now = Date.now()) {
+    const C = makeConfig(C0), out = Out(C); out.now = now;
+    from = digits(from);
+    if (C.founderPhones.map(digits).includes(from)) { founderCommand(C, store, from, input, out, now); return { messages: out.messages, effects: out.effects }; }
+
+    let u = store.users[from];
+    const text = input.type === "text" ? norm(input.text) : "", cmd = upper(text), id = input.type === "button" ? input.id : "";
+    if (!u) {
+      u = store.users[from] = { phone: from, step: "role", createdAt: now, refCode: refCode(text) };
+      if (/\bJOIN\b|\bPRO\b|\bWORK\b|\bTECHNICIAN\b/.test(cmd)) { u.step = "p_intro"; return done(ask(C, store, u, out.text(from, `Hi! Thanks for your interest in joining ${C.brand}.`))); }
+      if (/\bBOOK\b|\bSERVICE\b|\bWAITLIST\b/.test(cmd)) { u.step = "c_service"; return done(ask(C, store, u, out)); }
+      return done(ask(C, store, u, out));
+    }
+    u.lastAt = now;
+    if (!u.refCode && refCode(text)) u.refCode = refCode(text);
+
+    // words that work anywhere
+    if (id === "help" || /^(HELP|AGENT|HUMAN|PERSON)\b/.test(cmd) || /TALK TO (A|SOMEONE)|SPEAK TO/.test(cmd)) {
+      store.help[from] = { since: now };
+      out.text(from, `I've passed you to a person on the ${C.brand} team. They'll reply here as soon as they can.`);
+      out.founders(`🙋 HELP from ${pretty(from)}${u.appId ? ` (${u.appId})` : ""}${text && id !== "help" ? `:\n"${text}"` : ""}\n\nReply with: REPLY ${from} your message\nWhen finished: DONE ${from}`, `HELP request from ${pretty(from)}`);
+      return done(out);
+    }
+    if (store.help[from]) {
+      if (cmd === "BOT" || cmd === "MENU") { delete store.help[from]; return done(ask(C, store, u, out)); }
+      out.founders(`💬 ${pretty(from)}: ${describe(input)}\n\nREPLY ${from} …`, `Message from ${pretty(from)}`);
+      return done(out);
+    }
+    if (cmd === "STATUS") return done(status(C, store, u, out));
+    if (/^DELETE( MY)? DATA$/.test(cmd)) { u.prevStep = u.step; u.step = "delete_confirm"; return done(ask(C, store, u, out)); }
+    if (cmd === "RESTART" || id === "restart") { if (u.appId && store.apps[u.appId] && ["submitted", "approved", "waitlist", "fix"].includes(store.apps[u.appId].status)) return done(out.text(from, `Your application ${u.appId} is already in. Type *STATUS* to see where it is, or *HELP* to talk to us.`)); if (u.appId) delete store.apps[u.appId]; u.appId = null; u.step = "role"; return done(ask(C, store, u, out)); }
+    if (cmd === "JOIN" && !u.appId) { u.step = "p_intro"; return done(ask(C, store, u, out)); }
+
+    const re = (hint) => done(ask(C, store, u, out, hint));
+    const a = u.appId ? store.apps[u.appId] : null;
+    switch (u.step) {
+      case "role":
+        if (id === "role:pro" || /PRO|WORK|JOIN|TECHNICIAN/.test(cmd)) { u.step = "p_intro"; return re(); }
+        if (id === "role:customer" || /SERVICE|NEED|BOOK|CUSTOMER/.test(cmd)) { u.step = "c_service"; return re(); }
+        return re("Please tap one of the options.");
+      case "p_intro":
+        if (id === "p:start" || /START|YES|OK/.test(cmd)) { u.step = "p_consent"; return re(); }
+        return re("Tap *Start sign-up* when you're ready, or *Ask a question*.");
+      case "p_consent":
+        if (id === "consent:yes" || /^(YES|AGREE|I AGREE)$/.test(cmd)) {
+          store.seq += 1; const appId = "P" + store.seq;
+          store.apps[appId] = { id: appId, phone: from, status: "draft", createdAt: now, docs: {}, flags: [], safety: [], refCode: u.refCode || null };
+          u.appId = appId; u.step = "p_name"; return re();
+        }
+        if (id === "consent:no" || /^(NO|NOT NOW)$/.test(cmd)) { u.step = "role"; return done(out.text(from, "No problem. Type *JOIN* whenever you're ready.")); }
+        return re("Please tap *I agree* or *Not now*.");
+      case "p_name": {
+        const ws = words(text);
+        if (ws.length < 2 || text.length > 60 || /\d/.test(text)) return re("Please type your first name and surname, as on your ID.");
+        a.name = text.replace(/\s+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()); u.step = "p_trade"; return re();
+      }
+      case "p_trade": {
+        const t = id.startsWith("trade:") ? trade(C, id.slice(6)) : C.trades.find((x) => cmd && x.name.toUpperCase().includes(cmd));
+        if (!t) return re("Please choose your trade from the list.");
+        a.trade = t.id; u.step = "p_years"; return re();
+      }
+      case "p_years": if (!id.startsWith("years:")) return re("Please choose from the list."); a.years = id.slice(6); u.step = "p_area"; return re();
+      case "p_area":
+        if (input.type === "location") { a.area = input.name || input.address || "Shared location"; a.location = { lat: input.lat, lng: input.lng }; }
+        else if (text.length >= 3 && text.length <= 40 && !/\d{4,}/.test(text)) a.area = text.replace(/\b\w/g, (c) => c.toUpperCase());
+        else return re("Please type your suburb's name, or share your location.");
+        u.step = "p_selfie"; return re();
+      case "p_selfie": if (input.type !== "image") return re("I need a *photo* for this step."); media(a, "selfie", input, out); u.step = "p_id"; return done(ask(C, store, u, out.text(from, "Got it, thanks.")));
+      case "p_id": if (input.type !== "image" && input.type !== "document") return re("I need a *photo* of your ID."); media(a, "id", input, out); u.step = "p_qual"; return re();
+      case "p_qual":
+        if (id === "qual:none") { a.flags.push("No trade certificate"); u.step = "p_police"; return re(); }
+        if (input.type !== "image" && input.type !== "document") return re("Send a photo of your certificate, or tap *I don't have one*.");
+        media(a, "qual", input, out); u.step = "p_police"; return re();
+      case "p_police":
+        if (id === "police:later") { a.flags.push("No police clearance yet"); u.step = "p_ecoNum"; return re(); }
+        if (input.type !== "image" && input.type !== "document") return re("Send a photo of your police clearance, or tap *I don't have it yet*.");
+        media(a, "police", input, out); u.step = "p_ecoNum"; return re();
+      case "p_ecoNum": { const n = ecocashNumber(text); if (!n) return re("That doesn't look like an EcoCash number. It should be 10 digits starting with 077 or 078."); a.ecoNum = n; u.step = "p_ecoName"; return re(); }
+      case "p_ecoName":
+        if (words(text).length < 1 || text.length > 60) return re("Please type the account holder's name.");
+        a.ecoName = text.replace(/\s+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        if (!namesMatch(a.name, a.ecoName)) { u.step = "p_ecoConfirm"; return re(); }
+        u.step = "p_ref"; return re();
+      case "p_ecoConfirm":
+        if (id === "eco:fix") { u.step = "p_ecoNum"; return re(); }
+        if (id === "eco:mine") { a.flags.push(`EcoCash name "${a.ecoName}" differs from ID name: check on the call`); u.step = "p_ref"; return re(); }
+        return re("Please tap one of the options.");
+      case "p_ref": {
+        if (id === "ref:skip") { a.flags.push("No reference"); a.ref = ""; }
+        else { const p = phoneIn(text), name = norm(text.replace(/(\+?\d[\d\s-]{7,15}\d)/, "")); if (!p || words(name).length < 1) return re("Please type the person's name *and* phone number."); a.ref = `${name.replace(/[,:-]+$/, "").trim()}, ${p}`; }
+        a.safetyIx = 0; a.safety = []; u.step = "p_safety"; return re();
+      }
+      case "p_safety": {
+        const t = trade(C, a.trade), q = t.safety[a.safetyIx];
+        const pick = id.startsWith("safe:") ? Number(id.slice(5)) : LETTERS.indexOf(cmd);
+        if (!(pick >= 0 && pick < q.a.length)) return re("Please tap A, B or C.");
+        a.safety[a.safetyIx] = pick === q.correct; a.safetyIx += 1;
+        if (a.safetyIx < t.safety.length) return re();
+        const wrong = a.safety.filter((x) => !x).length;
+        if (wrong) { a.flags.push(`${wrong} safety answer${wrong > 1 ? "s" : ""} wrong`); out.text(from, "Thanks. We'll go through safety with you on the call. It's a must-pass for every pro."); }
+        if (!t.open) { a.slot = null; u.step = "p_review"; return re(); }
+        u.step = "p_slot"; return re();
+      }
+      case "p_slot":
+        if (id === "slot:none") { a.slot = null; a.flags.push("Needs a call time agreed"); u.step = "p_review"; return re(); }
+        if (id.startsWith("slot:")) { const ts = Number(id.slice(5)); if (!slotFree(C, store, ts, now)) return re("Sorry, that time was just taken. Please choose another."); a.slot = ts; u.step = "p_review"; return re(); }
+        return re("Please choose a time from the list.");
+      case "p_review":
+        if (id === "submit" || cmd === "SUBMIT") {
+          const t = trade(C, a.trade);
+          if (a.slot && !slotFree(C, store, a.slot, now)) { u.step = "p_slot"; a.slot = null; return re("Sorry, that call time was just taken. Please choose another."); }
+          a.status = t.open ? "submitted" : "waitlist"; a.submittedAt = now; u.step = "p_done";
+          if (t.open) out.text(from, `✅ Application *${a.id}* received.\n\n${a.slot ? `Your video call is *${slotLong(a.slot, C)}* (Harare time). We'll call you on WhatsApp. Have your original ID with you.` : "We'll message you to agree a time for your video call."}\n\nType *STATUS* any time to check.`);
+          else out.text(from, `✅ Application *${a.id}* saved. ${t.name} opens soon, and you'll be one of the first we call.`);
+          out.text(from, `Know other good professionals? Send them this link:\nhttps://wa.me/${C.botNumber}?text=JOIN`);
+          out.founders(`🆕 New pro application ${a.id}${t.open ? "" : " (trade not open yet)"}\n${pretty(from)}\n${summary(C, a, "founder")}${C.publicUrl ? `\n\nDocuments: ${C.publicUrl}/admin/${a.id}?key=${C.adminKey}` : ""}\n\nAPPROVE ${a.id} · REJECT ${a.id} reason · FIX ${a.id} what's needed`, `New pro application ${a.id}: ${a.name}, ${t.name}`);
+          return done(out);
+        }
+        return re("Tap *Submit* to send your application, or *Start again*.");
+      case "p_fix":
+        if (input.type === "image" || input.type === "document") { media(a, "extra" + (Object.keys(a.docs).length + 1), input, out); a.status = "submitted"; u.step = "p_done"; out.text(from, "Thanks, our team will check it."); out.founders(`📎 ${a.id} sent the document you asked for.${C.publicUrl ? `\n${C.publicUrl}/admin/${a.id}?key=${C.adminKey}` : ""}`); return done(out); }
+        if (text) { out.text(from, "Thanks, I've passed that to our team."); out.founders(`💬 ${a.id} (${pretty(from)}): ${text}\n\nREPLY ${from} …`); return done(out); }
+        return re();
+      case "p_done": return done(status(C, store, u, out));
+      case "c_service": {
+        const s = id.startsWith("svc:") ? C.services.find((x) => x.id === id.slice(4)) : C.services.find((x) => cmd && x.name.toUpperCase().includes(cmd));
+        if (!s) return re("Please choose a service from the list.");
+        u.service = s.id; u.step = "c_area"; return re();
+      }
+      case "c_area": {
+        let area;
+        if (input.type === "location") area = input.name || input.address || "Shared location";
+        else if (text.length >= 3 && text.length <= 40) area = text.replace(/\b\w/g, (c) => c.toUpperCase());
+        else return re("Please type your suburb, or share your location.");
+        store.waitlist = store.waitlist.filter((w) => w.phone !== from);
+        store.waitlist.push({ phone: from, service: u.service, area, refCode: u.refCode || null, at: now });
+        u.step = "c_done";
+        const s = C.services.find((x) => x.id === u.service);
+        out.text(from, `✅ You're on the list for *${s.name}* in *${area}*.\n\n${C.brand} opens for bookings on *${C.launchDate}*. We'll message you that day. Every pro is ID-checked, trade-verified and video-interviewed, and you pay safely on EcoCash.`);
+        out.text(from, `Know a good technician? Send them this link to join:\nhttps://wa.me/${C.botNumber}?text=JOIN`);
+        return done(out);
+      }
+      case "c_done":
+        if (/JOIN|PRO/.test(cmd)) { u.step = "p_intro"; return re(); }
+        return re();
+      case "delete_confirm":
+        if (id === "del:yes" || cmd === "DELETE") {
+          const appId = u.appId; if (appId) { delete store.apps[appId]; out.effect({ type: "delete_files", appId }); }
+          store.waitlist = store.waitlist.filter((w) => w.phone !== from); delete store.users[from]; delete store.help[from];
+          out.text(from, "Done. We've deleted everything we held about you. You can message us again any time.");
+          out.founders(`🗑 ${pretty(from)}${appId ? ` (${appId})` : ""} deleted their data.`);
+          return done(out);
+        }
+        u.step = u.prevStep || "role"; return done(ask(C, store, u, out.text(from, "OK, nothing was deleted.")));
+    }
+    u.step = "role"; return re();
+
+    function done() { return { messages: out.messages, effects: out.effects }; }
+  }
+
+  function media(a, field, input, out) {
+    a.docs[field] = { mediaId: input.mediaId || null, mime: input.mime || "", filename: input.filename || "", preview: input.preview || null, at: Date.now() };
+    if (input.mediaId) out.effect({ type: "media", appId: a.id, field, mediaId: input.mediaId });
+  }
+  function describe(input) { return input.type === "text" ? input.text : input.type === "button" ? `[tapped] ${input.title || input.id}` : input.type === "location" ? "[shared a location]" : `[sent a ${input.type}]`; }
+
+  // ------------------------------------------------------------------ founder commands
+  function founderCommand(C, store, from, input, out, now) {
+    const raw = input.type === "text" ? norm(input.text) : "", cmd = upper(raw);
+    const [verb, arg, ...rest] = raw.split(/\s+/), V = upper(verb), A = upper(arg), msg = rest.join(" ");
+    const app = A && store.apps[A];
+    const tell = (b) => out.text(from, b);
+    const notFound = () => tell(`No application ${arg || ""}. Type LIST to see open ones.`);
+    switch (V) {
+      case "LIST": {
+        const open = Object.values(store.apps).filter((a) => ["submitted", "fix"].includes(a.status)).sort((a, b) => (a.slot || 9e15) - (b.slot || 9e15));
+        if (!open.length) return tell("No applications waiting. 🎉");
+        return tell(`*Waiting for you (${open.length})*\n\n` + open.slice(0, 20).map((a) => `${a.id} · ${a.name} · ${trade(C, a.trade).name} · ${a.area}\n   ${a.status === "fix" ? "waiting on their document" : a.slot ? "call " + slotFounder(a.slot, C) : "no call time yet"}${a.flags.length ? `\n   ⚠ ${a.flags.length} flag${a.flags.length > 1 ? "s" : ""}` : ""}`).join("\n\n") + "\n\nVIEW P1234 for details.");
+      }
+      case "VIEW":
+        if (!app) return notFound();
+        return tell(`*${app.id}* · ${app.status}\n${pretty(app.phone)}\n${summary(C, app, "founder")}${C.publicUrl ? `\n\nDocuments: ${C.publicUrl}/admin/${app.id}?key=${C.adminKey}` : ""}`);
+      case "APPROVE": {
+        if (!app) return notFound();
+        if (app.status === "approved") return tell(`${app.id} is already approved.`);
+        app.status = "approved"; app.decidedAt = now;
+        out.text(app.phone, `🎉 Congratulations ${first(app.name)}, you're approved as a ${C.brand} ${trade(C, app.trade).name.toLowerCase()} professional!\n\nWhat happens next:\n• We'll send you jobs near ${app.area} on this number from ${C.launchDate}.\n• Your first ${C.probationJobs} jobs are on probation, so make them count.\n• The four golden rules: enter the customer's Basa Code at the door, quote before any repair, send photos on every job, never take cash.\n\nWelcome to the team.`, { fallbackTemplate: { name: C.templates.update, params: [first(app.name), "approved. Reply to this message to see the details"] } });
+        return tell(`✅ ${app.id} ${app.name} approved and told.`);
+      }
+      case "REJECT":
+        if (!app) return notFound();
+        if (!msg) return tell(`Add a reason the applicant will see, e.g.\nREJECT ${app.id} the ID photo doesn't match the person on the call`);
+        app.status = "rejected"; app.reason = msg; app.decidedAt = now;
+        out.text(app.phone, `Hi ${first(app.name)}, thank you for applying to ${C.brand}. We can't approve your application at this time: ${msg}.\n\nYou can apply again in 3 months. Type *HELP* if you have questions.`, { fallbackTemplate: { name: C.templates.update, params: [first(app.name), "not approved this time. Reply to this message to see why"] } });
+        return tell(`${app.id} rejected and told.`);
+      case "FIX": {
+        if (!app) return notFound();
+        if (!msg) return tell(`Say what you need, e.g.\nFIX ${app.id} the ID photo is blurry, please send a clearer one`);
+        app.status = "fix"; app.fixNote = msg; const u = store.users[app.phone]; if (u) u.step = "p_fix";
+        out.text(app.phone, `Hi ${first(app.name)}, one thing before we can go ahead with your application: ${msg}.\n\nJust send it here.`, { fallbackTemplate: { name: C.templates.update, params: [first(app.name), "waiting for one more thing from you. Reply to this message to see what"] } });
+        return tell(`Asked ${app.id} for: ${msg}`);
+      }
+      case "MOVE": {
+        // MOVE P1234 2026-12-02 10:00  (Harare time)
+        if (!app) return notFound();
+        const m = msg.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/); if (!m) return tell(`Use: MOVE ${app.id} 2026-12-02 10:00 (Harare time)`);
+        app.slot = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] - C.harareOffset, +m[5]); app.reminded = false; app.flags = app.flags.filter((f) => f !== "Needs a call time agreed");
+        out.text(app.phone, `Your video call with ${C.brand} is now *${slotLong(app.slot, C)}* (Harare time). We'll call you on WhatsApp.`, { fallbackTemplate: { name: C.templates.update, params: [first(app.name), `booked for a video call on ${slotLong(app.slot, C)} Harare time`] } });
+        return tell(`${app.id} call set for ${slotFounder(app.slot, C)}.`);
+      }
+      case "REPLY": {
+        const to = digits(arg); if (!to || !msg) return tell("Use: REPLY 263771234567 your message");
+        out.text(to, msg); return tell(`Sent to ${pretty(to)}.`);
+      }
+      case "DONE": { const to = digits(arg); delete store.help[to]; out.text(to, `Thanks for chatting with us. You're back with the ${C.brand} assistant. Type *HELP* any time.`); return tell(`${pretty(to)} is back with the bot.`); }
+      case "STATS": {
+        const apps = Object.values(store.apps), by = (k) => apps.reduce((m, a) => ((m[a[k] || "none"] = (m[a[k] || "none"] || 0) + 1), m), {});
+        const st = by("status"), tr = apps.filter((a) => a.status !== "draft").reduce((m, a) => ((m[trade(C, a.trade).name] = (m[trade(C, a.trade).name] || 0) + 1), m), {});
+        const codes = {}; apps.forEach((a) => a.refCode && (codes[a.refCode] = (codes[a.refCode] || [0, 0]), codes[a.refCode][0]++)); store.waitlist.forEach((w) => w.refCode && (codes[w.refCode] = codes[w.refCode] || [0, 0], codes[w.refCode][1]++));
+        const fmt = (o) => Object.entries(o).map(([k, v]) => `  ${k}: ${v}`).join("\n") || "  none";
+        return tell(`*Pros*\n${fmt(st)}\n\n*By trade (submitted)*\n${fmt(tr)}\n\n*Customer waitlist*: ${store.waitlist.length}\n\n*Creator codes* (pros / customers)\n${Object.entries(codes).sort((a, b) => b[1][0] + b[1][1] - a[1][0] - a[1][1]).map(([k, [p, c]]) => `  ${k}: ${p} / ${c}`).join("\n") || "  none yet"}`);
+      }
+      case "WAITLIST": {
+        const by = {}; store.waitlist.forEach((w) => { const k = `${C.services.find((s) => s.id === w.service).name} · ${w.area}`; by[k] = (by[k] || 0) + 1; });
+        return tell(`*Customer waitlist (${store.waitlist.length})*\n` + (Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `${v} × ${k}`).join("\n") || "Empty so far."));
+      }
+      default:
+        return tell(`*Admin commands*\nLIST: applications waiting\nVIEW P1234: one application\nAPPROVE P1234\nREJECT P1234 reason\nFIX P1234 what you need\nMOVE P1234 2026-12-02 10:00\nREPLY 2637… message\nDONE 2637…: hand back to the bot\nSTATS · WAITLIST`);
+    }
+  }
+
+  // ------------------------------------------------------------------ every minute: reminders
+  function tick(C0, store, now = Date.now()) {
+    const C = makeConfig(C0), out = Out(C);
+    Object.values(store.apps).forEach((a) => {
+      if (a.status !== "submitted" || !a.slot || a.reminded) return;
+      if (now >= a.slot - C.reminderMinutes * 6e4 && now < a.slot) {
+        a.reminded = true;
+        out.text(a.phone, `⏰ Reminder: your ${C.brand} video call is at *${at(a.slot, C.harareOffset).hh}:${at(a.slot, C.harareOffset).mm}* today. Have your original ID with you, and be somewhere with good light and signal.`, { fallbackTemplate: { name: C.templates.update, params: [first(a.name), `booked for a video call today at ${at(a.slot, C.harareOffset).hh}:${at(a.slot, C.harareOffset).mm} Harare time`] } });
+        out.founders(`⏰ Video call in ${C.reminderMinutes} min: ${a.id} ${a.name} (${trade(C, a.trade).name})\n${pretty(a.phone)} · ${slotFounder(a.slot, C)}\n\nOn the call, check:\n1. Original ID matches the person and the selfie\n2. Safety must-pass: ask them to explain how they make a job safe\n3. Ask about one recent job in detail${a.flags.length ? `\n\n⚠ ${a.flags.join("; ")}` : ""}`, `Video call soon with ${a.id}`);
+      }
+    });
+    return { messages: out.messages, effects: out.effects };
+  }
+
+  return { DEFAULTS, makeConfig, newStore, handle, tick, freeSlots, _: { ecocashNumber, namesMatch, refCode, phoneIn, slotFounder, slotShort } };
+});

@@ -1,0 +1,272 @@
+<title>Basa seBasa Sign-up Bot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: two WhatsApp phones side by side. Left: a professional (or customer) talking to the bot. Right: the founder's phone in Dubai receiving alerts and sending commands. On phones a switch shows one at a time. */
+:root {
+  --bg: #F4F2EC; --card: #FFFFFF; --sunk: #EAE7DF; --ink: #14120D; --muted: #67635A; --line: #DCD8CE;
+  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D;
+  --chat-bg: #E9E3D8; --chat-in: #FFFFFF; --chat-out: #DCF5D0; --chat-head: #0E5E4E; --chat-accent: #0E7C66; --chat-meta: #6F7A74;
+  --founder-head: #14120D;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --chat-bg: #10161A; --chat-in: #1E2A30; --chat-out: #11493D; --chat-head: #17262D; --chat-accent: #4FC3A1; --chat-meta: #8FA19A;
+  --founder-head: #000000;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --chat-bg: #10161A; --chat-in: #1E2A30; --chat-out: #11493D; --chat-head: #17262D; --chat-accent: #4FC3A1; --chat-meta: #8FA19A;
+  --founder-head: #000000;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.42; }
+p { margin: 0; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.wrap > * { min-width: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 32px; display: grid; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+.brand { display: flex; gap: 12px; align-items: flex-start; }
+.brand > div { min-width: 0; }
+.mark { flex: none; width: 40px; height: 40px; background: var(--gold); color: var(--on-gold); display: grid; place-items: center; font: 800 24px/1 var(--display); border-radius: 8px; }
+h1 { font: 800 30px/1 var(--display); text-transform: uppercase; margin: 0; letter-spacing: .01em; }
+h1 span { color: var(--gold-deep); }
+.sub { color: var(--muted); max-width: 62ch; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--ink); }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.btn[disabled] { opacity: .45; cursor: default; }
+.switch { display: none; gap: 6px; background: var(--sunk); padding: 4px; border-radius: 999px; }
+.switch button { flex: 1; border: 0; background: transparent; padding: 8px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+.switch button[aria-pressed="true"] { background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.phones { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.phone { min-width: 0; background: var(--chat-bg); border-radius: 22px; overflow: hidden; border: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto auto; height: min(760px, calc(100vh - 150px)); min-height: 520px; }
+.phead { background: var(--chat-head); color: #fff; padding: 12px 14px; display: flex; gap: 10px; align-items: center; }
+.phone.founder .phead { background: var(--founder-head); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gold); color: #14120D; display: grid; place-items: center; font: 800 18px/1 var(--display); flex: none; }
+.phead b { display: block; font-size: 15.5px; }
+.phead small { opacity: .8; font-size: 12.5px; }
+.who { margin-left: auto; font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .06em; background: rgba(255,255,255,.14); padding: 4px 8px; border-radius: 6px; text-align: right; }
+.chat { overflow-y: auto; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+.msg { display: flex; flex-direction: column; max-width: 86%; gap: 4px; }
+.msg.in { align-self: flex-start; }
+.msg.out { align-self: flex-end; align-items: flex-end; }
+.bubble { background: var(--chat-in); padding: 7px 10px 5px; border-radius: 10px; box-shadow: 0 1px 1px rgba(0,0,0,.08); font-size: 14.5px; overflow-wrap: anywhere; }
+.msg.out .bubble { background: var(--chat-out); }
+.bubble time { display: block; text-align: right; font-size: 11px; color: var(--chat-meta); margin-top: 2px; }
+.bubble a { color: var(--chat-accent); }
+.bubble img { display: block; border-radius: 6px; max-height: 160px; margin-bottom: 4px; }
+.tag { display: inline-block; font: 500 10.5px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--chat-meta); margin-bottom: 4px; }
+.qr { display: grid; gap: 4px; width: 100%; min-width: 220px; }
+.qr button { background: var(--chat-in); border: 0; border-radius: 10px; padding: 9px; color: var(--chat-accent); font-weight: 600; cursor: pointer; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.qr button[disabled] { opacity: .5; cursor: default; }
+.sheet { background: var(--card); border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 2px; max-height: 300px; overflow-y: auto; }
+.sheet h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+.sheet h4 button { border: 0; background: none; color: var(--chat-accent); font-weight: 600; cursor: pointer; }
+.sheet button.row { text-align: left; border: 0; background: none; padding: 9px 6px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+.sheet button.row:hover { background: var(--sunk); }
+.sheet small { display: block; color: var(--muted); }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; padding: 8px 10px 0; background: var(--chat-bg); }
+.chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.chip:hover { border-color: var(--chat-accent); }
+.chip.mono { font-family: var(--mono); font-size: 12px; }
+form.compose { display: flex; gap: 8px; padding: 8px 10px 10px; background: var(--chat-bg); }
+form.compose input[type=text] { flex: 1; min-width: 0; border: 0; border-radius: 999px; padding: 10px 14px; background: var(--card); }
+form.compose .send { border: 0; width: 42px; height: 42px; border-radius: 50%; background: var(--chat-accent); color: #fff; cursor: pointer; flex: none; display: grid; place-items: center; }
+.attach { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--card); cursor: pointer; flex: none; border: 0; }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.note { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 6px; align-content: start; }
+.note b { font: 700 17px/1.1 var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.note p { color: var(--muted); font-size: 14px; }
+code, .code { font-family: var(--mono); font-size: 12.5px; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+@media (max-width: 820px) {
+  .switch { display: flex; }
+  .phones { grid-template-columns: minmax(0, 1fr); }
+  .phone { height: calc(100vh - 210px); min-height: 480px; }
+  .phones[data-show="pro"] .founder, .phones[data-show="founder"] .pro { display: none; }
+  .notes { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .chat { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="mark">B</span><div><h1>Basa <span>se</span>Basa sign-up bot</h1><p class="sub">The real conversation code that goes live on WhatsApp on 1 December, running here so you can try it. Sign up as a pro in one chat, then approve them from your own phone in the other.</p></div></div>
+    <div class="controls">
+      <button class="btn" type="button" id="skip" disabled title="Jumps the clock to 50 minutes before the booked video call">Jump to 1 hour before the call</button>
+      <button class="btn" type="button" id="newperson">New person</button>
+      <button class="btn gold" type="button" id="reset">Start over</button>
+    </div>
+  </header>
+  <div class="switch" role="group" aria-label="Show phone"><button type="button" data-show="pro" aria-pressed="true">Pro / customer</button><button type="button" data-show="founder" aria-pressed="false">Your phone <span id="fbadge"></span></button></div>
+  <div class="phones" id="phones" data-show="pro">
+    <section class="phone pro" aria-label="Professional's WhatsApp">
+      <div class="phead"><span class="avatar">B</span><div><b>Basa seBasa</b><small>Business account · bot</small></div><span class="who" id="pro-who">Harare<br>+263 77 111 1111</span></div>
+      <div class="chat" id="chat-pro" aria-live="polite"></div>
+      <div id="sheet-pro"></div>
+      <div>
+        <div class="tools" id="tools-pro"></div>
+        <form class="compose" data-who="pro"><button class="attach" type="button" id="attach" aria-label="Send a photo or document" title="Send a photo or document">📎</button><input type="file" id="file" accept="image/*,application/pdf" hidden><input type="text" id="in-pro" placeholder="Type a message" autocomplete="off" aria-label="Message as the professional"><button class="send" type="submit" aria-label="Send">➤</button></form>
+      </div>
+    </section>
+    <section class="phone founder" aria-label="Founder's WhatsApp">
+      <div class="phead"><span class="avatar">B</span><div><b>Basa seBasa bot</b><small>Admin chat on your phone</small></div><span class="who">Dubai<br>you</span></div>
+      <div class="chat" id="chat-founder" aria-live="polite"></div>
+      <div>
+        <div class="tools" id="tools-founder"></div>
+        <form class="compose" data-who="founder"><input type="text" id="in-founder" placeholder="Type a command, e.g. LIST" autocomplete="off" aria-label="Command from the founder"><button class="send" type="submit" aria-label="Send">➤</button></form>
+      </div>
+    </section>
+  </div>
+  <div class="notes">
+    <div class="note"><b>Try it as a pro</b><p>Type <code>JOIN code TINO</code> or just <code>Hi</code>. Use 📎 or the photo buttons for the selfie and ID. Try a wrong EcoCash name or a wrong safety answer to see the flags.</p></div>
+    <div class="note"><b>Run it from Dubai</b><p>Every application, HELP request and call reminder lands on your phone. Decide with <code>APPROVE</code>, <code>REJECT … reason</code> or <code>FIX … what's needed</code>. <code>STATS</code> shows sign-ups per creator code.</p></div>
+    <div class="note"><b>Try it as a customer</b><p>Tap <b>New person</b>, then <code>Hi</code> and <b>I need a service</b> to join the 15 December waitlist. Type <code>HELP</code> to reach yourself, and answer with <code>REPLY</code>.</p></div>
+  </div>
+</div>
+
+<script>
+/*ENGINE*/
+</script>
+<script>
+(() => {
+"use strict";
+const E = window.BasaSignup;
+const FOUNDER = "971500000001", BOT = "263770000999";
+const CONFIG = { founderPhones: [FOUNDER], botNumber: BOT, launchDate: "15 December" };
+const PEOPLE = ["263771111111", "263772222222", "263783333333", "263774444444", "263785555555"];
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let S;
+function fresh() { return { store: E.newStore(), person: 0, threads: {}, founder: [], sheet: null, clock: 0, unread: 0 }; }
+const lane = (name) => (name === "founder" ? S.founder : (S.threads[me()] = S.threads[me()] || []));
+const me = () => PEOPLE[S.person % PEOPLE.length];
+const now = () => Date.now() + S.clock;
+const clockStr = () => new Date(now()).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+// WhatsApp formatting: *bold*, _italic_, links, line breaks
+function fmt(t) {
+  return esc(t).replace(/\*([^*\n]+)\*/g, "<b>$1</b>").replace(/(^|[\s(])_([^_\n]+)_/g, "$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\n/g, "<br>");
+}
+function deliver(result) {
+  result.messages.forEach((m) => {
+    if (m.to === FOUNDER) { S.founder.push({ from: "in", m, at: clockStr() }); if ($("#phones").dataset.show === "pro") S.unread++; return; }
+    (S.threads[m.to] = S.threads[m.to] || []).push({ from: "in", m, at: clockStr() });
+  });
+}
+function send(who, input, echo) {
+  const from = who === "founder" ? FOUNDER : me();
+  lane(who).push({ from: "out", body: echo, img: input.preview, at: clockStr() });
+  if (who === "pro") S.sheet = null;
+  render();
+  setTimeout(() => { deliver(E.handle(CONFIG, S.store, from, input, now())); render(); }, 380);
+}
+
+// a sample photo drawn on a canvas, so the demo needs no real ID
+function samplePhoto(kind) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 200; const g = c.getContext("2d");
+  const colors = { selfie: ["#2F5D50", "#F0AE00"], id: ["#3B4A6B", "#F4F2EC"], qual: ["#6B3B3B", "#F4F2EC"], police: ["#2B2B2B", "#F4F2EC"] }[kind] || ["#555", "#eee"];
+  g.fillStyle = colors[0]; g.fillRect(0, 0, 320, 200); g.fillStyle = colors[1];
+  if (kind === "selfie") { g.beginPath(); g.arc(160, 85, 42, 0, 7); g.fill(); g.fillRect(95, 140, 130, 70); }
+  else { g.fillRect(18, 18, 284, 164); g.fillStyle = colors[0]; g.font = "bold 20px Arial"; g.fillText({ id: "NATIONAL ID (sample)", qual: "TRADE CERTIFICATE (sample)", police: "POLICE CLEARANCE (sample)" }[kind] || "DOCUMENT", 32, 56); g.fillRect(32, 76, 70, 84); for (let i = 0; i < 4; i++) g.fillRect(118, 84 + i * 20, 150 - i * 18, 8); }
+  return c.toDataURL("image/jpeg", 0.8);
+}
+const STEP_PHOTO = { p_selfie: "selfie", p_id: "id", p_qual: "qual", p_police: "police", p_fix: "id" };
+function sendPhoto(kind, dataUrl, name) {
+  const preview = dataUrl || samplePhoto(kind);
+  send("pro", { type: name && /\.pdf$/i.test(name) ? "document" : "image", mediaId: null, mime: "image/jpeg", filename: name || "", preview }, name ? `📄 ${name}` : "");
+}
+
+// ---------- render
+function bubble(item, lane, i, lastIn) {
+  if (item.from === "sys") return `<p class="tag" style="align-self:center">${esc(item.body)}</p>`;
+  if (item.from === "out") return `<div class="msg out"><div class="bubble">${item.img ? `<img src="${item.img}" alt="Photo sent">` : ""}${item.body ? fmt(item.body) : ""}<time>${item.at} ✓✓</time></div></div>`;
+  const m = item.m, live = i === lastIn;
+  let extra = "";
+  if (m.kind === "buttons") extra = `<div class="qr">${m.buttons.map((b) => `<button type="button" data-lane="${lane}" data-reply="${esc(b.id)}" data-title="${esc(b.title)}" ${live ? "" : "disabled"}>${esc(b.title)}</button>`).join("")}</div>`;
+  if (m.kind === "list") extra = `<div class="qr"><button type="button" data-open-list="${i}" ${live ? "" : "disabled"}>☰ ${esc(m.button)}</button></div>`;
+  return `<div class="msg in"><div class="bubble">${fmt(m.body)}<time>${item.at}</time></div>${extra}</div>`;
+}
+function renderChat(lane) {
+  const list = lane === "founder" ? S.founder : (S.threads[me()] || []), lastIn = list.map((x) => x.from).lastIndexOf("in");
+  const el = $("#chat-" + lane);
+  el.innerHTML = list.length ? list.map((x, i) => bubble(x, lane, i, lastIn)).join("") : `<p class="tag" style="align-self:center;margin-top:20px">${lane === "pro" ? "Say hi to start" : "Alerts from the bot appear here"}</p>`;
+  el.scrollTop = el.scrollHeight;
+}
+function render() {
+  renderChat("pro"); renderChat("founder");
+  const th = S.threads[me()] || [], sh = S.sheet !== null && th[S.sheet] && th[S.sheet].m;
+  $("#sheet-pro").innerHTML = sh ? `<div class="sheet"><h4>${esc(sh.button)}<button type="button" data-close-sheet>Close</button></h4>${sh.rows.map((r) => `<button type="button" class="row" data-lane="pro" data-reply="${esc(r.id)}" data-title="${esc(r.title)}">${esc(r.title)}${r.description ? `<small>${esc(r.description)}</small>` : ""}</button>`).join("")}</div>` : "";
+  const u = S.store.users[me()], step = u ? u.step : "";
+  const pro = [];
+  if (!u) pro.push(["Hi", "text"], ["JOIN code TINO", "text"]);
+  if (STEP_PHOTO[step]) pro.push([`📷 Send ${({ selfie: "a selfie", id: "ID photo", qual: "certificate", police: "police clearance" })[STEP_PHOTO[step]]}`, "photo:" + STEP_PHOTO[step]]);
+  if (step === "p_area" || step === "c_area") pro.push(["📍 Share location", "loc"], ["Avondale", "text"]);
+  if (step === "p_name") pro.push(["Tendai Chikore", "text"]);
+  if (step === "p_ecoNum") pro.push(["0771234567", "text"]);
+  if (step === "p_ecoName") pro.push(["Tendai Chikore", "text"], ["Mary Chikore", "text"]);
+  if (step === "p_ref") pro.push(["Farai Moyo 0772 123 456", "text"]);
+  if (u && !["role"].includes(step)) pro.push(["STATUS", "text"], ["HELP", "text"]);
+  $("#tools-pro").innerHTML = pro.map(([l, a]) => `<button type="button" class="chip" data-chip="${esc(a)}" data-text="${esc(l)}">${esc(l)}</button>`).join("");
+  const apps = Object.values(S.store.apps).filter((a) => a.status !== "draft"), lastApp = apps.sort((a, b) => b.submittedAt - a.submittedAt)[0];
+  const helpFrom = Object.keys(S.store.help)[0];
+  const f = ["LIST"];
+  if (lastApp) f.push(`VIEW ${lastApp.id}`, `APPROVE ${lastApp.id}`, `FIX ${lastApp.id} the ID photo is blurry, please send a clearer one`, `REJECT ${lastApp.id} the ID didn't match on the call`);
+  if (helpFrom) f.push(`REPLY ${helpFrom} Hi, this is Dex. How can I help?`, `DONE ${helpFrom}`);
+  f.push("STATS", "WAITLIST");
+  $("#tools-founder").innerHTML = f.map((c) => `<button type="button" class="chip mono" data-cmd="${esc(c)}">${esc(c.length > 34 ? c.slice(0, 33) + "…" : c)}</button>`).join("");
+  const booked = Object.values(S.store.apps).find((a) => a.status === "submitted" && a.slot && !a.reminded);
+  $("#skip").disabled = !booked;
+  $("#fbadge").textContent = S.unread ? `(${S.unread})` : "";
+  $("#pro-who").innerHTML = `Harare<br>+${me().replace(/^(\d{3})(\d{2})(\d{3})(\d{4})$/, "$1 $2 $3 $4")}`;
+}
+
+// ---------- events
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.reply) { send(t.dataset.lane, { type: "button", id: t.dataset.reply, title: t.dataset.title }, t.dataset.title); return; }
+  if (t.dataset.openList) { S.sheet = Number(t.dataset.openList); render(); return; }
+  if (t.hasAttribute("data-close-sheet")) { S.sheet = null; render(); return; }
+  if (t.dataset.chip) {
+    const a = t.dataset.chip;
+    if (a === "text") send("pro", { type: "text", text: t.dataset.text }, t.dataset.text);
+    else if (a.startsWith("photo:")) sendPhoto(a.slice(6));
+    else if (a === "loc") send("pro", { type: "location", lat: -17.791, lng: 31.035, name: "Avondale" }, "📍 Location: Avondale, Harare");
+    return;
+  }
+  if (t.dataset.cmd) { send("founder", { type: "text", text: t.dataset.cmd }, t.dataset.cmd); return; }
+  if (t.dataset.show) { $("#phones").dataset.show = t.dataset.show; document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-pressed", String(b === t))); if (t.dataset.show === "founder") S.unread = 0; render(); return; }
+  if (t.id === "attach") { $("#file").click(); return; }
+  if (t.id === "reset") { S = fresh(); render(); return; }
+  if (t.id === "newperson") { S.person++; S.sheet = null; render(); return; }
+  if (t.id === "skip") {
+    const a = Object.values(S.store.apps).filter((x) => x.status === "submitted" && x.slot && !x.reminded).sort((x, y) => x.slot - y.slot)[0]; if (!a) return;
+    S.clock = a.slot - 50 * 6e4 - Date.now();
+    S.founder.push({ from: "sys", body: `Clock jumped to ${new Date(now()).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} your time`, at: clockStr() });
+    deliver(E.tick(CONFIG, S.store, now())); render(); return;
+  }
+});
+$("#file").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return; e.target.value = "";
+  const u = S.store.users[me()], kind = STEP_PHOTO[u && u.step] || "id";
+  if (/pdf$/i.test(f.type)) return sendPhoto(kind, null, f.name);
+  const r = new FileReader(); r.onload = () => sendPhoto(kind, r.result); r.readAsDataURL(f);
+});
+document.addEventListener("submit", (e) => {
+  e.preventDefault(); const who = e.target.dataset.who, input = $("#in-" + who), text = input.value.trim(); if (!text) return;
+  input.value = ""; send(who, { type: "text", text }, text);
+});
+
+S = fresh(); render();
+})();
+</script>

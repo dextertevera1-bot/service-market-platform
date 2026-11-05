@@ -1,11 +1,12 @@
 # Basa seBasa web apps
 
-Five web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
+Web apps and the WhatsApp sign-up bot built for the Basa seBasa launch in Harare. The web apps are single HTML files with no build step.
 
 | Folder | What it is | Who uses it |
 | --- | --- | --- |
+| `signup-bot/` | **WhatsApp sign-up bot (server)**, live from 1 December: pro applications with documents, safety pre-check and video-call booking, customer waitlist, HELP hand-over, founder admin commands and creator-code tracking. Node 18+, no dependencies; see its README. `public/simulator.html` runs the same code in a browser | Pros, early customers, founder |
 | `pro-app/` | **Basa seBasa Pro, the integrated technician app** (installable): apply and get approved, then jobs, Basa Code, appliance passport, quotes, trade checklists, service reports, SOS, offline mode, earnings, Trust Score and Pro levels. Uses real GPS and camera; saves progress on the phone | Technicians |
-| `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
+| `customer-app/` | *Parked: customers use WhatsApp until the business grows.* Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
 | `technician-app/` | Technician app (preview): go online, 60-second job requests with earnings shown, live trip map, diagnose and quote on site, job timer, before/after photos, earnings with 24-hour payout tracking, Trust Score profile | Technicians |
 | `onboarding-demo/` | Provider onboarding demo: sign-up with WhatsApp code, details, documents, automatic checks, team document review, reference calls, in-person check, induction and approval with starting Trust Score | Basa seBasa team (demo) |
 | `whatsapp-link-demo/` | Demo of one job travelling between the customer's WhatsApp chat, the server and the technician's Pro app, with a live server event log | Team, IT, investors |

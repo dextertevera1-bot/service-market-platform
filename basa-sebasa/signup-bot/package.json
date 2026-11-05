@@ -1,0 +1,13 @@
+{
+  "name": "basa-signup-bot",
+  "version": "1.0.0",
+  "description": "Basa seBasa WhatsApp sign-up bot: pro applications and customer waitlist",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node test/engine.test.js && node test/server.test.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED",
+  "private": true
+}
