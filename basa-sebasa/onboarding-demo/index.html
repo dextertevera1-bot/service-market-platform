@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Basa seBasa Pro Onboarding</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: two panes side by side, the provider's phone on the left and the team desk on the right; on phones a switch shows one at a time. Ink and gold from the Basa seBasa logo. */
+:root {
+  --bg: #F4F2EC; --card: #FFFFFF; --sunk: #EAE7DF; --ink: #14120D; --muted: #67635A; --line: #DCD8CE;
+  --gold: #F0AE00; --gold-deep: #865F00; --on-gold: #14120D;
+  --good: #1F7646; --good-bg: #DFF1E5; --bad: #A3271D; --bad-bg: #F8E0DC; --warn-bg: #FCEECC;
+  --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F0E0A; --card: #1A1813; --sunk: #24211A; --ink: #F3EFE5; --muted: #A8A294; --line: #35312A;
+  --gold: #F5BA14; --gold-deep: #F5C542;
+  --good: #66C88F; --good-bg: #16301E; --bad: #F18A80; --bad-bg: #3B1C19; --warn-bg: #3A2C10;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15.5px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: #14120D; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.04; margin: 0; text-wrap: balance; }
+h2 { font-size: 30px; text-transform: uppercase; }
+h3 { font-size: 20px; }
+p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 13.5px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); }
+
+/* top */
+.top { background: #14120D; color: #F5F1E6; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; }
+.top-in { max-width: 1240px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.logo { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.mark { width: 34px; height: 34px; border-radius: 8px; background: #F0AE00; color: #14120D; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 23px; }
+.logo b { font-family: var(--display); font-size: 21px; letter-spacing: .02em; white-space: nowrap; }
+.logo b i { font-style: normal; color: #F0AE00; }
+.logo small { display: block; color: #B9B2A2; font-size: 12.5px; }
+.switch { display: none; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; gap: 2px; }
+.switch button { border: 0; background: transparent; color: #CFC9BA; padding: 7px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; cursor: pointer; position: relative; }
+.switch button[aria-pressed="true"] { background: #F0AE00; color: #14120D; }
+.switch button .ping { position: absolute; top: 3px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: #E5483B; }
+.reset { border: 1px solid #4A463D; background: transparent; color: #CFC9BA; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 13.5px; cursor: pointer; }
+.guide { background: var(--gold); color: var(--on-gold); }
+.guide-in { max-width: 1240px; margin: 0 auto; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 600; font-size: 14.5px; }
+.guide button { border: 1.5px solid var(--on-gold); background: transparent; color: var(--on-gold); border-radius: 999px; padding: 4px 12px; font-weight: 700; cursor: pointer; }
+
+.panes { max-width: 1240px; margin: 0 auto; padding-block: 18px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.pane-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+.phone { background: var(--bg); border: 1px solid var(--line); border-radius: 28px; overflow: hidden; box-shadow: 0 1px 0 var(--line); }
+.phone-head { background: #14120D; color: #F5F1E6; padding: 14px 16px; display: flex; align-items: center; gap: 10px; }
+.phone-head b { font-family: var(--display); font-size: 19px; }
+.phone-body { padding: 16px; display: grid; gap: 14px; min-height: 520px; align-content: start; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 2px solid var(--ink); background: transparent; padding: 12px 16px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; text-decoration: none; text-align: center; }
+.btn.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.btn.quiet { border-color: var(--line); font-weight: 600; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { padding: 7px 12px; font-size: 14px; border-radius: 10px; width: auto; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label, .lab { font-weight: 600; font-size: 14px; }
+input[type=text], input[type=tel], input[type=number], select, textarea { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 11px; font-size: 16px; }
+input:focus, select:focus, textarea:focus { border-color: var(--ink); outline: none; }
+textarea { min-height: 70px; resize: vertical; }
+.code { font-family: var(--mono); font-size: 26px; letter-spacing: .4em; text-align: center; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; cursor: pointer; }
+.check input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--gold); flex: none; }
+.err { color: var(--bad); font-weight: 600; font-size: 14px; }
+.ok { color: var(--good); font-weight: 700; }
+.note { background: var(--warn-bg); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.note.bad { background: var(--bad-bg); color: var(--bad); }
+.note.good { background: var(--good-bg); color: var(--good); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 11px; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--ink); background: var(--sunk); }
+.steps { display: flex; gap: 4px; }
+.steps span { flex: 1; height: 5px; border-radius: 3px; background: var(--line); }
+.steps span.on { background: var(--gold); }
+.doc { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.doc.done { border-color: var(--good); }
+.doc.fix { border-color: var(--bad); background: var(--bad-bg); }
+.thumb { width: 56px; height: 40px; border-radius: 6px; background: var(--sunk); object-fit: cover; display: block; }
+.doc b { display: block; font-size: 14.5px; }
+.doc small { color: var(--muted); font-size: 12.5px; display: block; }
+.up { position: relative; overflow: hidden; }
+.up input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.autolist { display: grid; gap: 8px; }
+.autolist div { display: flex; gap: 10px; align-items: center; font-size: 14.5px; }
+.autolist i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; flex: none; background: var(--sunk); color: var(--muted); }
+.autolist i.ok { background: var(--good-bg); color: var(--good); }
+.autolist i.no { background: var(--bad-bg); color: var(--bad); }
+.spin { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold-deep); flex: none; }
+@media (prefers-reduced-motion: no-preference) { .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
+.tl { display: grid; }
+.tl div { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding-bottom: 12px; position: relative; font-size: 14.5px; }
+.tl div::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); margin-top: 4px; z-index: 1; }
+.tl div::after { content: ""; position: absolute; left: 7px; top: 18px; bottom: 0; width: 2px; background: var(--line); }
+.tl div:last-child::after { display: none; }
+.tl div.done::before { background: var(--good); border-color: var(--good); }
+.tl div.now::before { background: var(--gold); border-color: var(--gold); }
+.tl div.no::before { background: var(--bad); border-color: var(--bad); }
+.tl small { display: block; color: var(--muted); font-size: 12.5px; }
+.msgs { display: grid; gap: 8px; }
+.msg { background: var(--good-bg); border-radius: 12px 12px 12px 4px; padding: 9px 12px; font-size: 14px; }
+.msg time { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.big { font-family: var(--display); font-weight: 800; font-size: 60px; line-height: 1; }
+.badges { display: flex; gap: 5px; flex-wrap: wrap; }
+.badge { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+
+/* team desk */
+.desk { display: grid; gap: 14px; min-width: 0; }
+.queue { display: grid; }
+.qrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.qrow:last-child { border-bottom: 0; }
+.qrow.live { background: var(--sunk); box-shadow: inset 3px 0 0 var(--gold); }
+.qrow small { color: var(--muted); grid-column: 1 / -1; font-size: 13px; }
+.pill { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--sunk); white-space: nowrap; align-self: start; }
+.pill.ops { background: var(--warn-bg); color: var(--gold-deep); }
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.ex { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--gold-deep); border: 1px dashed var(--gold-deep); padding: 0 4px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
+.action { border: 2px solid var(--gold); border-radius: 16px; padding: 16px; display: grid; gap: 12px; background: var(--card); }
+.action h3 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.action h3 .tag { font-family: var(--body); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; background: var(--gold); color: var(--on-gold); padding: 2px 7px; border-radius: 4px; }
+.docgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.docgrid figure { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--sunk); }
+.docgrid img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.docgrid figcaption { padding: 6px 8px; font-size: 12.5px; font-weight: 600; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.facts div { background: var(--sunk); border-radius: 10px; padding: 8px 10px; min-width: 0; overflow-wrap: anywhere; }
+.facts small { display: block; color: var(--muted); font-size: 12px; }
+.ref { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.seg { display: flex; gap: 6px; }
+.seg button { flex: 1; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px; font-weight: 700; cursor: pointer; }
+.seg button[aria-pressed="true"].yes { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.seg button[aria-pressed="true"].no { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+.score { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.score td { padding: 5px 0; border-bottom: 1px dashed var(--line); }
+.score td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.score tr.total td { border-bottom: 0; font-size: 18px; padding-top: 8px; }
+.log { display: grid; gap: 4px; font-size: 13.5px; }
+.log div { display: grid; grid-template-columns: 52px 1fr; gap: 8px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); border-radius: 12px; padding: 11px 16px; font-weight: 600; z-index: 40; max-width: calc(100vw - 32px); text-align: center; }
+
+@media (max-width: 899px) {
+  .panes { grid-template-columns: minmax(0, 1fr); }
+  .switch { display: flex; }
+  .panes[data-show="provider"] .pane-team, .panes[data-show="team"] .pane-provider { display: none; }
+  .phone { border-radius: 20px; }
+}
+</style>
+
+<header class="top"><div class="top-in">
+  <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>Pro onboarding demo</small></span></div>
+  <div class="switch" role="group" aria-label="Choose a side"><button type="button" data-show="provider">Provider phone<span class="ping" id="ping-provider" hidden></span></button><button type="button" data-show="team">Team desk<span class="ping" id="ping-team" hidden></span></button></div>
+  <button class="reset" type="button" data-reset>Start again</button>
+</div></header>
+<div class="guide"><div class="guide-in"><span id="guide-text"></span><button type="button" id="guide-go" hidden></button></div></div>
+<div class="panes" id="panes" data-show="provider">
+  <section class="pane-provider" aria-label="Provider's phone"><div class="pane-label"><span class="eyebrow">Provider's phone</span><span class="muted small">Basa seBasa Pro app</span></div><div class="phone"><div class="phone-head"><span class="mark" aria-hidden="true" style="width:30px;height:30px;font-size:20px">B</span><b>Join Basa seBasa</b></div><div class="phone-body" id="provider"></div></div></section>
+  <section class="pane-team" aria-label="Team desk"><div class="pane-label"><span class="eyebrow">Basa seBasa team desk</span><span class="muted small">Vetting queue</span></div><div class="desk" id="team"></div></section>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const TRADES = [
+  { id: "HVAC/Refrigeration", name: "Fridge & aircon", tech: true, skills: ["Domestic fridges", "Split aircons", "Cold rooms", "Inverter fridges"] },
+  { id: "Electrical", name: "Electrical", tech: true, skills: ["House wiring", "Fault finding", "DB boards", "Gate motors"] },
+  { id: "Plumbing", name: "Plumbing", tech: true, skills: ["Geysers", "Leaks", "Pumps & boreholes", "Tanks"] },
+  { id: "Appliance repair", name: "Appliances", tech: true, skills: ["Washing machines", "Stoves", "Microwaves"] },
+  { id: "Auto mechanic", name: "Mechanic", tech: true, skills: ["Diagnostics", "Brakes", "Auto electrical", "Servicing"] },
+  { id: "Solar & inverters", name: "Solar", tech: true, skills: ["Panel installs", "Inverters", "Batteries"] },
+  { id: "Maid / cleaning", name: "Maids", tech: false, skills: ["House cleaning", "Laundry & ironing", "Cooking"] },
+];
+const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
+const INDUCTION = ["Basa Code at every arrival", "Quote before any repair work", "Service report, photos and warranty", "SOS button and safety line", "No cash, ever: EcoCash through Basa seBasa only", "No jobs taken off the app", "Payouts within 24 hours of the customer paying"];
+const SLOTS = ["Fri 7 Nov · 10:00 · Avondale office", "Sat 8 Nov · 09:00 · Avondale office", "Mon 10 Nov · 14:00 · Msasa test workshop"];
+const PRO_APP = "https://claude.ai/artifact/C9EpP5ZCHQ9KSzN9mcgPs4";
+
+const fresh = () => ({
+  screen: "phone", phone: "", code: "", codeIn: "", consent: { checks: false, location: false, data: false },
+  name: "", trade: "HVAC/Refrigeration", skills: [], suburb: "", years: "", hours: "Mon–Sat, 7am–6pm", ecoNum: "", ecoName: "", warranty: true, noQual: false,
+  docs: {}, refs: [{ name: "", phone: "" }, { name: "", phone: "" }],
+  status: "draft", auto: [], fix: null, msgs: [], log: [], submittedAt: 0,
+  review: { id: false, qual: false, police: false, askItem: "", askNote: "Photo is blurry. Please retake it in good light." },
+  refCheck: [{ ans: "", notes: "" }, { ans: "", notes: "" }],
+  inperson: { slot: "", idMatch: false, photo: false, score: "", notes: "" },
+  induction: INDUCTION.map(() => false), signed: false, rejectReason: "", show: "provider", seen: { provider: "", team: "" },
+});
+let A = fresh();
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const now = () => new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const trade = () => TRADES.find((t) => t.id === A.trade);
+const firstName = () => (A.name.trim().split(/\s+/)[0] || "there");
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3000); }
+function msg(text) { A.msgs.unshift({ at: now(), text }); }
+function log(text) { A.log.unshift({ at: now(), text }); }
+const norm = (s) => String(s).toLowerCase().replace(/[^a-z]/g, "");
+
+// ---------- documents this applicant must give ----------
+function docList() {
+  const t = trade(), out = [
+    { key: "idFront", label: "National ID (front)", req: true },
+    { key: "idBack", label: "National ID (back)", req: true },
+    { key: "selfie", label: "Selfie holding your ID", req: true, why: "Proves the ID is yours" },
+  ];
+  if (t.tech) {
+    if (!A.noQual) out.push({ key: "qual", label: "Trade certificate or qualification", req: true });
+    out.push({ key: "work", label: "Photo of your past work", req: A.noQual, why: A.noQual ? "Needed when you have no certificate" : "Optional, helps your profile" });
+  }
+  out.push({ key: "police", label: "Police clearance", req: !t.tech, why: t.tech ? "Optional, adds 10 to your Trust Score" : "Required for home help" });
+  return out;
+}
+function sampleImage(label, hue) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 200; const g = c.getContext("2d");
+  g.fillStyle = `hsl(${hue} 30% 86%)`; g.fillRect(0, 0, 320, 200); g.fillStyle = `hsl(${hue} 25% 70%)`; g.fillRect(16, 16, 90, 110);
+  g.fillStyle = "#3a352b"; g.font = "bold 20px sans-serif"; g.fillText(label, 120, 50); g.font = "14px sans-serif"; g.fillStyle = "#5a5446";
+  ["Sample document", "Basa seBasa demo", A.name || "Applicant"].forEach((l, i) => g.fillText(l, 120, 80 + i * 22));
+  return c.toDataURL("image/png");
+}
+const HUES = { idFront: 200, idBack: 210, selfie: 30, qual: 140, work: 90, police: 0 };
+
+// ---------- progress model ----------
+const STEPS = ["Sign up", "Details and documents", "Automatic checks", "Document review", "Reference calls", "In-person check", "Induction", "Approved"];
+function stepNow() {
+  return { draft: A.screen === "phone" || A.screen === "otp" || A.screen === "consent" ? 0 : 1, auto: 2, review: 3, fix: 3, references: 4, inperson: 5, induction: 6, decision: 7, approved: 8, rejected: -1 }[A.status];
+}
+function guide() {
+  const s = A.status;
+  if (s === "draft") return ["Provider phone: sign up and send your application.", A.show === "team" ? "provider" : ""];
+  if (s === "auto") return ["Automatic checks are running on the provider's phone…", ""];
+  if (s === "review") return ["Team desk: review the documents.", A.show === "provider" ? "team" : ""];
+  if (s === "fix") return ["Provider phone: fix what the team asked for.", A.show === "team" ? "provider" : ""];
+  if (s === "references") return ["Team desk: call both referees and log the answers.", A.show === "provider" ? "team" : ""];
+  if (s === "inperson") return [A.inperson.slot ? "Team desk: record the in-person check result." : "Team desk: book the in-person check.", A.show === "provider" ? "team" : ""];
+  if (s === "induction") return ["Team desk: run the induction and get the agreement signed.", A.show === "provider" ? "team" : ""];
+  if (s === "decision") return ["Team desk: make the final decision.", A.show === "provider" ? "team" : ""];
+  if (s === "approved") return ["Approved. See the welcome on the provider phone, or start again to try a failure path.", A.show === "team" ? "provider" : ""];
+  return ["Not approved. Start again to try a different path.", A.show === "team" ? "provider" : ""];
+}
+const needs = () => ({ provider: A.status === "draft" || A.status === "fix", team: ["review", "references", "inperson", "induction", "decision"].includes(A.status) });
+
+// ---------- render ----------
+function render() {
+  const [text, go] = guide(); $("#guide-text").textContent = text;
+  const g = $("#guide-go"); g.hidden = !go; g.textContent = go === "team" ? "Go to team desk" : "Go to provider phone"; g.dataset.show = go;
+  $("#panes").dataset.show = A.show;
+  document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === A.show)));
+  const n = needs(); $("#ping-provider").hidden = !(n.provider && A.show !== "provider"); $("#ping-team").hidden = !(n.team && A.show !== "team");
+  $("#provider").innerHTML = viewProvider();
+  $("#team").innerHTML = viewTeam();
+}
+const val = (k) => esc(A[k]);
+
+// ---------- provider phone ----------
+function viewProvider() {
+  if (A.status === "auto") return autoView();
+  if (A.status === "approved") return approvedView();
+  if (["review", "references", "inperson", "induction", "decision", "rejected"].includes(A.status)) return statusView();
+  if (A.status === "fix") return fixView();
+  switch (A.screen) {
+    case "phone": return `<div class="steps"><span class="on"></span><span></span><span></span><span></span></div><h2>Get steady, paid work</h2><p class="muted">Verified pros get jobs near them and are paid on EcoCash within 24 hours.</p>
+      <div class="card"><div class="field"><label for="f-phone">Your WhatsApp number</label><input id="f-phone" data-bind="phone" type="tel" inputmode="tel" placeholder="077 123 4567" value="${val("phone")}"></div><p class="err" id="e-phone" hidden></p><button class="btn gold" type="button" data-act="send-code">Send me a code</button></div>`;
+    case "otp": return `<div class="steps"><span class="on"></span><span></span><span></span><span></span></div><h2>Enter your code</h2><p class="muted">We sent a 6-digit code to ${esc(A.phone)} on WhatsApp.</p>
+      <div class="card"><input id="f-code" class="code" data-bind="codeIn" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" value="${val("codeIn")}" aria-label="6-digit code"><p class="note small">Preview: your code is <b class="mono">${esc(A.code)}</b></p><p class="err" id="e-code" hidden></p><button class="btn gold" type="button" data-act="verify-code">Verify</button><button class="btn quiet" type="button" data-act="back-phone">Change number</button></div>`;
+    case "consent": return `<div class="steps"><span class="on"></span><span class="on"></span><span></span><span></span></div><h2>Before you start</h2>
+      <div class="card"><label class="check"><input type="checkbox" data-consent="checks" ${A.consent.checks ? "checked" : ""}> I agree to Basa seBasa checking my ID, qualifications and references.</label><label class="check"><input type="checkbox" data-consent="location" ${A.consent.location ? "checked" : ""}> I'll share my location while I'm online or on a job.</label><label class="check"><input type="checkbox" data-consent="data" ${A.consent.data ? "checked" : ""}> I agree my documents are stored privately and seen only by the vetting team.</label><p class="err" id="e-consent" hidden></p><button class="btn gold" type="button" data-act="consent">Continue</button></div>`;
+    case "details": {
+      const t = trade();
+      return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div><h2>About you</h2>
+      <div class="card">
+        <div class="field"><label for="f-name">Full name (as on your ID)</label><input id="f-name" data-bind="name" type="text" autocomplete="name" value="${val("name")}"></div>
+        <div class="field"><label for="f-trade">Your trade</label><select id="f-trade" data-bind-select="trade">${TRADES.map((x) => `<option value="${esc(x.id)}" ${x.id === A.trade ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+        <div class="field"><span class="lab">What you're best at</span><div class="chips">${t.skills.map((s) => `<button type="button" class="chip" data-skill="${esc(s)}" aria-pressed="${A.skills.includes(s)}">${esc(s)}</button>`).join("")}</div></div>
+        <div class="two"><div class="field"><label for="f-suburb">Base suburb</label><select id="f-suburb" data-bind-select="suburb"><option value="">Choose</option>${SUBURBS.map((s) => `<option ${s === A.suburb ? "selected" : ""}>${s}</option>`).join("")}</select></div><div class="field"><label for="f-years">Years' experience</label><input id="f-years" data-bind="years" type="number" min="0" inputmode="numeric" value="${val("years")}"></div></div>
+        <div class="field"><label for="f-hours">Working hours</label><input id="f-hours" data-bind="hours" type="text" value="${val("hours")}"></div>
+        <div class="two"><div class="field"><label for="f-econum">EcoCash number</label><input id="f-econum" data-bind="ecoNum" type="tel" inputmode="tel" value="${val("ecoNum")}" placeholder="077…"></div><div class="field"><label for="f-econame">EcoCash account name</label><input id="f-econame" data-bind="ecoName" type="text" value="${val("ecoName")}"></div></div>
+        <p class="muted small">Payouts can only go to an EcoCash account in your own name.</p>
+        ${t.tech ? `<label class="check"><input type="checkbox" data-flag="warranty" ${A.warranty ? "checked" : ""}> I give a warranty on my work</label>` : ""}
+        <p class="err" id="e-details" hidden></p><button class="btn gold" type="button" data-act="details">Next: documents</button></div>`;
+    }
+    case "docs": return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div><h2>Documents</h2><p class="muted">Take clear photos in good light. Use "Sample" to fill the demo quickly.</p>
+      ${trade().tech ? `<label class="check card" style="display:flex"><input type="checkbox" data-flag="noQual" ${A.noQual ? "checked" : ""}> I don't have a certificate. I'll show photos of my past work and do a longer practical test.</label>` : ""}
+      <div class="card"><div style="display:grid;gap:8px">${docList().map(docRow).join("")}</div></div>
+      <div class="card"><h3>Two referees</h3><p class="muted small">Past customers or employers who can vouch for your work.</p>${A.refs.map((r, i) => `<div class="two"><div class="field"><label for="r${i}n">Referee ${i + 1} name</label><input id="r${i}n" data-ref="${i}" data-k="name" type="text" value="${esc(r.name)}"></div><div class="field"><label for="r${i}p">Phone</label><input id="r${i}p" data-ref="${i}" data-k="phone" type="tel" inputmode="tel" value="${esc(r.phone)}"></div></div>`).join("")}
+        <button class="btn quiet sm" type="button" data-act="sample-refs">Fill sample referees</button></div>
+      <p class="err" id="e-docs" hidden></p><button class="btn gold" type="button" data-act="submit">Send application</button><button class="btn quiet" type="button" data-act="back-details">Back</button>`;
+  }
+  return "";
+}
+function docRow(d) {
+  const f = A.docs[d.key];
+  return `<div class="doc ${f ? "done" : ""}">${f ? `<img class="thumb" src="${f.url}" alt="">` : `<span class="thumb" aria-hidden="true"></span>`}<span><b>${esc(d.label)}${d.req ? "" : ' <span class="muted" style="font-weight:500">(optional)</span>'}</b><small>${f ? "✓ " + esc(f.name) : esc(d.why || "Required")}</small></span><span class="row" style="gap:4px"><label class="btn quiet sm up">${f ? "Retake" : "Photo"}<input type="file" accept="image/*" capture="environment" data-doc="${d.key}" aria-label="${esc(d.label)}"></label>${f ? "" : `<button class="btn quiet sm" type="button" data-sample="${d.key}">Sample</button>`}</span></div>`;
+}
+function autoView() {
+  return `<h2>Checking your application</h2><div class="card"><div class="autolist">${A.auto.map((c) => `<div>${c.state === "run" ? '<span class="spin"></span>' : `<i class="${c.state === "ok" ? "ok" : "no"}">${c.state === "ok" ? "✓" : "!"}</i>`}<span>${esc(c.label)}</span></div>`).join("")}</div></div>`;
+}
+function timeline() {
+  const at = stepNow(), rej = A.status === "rejected";
+  const failedAt = rej ? (A.rejectStep ?? 5) : -1;
+  return `<div class="tl">${STEPS.map((s, i) => { const cls = rej ? (i < failedAt ? "done" : i === failedAt ? "no" : "") : i < at ? "done" : i === at ? "now" : ""; const sub = i === 5 && A.inperson.slot && at <= 5 ? A.inperson.slot : i === 3 && at === 3 ? "Usually within 48 hours" : ""; return `<div class="${cls}"><span>${esc(s)}${sub ? `<small>${esc(sub)}</small>` : ""}</span></div>`; }).join("")}</div>`;
+}
+function statusView() {
+  const rej = A.status === "rejected";
+  return `<h2>${rej ? "Application not approved" : "Application received"}</h2>
+    ${rej ? `<div class="note bad">${esc(A.rejectReason)}${A.rejectFake ? "" : " You can apply again in 3 months."}</div>` : `<p class="muted">You'll get a WhatsApp message at each step. Most applications are decided within 5 working days.</p>`}
+    <div class="card"><h3>Your progress</h3>${timeline()}</div>
+    <div class="card"><h3>Messages</h3><div class="msgs">${A.msgs.map((m) => `<div class="msg">${esc(m.text)}<time>${esc(m.at)} · WhatsApp</time></div>`).join("")}</div></div>`;
+}
+function fixView() {
+  const d = docList().find((x) => x.key === A.fix.item);
+  return `<h2>One thing to fix</h2><div class="note bad"><b>${esc(d?.label || "Document")}:</b> ${esc(A.fix.note)}</div>
+    <div class="card">${d ? docRow({ ...d, why: "Upload a new photo" }) : ""}<p class="err" id="e-fix" hidden></p><button class="btn gold" type="button" data-act="resubmit">Send again</button></div>
+    <div class="card"><h3>Your progress</h3>${timeline()}</div>`;
+}
+function approvedView() {
+  const s = trust();
+  return `<div class="card" style="text-align:center;justify-items:center"><span class="eyebrow">Welcome to Basa seBasa</span><h2>You're a verified pro, ${esc(firstName())}</h2><span class="big">${s.total}</span><span class="muted">Your starting Trust Score</span>
+    <div class="badges" style="justify-content:center">${s.badges.map((b) => `<span class="badge">${esc(b)}</span>`).join("")}</div></div>
+    <div class="card"><div class="row" style="justify-content:space-between"><span><span class="eyebrow">Level</span><b style="display:block;font-size:20px">Bronze</b></span><span style="text-align:right"><span class="eyebrow">Probation</span><b style="display:block;font-size:20px">0 of 5 jobs</b></span></div><p class="muted small">After 5 good jobs (4.5★ or more, no upheld complaints) you become a full pro and can move up to Silver.</p></div>
+    <div class="card"><h3>Raise your score</h3><ul style="margin:0;padding-left:20px;display:grid;gap:4px">${!A.docs.police ? "<li>Add a police clearance: +10</li>" : ""}<li>Every 5-star job adds to your score</li><li>Arrive on time and use your Basa Code</li></ul></div>
+    <a class="btn gold" href="${PRO_APP}" target="_blank" rel="noopener">Open the Basa seBasa Pro app</a>`;
+}
+
+// ---------- trust score ----------
+function trust() {
+  const rows = [["National ID verified", 15, true], [A.noQual || !A.docs.qual ? "Past work verified" : "Trade qualification verified", A.noQual || !A.docs.qual ? 10 : 20, trade().tech || !!A.docs.qual], ["Two positive references", 10, true], ["Police clearance", 10, !!A.docs.police], ["Passed in-person check", 10, true], ["Offers warranty", 10, trade().tech && A.warranty], [`${Number(A.years) || 0} years' experience`, Math.min(10, (Number(A.years) || 0) * 2), true]].filter((r) => r[2]);
+  const total = Math.min(100, rows.reduce((s, r) => s + r[1], 0));
+  const badges = ["ID checked", trade().tech ? (A.noQual ? "Work verified" : "Trade verified") : null, "References", A.docs.police ? "Police clearance" : null, A.warranty && trade().tech ? "Warranty" : null].filter(Boolean);
+  return { rows, total, badges };
+}
+
+// ---------- team desk ----------
+function viewTeam() {
+  const live = A.status !== "draft" || A.submittedAt;
+  const statusPill = { draft: ["Not submitted", ""], auto: ["Checking", "ops"], review: ["Document review", "ops"], fix: ["Waiting on provider", ""], references: ["References", "ops"], inperson: ["In-person check", "ops"], induction: ["Induction", "ops"], decision: ["Decision", "ops"], approved: ["Approved", "good"], rejected: ["Not approved", "bad"] }[A.status];
+  const queue = `<div class="card" style="padding:0;gap:0"><div style="padding:12px 14px;border-bottom:1px solid var(--line)" class="row"><h3 style="margin-right:auto">Applications</h3><span class="muted small">Target: decided within 5 working days</span></div><div class="queue">
+    ${live ? `<div class="qrow live"><b>${esc(A.name || "New applicant")}</b><span class="pill ${statusPill[1]}">${statusPill[0]}</span><small>${esc(trade().name)} · ${esc(A.suburb || "—")} · submitted ${esc(A.submittedClock || "")}</small></div>` : `<div class="qrow"><span class="muted">Waiting for the provider to send their application…</span></div>`}
+    <div class="qrow"><b>Example Rudo C.<span class="ex">EXAMPLE</span></b><span class="pill good">Approved</span><small>Maids · Borrowdale · yesterday</small></div>
+    <div class="qrow"><b>Example Simba R.<span class="ex">EXAMPLE</span></b><span class="pill ops">Reference calls</span><small>Electrical · Greendale · 2 days ago</small></div></div></div>`;
+  if (!live) return queue;
+  const t = trade();
+  const profile = `<div class="card"><div class="row" style="justify-content:space-between"><h3>${esc(A.name)}</h3><span class="pill ${statusPill[1]}">${statusPill[0]}</span></div>
+    <div class="facts"><div><small>Trade</small>${esc(t.name)}</div><div><small>Skills</small>${esc(A.skills.join(", ") || "—")}</div><div><small>Base</small>${esc(A.suburb)}</div><div><small>Experience</small>${esc(A.years)} years</div><div><small>WhatsApp</small><span class="mono">${esc(A.phone)}</span></div><div><small>EcoCash</small><span class="mono">${esc(A.ecoNum)}</span> · ${esc(A.ecoName)}</div></div>
+    <div class="docgrid">${docList().filter((d) => A.docs[d.key]).map((d) => `<figure><img src="${A.docs[d.key].url}" alt="${esc(d.label)}"><figcaption>${esc(d.label)}</figcaption></figure>`).join("")}</div>
+    <div class="facts">${A.auto.map((c) => `<div><small>Automatic check</small><span class="${c.state === "ok" ? "ok" : "err"}">${c.state === "ok" ? "✓" : "✗"}</span> ${esc(c.label)}</div>`).join("")}</div></div>`;
+  return queue + actionPanel() + profile + `<div class="card"><h3>Audit log</h3><div class="log">${A.log.map((l) => `<div><span class="muted mono">${esc(l.at)}</span><span>${esc(l.text)}</span></div>`).join("")}</div></div>`;
+}
+function actionPanel() {
+  const t = trade();
+  const box = (title, inner) => `<div class="action"><h3><span class="tag">Your move</span>${title}</h3>${inner}</div>`;
+  switch (A.status) {
+    case "auto": return `<div class="action"><div class="row"><span class="spin"></span><span>Automatic checks running…</span></div></div>`;
+    case "fix": return `<div class="note">Waiting for ${esc(firstName())} to fix: ${esc(docList().find((d) => d.key === A.fix.item)?.label || "")}.</div>`;
+    case "review": return box("4 · Document review", `<p class="muted small">Look at each photo. Is it genuine, readable and does it match the person and the trade?</p>
+      <label class="check"><input type="checkbox" data-rev="id" ${A.review.id ? "checked" : ""}> ID is genuine, readable, and the selfie matches the ID photo</label>
+      ${t.tech ? `<label class="check"><input type="checkbox" data-rev="qual" ${A.review.qual ? "checked" : ""}> ${A.noQual ? "Past work photos look genuine for this trade" : "Qualification is genuine and matches the trade"}</label>` : ""}
+      ${A.docs.police ? `<label class="check"><input type="checkbox" data-rev="police" ${A.review.police ? "checked" : ""}> Police clearance is valid and in the applicant's name</label>` : ""}
+      <p class="err" id="e-review" hidden></p><button class="btn gold" type="button" data-act="accept-docs">Accept documents</button>
+      <details><summary class="muted" style="cursor:pointer;font-weight:600">Ask for something again</summary><div style="display:grid;gap:8px;margin-top:8px"><div class="field"><label for="t-askitem">Which item?</label><select id="t-askitem" data-rbind="askItem"><option value="">Choose</option>${docList().filter((d) => A.docs[d.key]).map((d) => `<option value="${d.key}" ${A.review.askItem === d.key ? "selected" : ""}>${esc(d.label)}</option>`).join("")}</select></div><div class="field"><label for="t-asknote">Message to the provider</label><textarea id="t-asknote" data-rbind="askNote">${esc(A.review.askNote)}</textarea></div><p class="err" id="e-ask" hidden></p><button class="btn quiet" type="button" data-act="ask">Send request</button></div></details>
+      <button class="btn danger" type="button" data-act="reject-fake">Reject: documents look fake</button>`);
+    case "references": return box("5 · Reference calls", `<p class="muted small">Ask each referee: What work did they do for you? Was it good quality? Were they honest and on time? Would you hire them again?</p>
+      ${A.refs.map((r, i) => `<div class="ref"><b>${esc(r.name)} · <span class="mono">${esc(r.phone)}</span></b><div class="seg"><button type="button" class="yes" data-refans="${i}" data-v="yes" aria-pressed="${A.refCheck[i].ans === "yes"}">Positive</button><button type="button" class="no" data-refans="${i}" data-v="no" aria-pressed="${A.refCheck[i].ans === "no"}">Not positive</button></div><div class="field"><label for="rc${i}">Notes from the call</label><input id="rc${i}" data-refnote="${i}" type="text" value="${esc(A.refCheck[i].notes)}" placeholder="e.g. Fixed our cold room twice, always on time"></div></div>`).join("")}
+      <p class="err" id="e-refs" hidden></p><button class="btn gold" type="button" data-act="log-refs">Log references</button>`);
+    case "inperson": return box("6 · In-person check", !A.inperson.slot
+      ? `<div class="field"><label for="t-slot">Book a slot</label><select id="t-slot"><option value="">Choose a time</option>${SLOTS.map((s) => `<option>${esc(s)}</option>`).join("")}</select></div><p class="err" id="e-slot" hidden></p><button class="btn gold" type="button" data-act="book">Book and tell ${esc(firstName())}</button>`
+      : `<p><b>Booked:</b> ${esc(A.inperson.slot)}</p><p class="note small">Demo: in real life this is recorded on the day of the meeting.</p>
+        <label class="check"><input type="checkbox" data-ip="idMatch" ${A.inperson.idMatch ? "checked" : ""}> Original ID seen and matches the person</label><label class="check"><input type="checkbox" data-ip="photo" ${A.inperson.photo ? "checked" : ""}> Profile photo taken</label>
+        <div class="two"><div class="field"><label for="t-score">Practical test score</label><select id="t-score" data-ipsel="score"><option value="">Score out of 10</option>${[10, 9, 8, 7, 6, 5, 4, 3].map((n) => `<option ${String(n) === A.inperson.score ? "selected" : ""}>${n}</option>`).join("")}</select></div><div class="field"><label for="t-ipnotes">Notes</label><input id="t-ipnotes" data-ipnote type="text" value="${esc(A.inperson.notes)}" placeholder="${t.id === "HVAC/Refrigeration" ? "Found the faulty relay in 10 min" : "How the test went"}"></div></div>
+        <p class="muted small">Pass mark: 7 out of 10${A.noQual ? " (longer test, no certificate)" : ""}.</p><p class="err" id="e-ip" hidden></p><div class="two"><button class="btn danger" type="button" data-act="ip-fail">Failed</button><button class="btn gold" type="button" data-act="ip-pass">Passed</button></div>`);
+    case "induction": return box("7 · Induction", `<p class="muted small">Walk ${esc(firstName())} through the app and the rules.</p>${INDUCTION.map((x, i) => `<label class="check"><input type="checkbox" data-ind="${i}" ${A.induction[i] ? "checked" : ""}> ${esc(x)}</label>`).join("")}
+      <label class="check" style="border-top:1px solid var(--line);padding-top:10px"><input type="checkbox" data-signed ${A.signed ? "checked" : ""}> <b>Service Provider Agreement signed</b> (15% commission, 24-hour payouts)</label><p class="err" id="e-ind" hidden></p><button class="btn gold" type="button" data-act="induct">Induction complete</button>`);
+    case "decision": { const s = trust(); return box("8 · Decision", `<table class="score">${s.rows.map(([l, p]) => `<tr><td>${esc(l)}</td><td>+${p}</td></tr>`).join("")}<tr class="total"><td>Starting Trust Score</td><td>${s.total}</td></tr></table><p class="muted small">Ratings and completed jobs raise it over time. Level: Bronze, on probation for 5 jobs.</p>
+      <div class="two"><button class="btn danger" type="button" data-act="decline">Not approved</button><button class="btn gold" type="button" data-act="approve">Approve</button></div>`); }
+    case "approved": return `<div class="note good"><b>${esc(A.name)} is approved.</b> Status Verified, Bronze level, Trust Score ${trust().total}. They can go online now.</div>`;
+    case "rejected": return `<div class="note bad"><b>Not approved.</b> ${esc(A.rejectReason)}</div>`;
+  }
+  return "";
+}
+
+// ---------- actions ----------
+const fail = (id, m) => { const e = document.getElementById(id); if (e) { e.textContent = m; e.hidden = false; } return false; };
+function switchTo(side) { A.show = side; render(); window.scrollTo(0, 0); }
+function runAuto(after) {
+  A.status = "auto";
+  const nameOk = norm(A.ecoName) === norm(A.name) || norm(A.ecoName).includes(norm(A.name.split(" ").pop() || "x")) && norm(A.ecoName).includes(norm(A.name.split(" ")[0] || "x"));
+  A.auto = [
+    { label: "All required items sent", ok: true }, { label: "Photos are clear enough to read", ok: true },
+    { label: "Selfie matches the ID photo", ok: true }, { label: "Phone and ID not already registered", ok: true },
+    { label: "EcoCash name matches the ID name", ok: nameOk },
+  ].map((c) => ({ ...c, state: "wait" }));
+  render(); let i = 0;
+  const tick = () => {
+    if (i > 0) A.auto[i - 1].state = A.auto[i - 1].ok ? "ok" : "no";
+    if (i > 0 && !A.auto[i - 1].ok) { A.status = "draft"; A.screen = "details"; render(); fail("e-details", `Your EcoCash account name "${A.ecoName}" doesn't match your ID name "${A.name}". Payouts can only go to your own account. Fix it and send again.`); return; }
+    if (i === A.auto.length) { after(); render(); return; }
+    A.auto[i].state = "run"; render(); i++; setTimeout(tick, 650);
+  };
+  tick();
+}
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.dataset.bind) A[t.dataset.bind] = t.value;
+  if (t.dataset.ref !== undefined) A.refs[+t.dataset.ref][t.dataset.k] = t.value;
+  if (t.dataset.rbind) A.review[t.dataset.rbind] = t.value;
+  if (t.dataset.refnote !== undefined) A.refCheck[+t.dataset.refnote].notes = t.value;
+  if (t.hasAttribute("data-ipnote")) A.inperson.notes = t.value;
+  if (t.id === "f-code") t.value = t.value.replace(/\D/g, "").slice(0, 6), A.codeIn = t.value;
+});
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.bindSelect) { A[t.dataset.bindSelect] = t.value; if (t.dataset.bindSelect === "trade") { A.skills = []; A.docs = {}; A.noQual = false; } render(); }
+  if (t.dataset.consent) A.consent[t.dataset.consent] = t.checked;
+  if (t.dataset.flag) { A[t.dataset.flag] = t.checked; if (t.dataset.flag === "noQual") render(); }
+  if (t.dataset.rev) A.review[t.dataset.rev] = t.checked;
+  if (t.dataset.rbind) A.review[t.dataset.rbind] = t.value;
+  if (t.dataset.ip) A.inperson[t.dataset.ip] = t.checked;
+  if (t.dataset.ipsel) A.inperson.score = t.value;
+  if (t.dataset.ind !== undefined) A.induction[+t.dataset.ind] = t.checked;
+  if (t.hasAttribute("data-signed")) A.signed = t.checked;
+  if (t.dataset.doc) { const f = t.files?.[0]; if (f) { A.docs[t.dataset.doc] = { name: f.name, url: URL.createObjectURL(f), fresh: true }; render(); } }
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.show) return switchTo(b.dataset.show);
+  if (b.hasAttribute("data-reset")) { A = fresh(); render(); window.scrollTo(0, 0); return; }
+  if (b.dataset.skill) { const s = b.dataset.skill; A.skills = A.skills.includes(s) ? A.skills.filter((x) => x !== s) : [...A.skills, s]; render(); return; }
+  if (b.dataset.sample) { const k = b.dataset.sample, d = docList().find((x) => x.key === k); A.docs[k] = { name: "sample-" + k + ".png", url: sampleImage(d.label.split(" (")[0], HUES[k]), fresh: true }; render(); return; }
+  if (b.dataset.refans !== undefined) { A.refCheck[+b.dataset.refans].ans = b.dataset.v; render(); return; }
+  const act = b.dataset.act; if (!act) return;
+  switch (act) {
+    case "send-code": if (A.phone.replace(/\D/g, "").length < 9) return fail("e-phone", "Enter your WhatsApp number."); A.code = String(100000 + Math.floor(Math.random() * 900000)); A.codeIn = ""; A.screen = "otp"; render(); break;
+    case "back-phone": A.screen = "phone"; render(); break;
+    case "verify-code": if (A.codeIn !== A.code) return fail("e-code", "That code is wrong. Check WhatsApp and try again."); A.screen = "consent"; if (!A.ecoNum) A.ecoNum = A.phone; render(); break;
+    case "consent": if (!A.consent.checks || !A.consent.location || !A.consent.data) return fail("e-consent", "Tick all three to continue."); A.screen = "details"; render(); break;
+    case "details":
+      if (A.name.trim().split(/\s+/).length < 2) return fail("e-details", "Enter your full name as it appears on your ID.");
+      if (!A.skills.length) return fail("e-details", "Choose at least one thing you're best at.");
+      if (!A.suburb) return fail("e-details", "Choose your base suburb.");
+      if (A.years === "" || Number(A.years) < 0) return fail("e-details", "Enter your years of experience.");
+      if (A.ecoNum.replace(/\D/g, "").length < 9 || !A.ecoName.trim()) return fail("e-details", "Enter your EcoCash number and the name on that account.");
+      A.screen = "docs"; render(); window.scrollTo(0, 0); break;
+    case "back-details": A.screen = "details"; render(); break;
+    case "sample-refs": A.refs = [{ name: "Mr P. Mutasa (past employer)", phone: "077 300 4411" }, { name: "Mrs L. Chiweshe (customer)", phone: "078 552 9020" }]; render(); break;
+    case "submit": {
+      const missing = docList().filter((d) => d.req && !A.docs[d.key]); if (missing.length) return fail("e-docs", "Still needed: " + missing.map((d) => d.label).join(", ") + ".");
+      if (A.refs.some((r) => !r.name.trim() || r.phone.replace(/\D/g, "").length < 9)) return fail("e-docs", "Add a name and phone number for both referees.");
+      A.submittedAt = Date.now(); A.submittedClock = now();
+      runAuto(() => { A.status = "review"; msg(`Hi ${firstName()}, we've received your Basa seBasa application. Our team reviews it within 48 hours.`); log("Application submitted; automatic checks passed"); toast("Application sent. Now play the team: switch to the team desk."); });
+      break;
+    }
+    case "accept-docs":
+      if (!A.review.id || (trade().tech && !A.review.qual) || (A.docs.police && !A.review.police)) return fail("e-review", "Tick each check once you've looked at the documents.");
+      A.status = "references"; log("Documents accepted"); msg("Your documents are approved. Next, we'll call your two referees."); render(); break;
+    case "ask":
+      if (!A.review.askItem) return fail("e-ask", "Choose the item to ask for again.");
+      A.fix = { item: A.review.askItem, note: A.review.askNote.trim() || "Please upload this again." }; delete A.docs[A.fix.item]; A.status = "fix";
+      log("Asked for " + docList().find((d) => d.key === A.fix.item).label + " again"); msg(`We need one thing fixed: ${A.fix.note} Open the app to upload it.`); toast("Request sent. Switch to the provider phone to fix it."); render(); break;
+    case "resubmit":
+      if (!A.docs[A.fix.item]) return fail("e-fix", "Upload the new photo first.");
+      runAuto(() => { A.status = "review"; log("Provider re-uploaded " + docList().find((d) => d.key === A.fix.item).label); A.fix = null; msg("Thanks, we've got it. Your application is back with our team."); toast("Sent. Switch back to the team desk."); });
+      break;
+    case "reject-fake": A.status = "rejected"; A.rejectStep = 3; A.rejectFake = true; A.rejectReason = "The documents could not be verified as genuine."; log("Rejected: documents could not be verified"); msg("We're sorry, we can't approve your application because your documents could not be verified."); render(); break;
+    case "log-refs":
+      if (A.refCheck.some((r) => !r.ans)) return fail("e-refs", "Record the answer for both referees.");
+      if (A.refCheck.some((r) => r.ans === "no")) { A.status = "rejected"; A.rejectStep = 4; A.rejectReason = "One of your references was not positive."; log("Rejected: a reference was not positive"); msg("We're sorry, we can't approve your application this time. You can apply again in 3 months."); render(); break; }
+      A.status = "inperson"; log("Both references positive"); msg("Both your referees vouched for you. Next: an in-person check with our team."); render(); break;
+    case "book": { const s = $("#t-slot").value; if (!s) return fail("e-slot", "Choose a slot."); A.inperson.slot = s; log("In-person check booked: " + s); msg(`Your in-person check is booked: ${s}. Bring your original ID${trade().tech ? " and your tools" : ""}.`); render(); break; }
+    case "ip-pass": {
+      if (!A.inperson.idMatch || !A.inperson.photo) return fail("e-ip", "Confirm the original ID matched and the photo was taken.");
+      if (!A.inperson.score) return fail("e-ip", "Enter the practical test score.");
+      if (Number(A.inperson.score) < 7) return fail("e-ip", "A score below 7 is a fail. Use Failed, or check the score.");
+      A.status = "induction"; log(`In-person check passed (${A.inperson.score}/10)`); msg("Well done, you passed the in-person check. Last step: a short induction and signing your agreement."); render(); break;
+    }
+    case "ip-fail": A.status = "rejected"; A.rejectStep = 5; A.rejectReason = "You didn't pass the in-person check this time."; log(`In-person check failed${A.inperson.score ? " (" + A.inperson.score + "/10)" : ""}`); msg("Thank you for coming in. You didn't pass the practical test this time. You can apply again in 3 months."); render(); break;
+    case "induct": if (A.induction.some((x) => !x)) return fail("e-ind", "Cover every point of the induction."); if (!A.signed) return fail("e-ind", "The agreement must be signed."); A.status = "decision"; log("Induction done; agreement signed"); render(); break;
+    case "approve": A.status = "approved"; log(`Approved · Trust Score ${trust().total} · Bronze`); msg(`Congratulations ${firstName()}! You're a verified Basa seBasa pro. Open the app and go online to get your first job.`); toast("Approved. Switch to the provider phone to see the welcome."); render(); break;
+    case "decline": A.status = "rejected"; A.rejectStep = 7; A.rejectReason = "The team decided not to approve your application."; log("Not approved at final decision"); msg("We're sorry, we can't approve your application this time. You can apply again in 3 months."); render(); break;
+  }
+});
+render();
+})();
+</script>
+
+</body>
+</html>

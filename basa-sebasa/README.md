@@ -1,11 +1,12 @@
 # Basa seBasa web apps
 
-Three web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
+Four web apps built for the Basa seBasa launch in Harare. Each is a single HTML file with no build step.
 
 | Folder | What it is | Who uses it |
 | --- | --- | --- |
 | `customer-app/` | Customer booking app: services, 4-step booking, top 3 verified pros, price breakdown, EcoCash payment, live tracking map, quote approval, ratings, "For pros" sign-up, help | Customers |
 | `technician-app/` | Technician app (preview): go online, 60-second job requests with earnings shown, live trip map, diagnose and quote on site, job timer, before/after photos, earnings with 24-hour payout tracking, Trust Score profile | Technicians |
+| `onboarding-demo/` | Provider onboarding demo: sign-up with WhatsApp code, details, documents, automatic checks, team document review, reference calls, in-person check, induction and approval with starting Trust Score | Basa seBasa team (demo) |
 | `ops-desk/` | Operations desk: jobs pipeline with enforced stages, technician verification and Trust Score, money ledger, pricing settings, WhatsApp message templates, 24-hour payout deadlines | Basa seBasa team |
 
 ## Business rules built in
