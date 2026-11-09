@@ -149,6 +149,27 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .status { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 8px 10px; font-size: 13.5px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: #2FA463; flex: none; }
 .pro-body { flex: 1; overflow-y: auto; padding: 12px; display: grid; gap: 10px; align-content: start; }
+.ptabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 4px; }
+.ptabs button { border: 0; background: transparent; color: #B9B2A2; font-weight: 700; padding: 8px; border-radius: 9px; cursor: pointer; font-size: 14px; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
+.ptabs button[aria-pressed="true"] { background: #F0AE00; color: #14120D; }
+.ptabs .n { background: #E5483B; color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 6px; }
+.pro-body.is-chat { display: flex; flex-direction: column; overflow: hidden; }
+.pchat { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+.pchat-note { flex: none; font-size: 12.5px; color: var(--muted); background: var(--sunk); border-radius: 10px; padding: 8px 10px; display: flex; gap: 8px; align-items: flex-start; }
+.pthread { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 2px; min-height: 0; }
+.pmsg { max-width: 84%; padding: 7px 10px 5px; border-radius: 12px; font-size: 14.5px; overflow-wrap: anywhere; }
+.pmsg time { display: block; font-size: 11px; opacity: .65; margin-top: 2px; text-align: right; }
+.pmsg.customer { align-self: flex-start; background: var(--card); border: 1px solid var(--line); border-top-left-radius: 3px; }
+.pmsg.pro { align-self: flex-end; background: #14120D; color: #F5F1E6; border-top-right-radius: 3px; }
+.pmsg.sys { align-self: center; background: var(--good-bg); color: var(--good); font-size: 12.5px; font-weight: 600; text-align: center; max-width: 95%; }
+.pmsg .who2 { display: block; font-size: 11.5px; font-weight: 700; color: var(--gold-deep); margin-bottom: 2px; }
+.pquick { display: flex; gap: 6px; overflow-x: auto; flex: none; padding-bottom: 2px; scrollbar-width: thin; }
+.pquick button { white-space: nowrap; flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pquick button:hover { border-color: var(--ink); }
+form.pcompose { display: flex; gap: 8px; flex: none; }
+form.pcompose input { flex: 1; min-width: 0; border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: 9px 14px; }
+form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%; background: #F0AE00; color: #14120D; font-weight: 800; cursor: pointer; flex: none; }
+.bubble .from { display: block; font-size: 12px; font-weight: 700; color: var(--chat-accent); margin-bottom: 2px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
 .card.offer { border: 3px solid var(--gold); }
 .dark { background: #14120D; color: #F5F1E6; border-color: #14120D; }
@@ -242,7 +263,7 @@ const SUBURBS = ["Avondale", "Borrowdale", "Eastlea", "Glen View", "Greendale", 
 const POS = { Avondale: [-1, 3], Belvedere: [-2.5, .5], Borrowdale: [5, 8], Budiriro: [-9, -6], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Mabelreign: [-5, 4.5], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
 const kmBetween = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.max(1.5, Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2); };
 
-const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
+const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, thread: [], proTab: "job", proUnread: 0, chatIntro: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
 let S = fresh();
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -312,7 +333,7 @@ function renderChat() {
     return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
   }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
   box.scrollTop = box.scrollHeight;
-  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : S.step === "onway" ? ["Where are you?", `Message ${first(S.pro.name)}: it's the blue gate`, "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
+  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : chatOpen() && ["onway", "wait", "photocheck"].includes(S.step) ? ["Where are you?", "It's the blue gate opposite the church", "Can I have his number?", "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
   $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
     : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
@@ -327,8 +348,21 @@ function renderLog() {
 function renderPro() {
   const p = S.pro || { name: "Tendai M.", trust: 94, home: "Avondale" }, t = S.t;
   $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · ✓ Checked in person</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : t.stage === "paid" || t.stage === "deferred" ? "Online · job finished" : "On a job · " + esc(S.job)}</div>`;
-  $("#pro").innerHTML = proView();
-  if (t.stage === "travelling") startMap("tmap");
+  const tabs = `<div class="ptabs" role="group" aria-label="Pro app sections"><button type="button" data-ptab="job" aria-pressed="${S.proTab === "job"}">Job</button><button type="button" data-ptab="chat" aria-pressed="${S.proTab === "chat"}">Chat with customer${S.proUnread ? `<span class="n">${S.proUnread}</span>` : ""}</button></div>`;
+  $("#pro-head").insertAdjacentHTML("beforeend", tabs);
+  const keep = $("#pmsg") ? { v: $("#pmsg").value, f: document.activeElement?.id === "pmsg" } : null;
+  $("#pro").classList.toggle("is-chat", S.proTab === "chat");
+  $("#pro").innerHTML = S.proTab === "chat" ? proChat() : proView();
+  if (keep && $("#pmsg")) { $("#pmsg").value = keep.v; if (keep.f) $("#pmsg").focus(); }
+  const th = $("#pthread"); if (th) th.scrollTop = th.scrollHeight;
+  if (t.stage === "travelling" && S.proTab === "job") startMap("tmap");
+}
+function proChat() {
+  const open = chatOpen(), name = S.family ? S.family.name.split(" ")[0] + " (at the house)" : "Mrs C. Ndlovu";
+  const quick = S.t.stage === "ready" || S.t.stage === "travelling" ? ["I'm on my way", "About 5 minutes away", "Please send a landmark near your house", "What colour is your gate?", "I'm at the gate"] : ["I'm at the gate", "Please switch off the power at the main switch", "Could you show me where the problem is?", "I'll need about 30 more minutes"];
+  return `<div class="pchat"><div class="pchat-note"><span>🔒</span><span>${open ? `Chatting with <b>${esc(name)}</b> through Basa seBasa. Messages go to the customer's WhatsApp. Numbers and links are removed automatically, on both sides.` : "The chat opens when you accept a job and closes when it's paid. Customers' numbers are never shown."}</span></div>
+    <div class="pthread" id="pthread">${S.thread.length ? S.thread.map((m) => m.from === "sys" ? `<div class="pmsg sys">${esc(m.text)}</div>` : `<div class="pmsg ${m.from}">${m.from === "customer" ? `<span class="who2">${esc(name)}</span>` : ""}${esc(m.text)}<time>${m.at}${m.from === "pro" ? " ✓✓" : ""}</time></div>`).join("") : `<p class="muted small" style="text-align:center;margin:auto">${open ? "No messages yet. Ask for directions or tell the customer when you're close." : "No active job."}</p>`}</div>
+    ${open ? `<div class="pquick">${quick.map((q) => `<button type="button" data-pquick="${esc(q)}">${esc(q)}</button>`).join("")}</div><form class="pcompose" id="pcompose"><input id="pmsg" type="text" autocomplete="off" placeholder="Message the customer" aria-label="Message the customer"><button type="submit" aria-label="Send">➤</button></form>` : ""}</div>`;
 }
 function proView() {
   const t = S.t, m = money(), f = S.chat.length ? "Customer" : "", s = svc();
@@ -377,10 +411,15 @@ function customerSays(text) {
   }
   if (S.human) { log("server", "Message added to the team's chat with this customer."); return typing(400, () => bot("Thanks, the team can see this. A person will reply here shortly.")); }
   const lastIn = S.chat.map((m) => m.from).lastIndexOf("in"), live = lastIn >= 0 && S.chat[lastIn].buttons && !S.chat[lastIn].used;
-  if (S.step === "onway" && /where|eta|how long|late|coming|arriv/i.test(t)) { log("server", "Answered an ETA question automatically."); return typing(500, () => bot(`${esc(pro)} is on the way, about <b>${S.pro.eta} min</b> out. Tap <b>Track live</b> above to see them on the map. When they arrive, give them your Basa Code <b>${esc(S.code)}</b> at the door.`)); }
   if (/code/i.test(t) && S.code && ["onway", "wait"].includes(S.step)) return typing(400, () => bot(`Your Basa Code is <b>${esc(S.code)}</b>. Only give it to ${esc(pro)} at your door, never over the phone.`));
-  if (S.pro && new RegExp("^message " + first(S.pro.name), "i").test(t)) { log("trust", `Masked relay: the customer's message was passed to ${S.pro.name}. Neither side sees the other's number.`); log("app", `Message for ${S.pro.name}: "${t}"`); return typing(500, () => bot(`Sent to ${esc(first(S.pro.name))}. Keep chatting here: your number stays private, and every message is kept on the job record in case you need us.`)); }
-  if (/number|phone|call (him|her|me)/i.test(t) && S.pro) return typing(500, () => bot(`For your safety we don't share numbers. Message ${esc(first(S.pro.name))} here and we pass it on straight away, or type <b>HELP</b> to reach our team.`));
+  if (chatOpen()) {
+    if (/cash/i.test(t)) return typing(500, () => bot("Please don't pay in cash. All payments go to Basa seBasa on EcoCash, so your money is protected and covered by our warranty. If a pro asks for cash, type HELP."));
+    if (/(his|her|your) (number|phone)|give me .*number|can i (call|phone)/i.test(t)) return typing(500, () => bot(`For your safety we don't share numbers. Message ${esc(first(S.pro.name))} here and he sees it straight away in his Basa seBasa app, or type <b>HELP</b> to reach our team.`));
+    relayFromCustomer(t);
+    if (S.t.stage === "travelling" && /where|eta|how long|late|coming|arriv/i.test(t)) { log("server", "Also answered with the live ETA automatically."); typing(700, () => bot(`Live update: ${esc(first(S.pro.name))} is about <b>${S.pro.eta} min</b> away. <button type="button" class="link" data-act="track">Track live</button>`)); }
+    if ($("#auto").checked) autoReply(t);
+    render(); return;
+  }
   if (/cash/i.test(t)) return typing(500, () => bot("Please don't pay in cash. All payments go to Basa seBasa on EcoCash, so your money is protected and covered by our warranty. If a pro asks for cash, type HELP."));
   if (live) return typing(500, () => bot("Please tap one of the options above so I can help you faster. Type <b>HELP</b> any time to talk to a person."));
   if (["wait", "onway", "work"].includes(S.step)) { log("app", `Customer message forwarded to ${S.pro?.name || "the pro"}: "${t}"`); return typing(500, () => bot(`Got it. I've passed your message to ${esc(pro)}. Type <b>HELP</b> if you need the Basa seBasa team.`)); }
@@ -441,6 +480,31 @@ function accepted() {
   bot(`<span class="sla">CONFIRMED IN ${took.toUpperCase()}</span>${proCard()}<br>Message ${esc(first(S.pro.name))} right here: your number stays private.<br><br>Pay the <b>${usd(m.pay1)}</b> call-out to send ${esc(first(S.pro.name))} on the way. The call-out covers the inspection, so you're never charged for a visit without a diagnosis.`, { buttons: [{ label: `Pay ${usd(m.pay1)} with EcoCash`, act: "pay1" }] });
   S.t = { stage: "await_callout" }; S.step = "pay1";
 }
+// ---------- private chat between customer and pro (relayed by Basa seBasa, no contact details) ----------
+const chatOpen = () => !!S.code && !["idle", "offer", "declined", "paid", "deferred"].includes(S.t.stage);
+function scrub(text) {
+  let t = String(text), hit = false;
+  const rules = [/\+?\d[\d\s().-]{7,}\d/g, /[\w.+-]+@[\w-]+\.[\w.]+/g, /\b(?:wa\.me|whatsapp\.com|t\.me|facebook\.com|instagram\.com)\/\S+/gi];
+  rules.forEach((re) => { t = t.replace(re, () => { hit = true; return "[contact removed]"; }); });
+  return { text: t, hit };
+}
+function relayFromCustomer(text) {
+  const c = scrub(text);
+  S.thread.push({ from: "customer", text: c.text, at: clock() });
+  if (S.proTab !== "chat") S.proUnread++;
+  log("app", `Customer → ${S.pro.name} (in the app's Chat tab): "${c.text}"`);
+  if (c.hit) { log("trust", "Contact details removed from the customer's message before it reached the pro."); typing(400, () => bot(`For your safety, numbers and links aren't passed on. Keep chatting here and ${esc(first(S.pro.name))} sees it straight away.`)); return; }
+  if (!S.chatIntro) { S.chatIntro = true; log("trust", "Private chat opened. The pro sees a first name and the job, never the customer's number."); typing(400, () => bot(`✓ Sent to ${esc(first(S.pro.name))}. He'll reply right here. Neither of you sees the other's number.`)); }
+}
+function proSays(text) {
+  const c = scrub(text); if (!c.text.trim()) return;
+  S.thread.push({ from: "pro", text: c.text, at: clock() });
+  log("app", `${S.pro.name} → customer: "${c.text}"`);
+  log("wa", `Relayed to the customer's WhatsApp from the Basa seBasa number${S.family ? ` (and to ${S.family.name})` : ""}.`);
+  if (c.hit) { S.thread.push({ from: "sys", text: "Contact details were removed. Keep all contact inside Basa seBasa: it protects you if anything goes wrong.", at: clock() }); log("trust", `Contact details removed from ${S.pro.name}'s message. Repeated attempts lower the Trust Score.`); }
+  bot(`<span class="from">${esc(S.pro.name)} · your Basa pro</span>${esc(c.text)}`);
+  render();
+}
 function proCard() {
   const p = S.pro, initials = p.name.split(" ").map((x) => x[0]).join(""), since = 2026 - Math.min(3, Math.floor(p.jobs / 45));
   return `<div class="procard"><span class="face">${esc(initials)}</span><b>${esc(p.name)} · ${esc(svc().name)}</b><small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · 0 complaints · on Basa seBasa since ${since}</small></div><div class="checks"><span>✓ ID</span><span>✓ Trade certificate</span><span>✓ Police clearance</span><span>✓ Met in person</span><span>✓ Safety test passed</span></div>`;
@@ -459,7 +523,7 @@ function paid(which) {
     log("app", `Told ${S.pro.name}: customer paid ${usd(amount)}.`);
     bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. Thank you.<br><br>Here's your receipt:<br><button type="button" class="doc" data-act="receipt"><span class="pdf">PDF</span><span><b>Basa-seBasa-receipt-${esc(S.job)}.pdf</b><br><small>1 page · tap to download</small></span></button>`);
     bot(`How did ${esc(first(S.pro.name))} do? Your rating keeps every pro honest.`, { buttons: [5, 4, 3, 2, 1].map((n) => ({ label: `${"★".repeat(n)}  ${["", "Poor", "Below par", "OK", "Good", "Excellent"][n]}`, act: "rate:" + n })) });
-    S.t = { stage: "paid" }; S.step = "rate";
+    S.t = { stage: "paid" }; S.step = "rate"; S.thread.push({ from: "sys", text: "Job paid. This chat is now closed and kept on the job record.", at: clock() });
   }
 }
 
@@ -517,6 +581,11 @@ function techAct(act) {
   }
 }
 
+// auto-play: the pro answers chat messages too
+function autoReply(t) {
+  const reply = /where|eta|how long|late|coming/i.test(t) ? `About ${Math.max(2, Math.round(S.pro.eta / 2))} minutes away. I'm passing the shops now.` : /gate|house|opposite|next to|turn|road|street/i.test(t) ? "Thanks, got it. I'll look for that." : "Noted, thank you.";
+  setTimeout(() => { if (chatOpen()) proSays(reply); }, 2200);
+}
 // ---------- auto-play the technician ----------
 let autoKey = "";
 function auto() {
@@ -574,6 +643,8 @@ async function downloadReceipt() {
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.show) { S.show = b.dataset.show; render(); window.scrollTo(0, 0); return; }
+  if (b.dataset.ptab) { S.proTab = b.dataset.ptab; if (S.proTab === "chat") S.proUnread = 0; render(); return; }
+  if (b.dataset.pquick) { proSays(b.dataset.pquick); return; }
   if (b.dataset.chip) { if (b.dataset.chip.startsWith("🎤")) voiceNote(); else customerSays(b.dataset.chip); return; }
   if (b.dataset.chat) {
     const [i, k] = b.dataset.chat.split(":").map(Number), m = S.chat[i], opt = m.buttons[k]; m.used = true; const act = opt.act;
@@ -612,6 +683,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("submit", (e) => {
   e.preventDefault();
+  if (e.target.id === "pcompose") { const v = $("#pmsg").value; $("#pmsg").value = ""; proSays(v); return; }
   if (e.target.id === "composer") { const v = $("#typed").value; $("#typed").value = ""; customerSays(v); }
   if (e.target.id === "ussd") { const pin = $("#pin").value; if (!/^\d{4}$/.test(pin)) { const er = $("#pin-err"); er.textContent = "Enter a 4-digit PIN."; er.hidden = false; return; } const w = S.pay.which; S.pay = null; render(); typing(1400, () => paid(w)); }
 });
