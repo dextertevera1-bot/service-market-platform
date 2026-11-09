@@ -124,6 +124,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tag.server { background: var(--warn-bg); color: var(--gold-deep); }
 .tag.app { background: #14120D; color: #F0AE00; }
 .tag.pay { background: #E3ECF8; color: #1E4E8C; }
+.tag.trust { background: var(--good-bg); color: var(--good); }
+.procard { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.procard .face { width: 52px; height: 52px; border-radius: 50%; background: #2F5D50; color: #F5F1E6; display: grid; place-items: center; font: 800 20px/1 var(--display); grid-row: span 2; border: 3px solid #F0AE00; }
+.procard b { font-size: 15.5px; }
+.procard small { color: var(--chat-meta); font-size: 12.5px; }
+.checks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.checks span { font-size: 11.5px; font-weight: 700; color: var(--good); background: var(--good-bg); border-radius: 999px; padding: 2px 7px; }
+.voice { display: flex; align-items: center; gap: 8px; min-width: 170px; }
+.voice i { flex: 1; height: 16px; background: repeating-linear-gradient(90deg, var(--chat-accent) 0 2px, transparent 2px 5px); opacity: .55; border-radius: 2px; }
+.guarantee { border-left: 3px solid var(--good); padding-left: 8px; margin-top: 6px; }
+.sla { display: inline-block; font: 700 12px/1 var(--mono); color: var(--good); background: var(--good-bg); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
 .explain { background: var(--sunk); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
 
 /* technician app */
@@ -186,7 +197,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 </style>
 
 <header class="top"><div class="top-in">
-  <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>WhatsApp to Pro app: live link demo</small></span></div>
+  <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>WhatsApp to Pro app: live demo, trust built into every step</small></span></div>
   <label class="auto"><input type="checkbox" id="auto"> Auto-play the technician</label>
   <button class="reset" type="button" data-act="reset">Start again</button>
   <div class="switch" role="group" aria-label="Choose a view"><button type="button" data-show="customer">Customer<span class="ping" id="ping-customer" hidden></span></button><button type="button" data-show="server">Server</button><button type="button" data-show="tech">Technician<span class="ping" id="ping-tech" hidden></span></button></div>
@@ -225,11 +236,13 @@ const PROS = {
   auto: [["Tafadzwa B.", 95, 4.8, 156, "Msasa"], ["Brian Z.", 82, 4.7, 48, "Waterfalls"], ["Gift N.", 71, 4.5, 16, "Budiriro"]],
   solar: [["Takudzwa S.", 91, 4.9, 71, "Mount Pleasant"], ["Ropa C.", 79, 4.6, 26, "Borrowdale"], ["Peter H.", 70, 4.5, 11, "Greendale"]],
 };
+const PRICE_GUIDE = { hvac: [45, 85], elec: [35, 70], plumb: [40, 90], appl: [35, 65], auto: [45, 95], solar: [30, 120] };
+const OUTSIDE = ["Ruwa", "Norton", "Chitungwiza"];
 const SUBURBS = ["Avondale", "Borrowdale", "Eastlea", "Glen View", "Greendale", "Hatfield", "Mabelreign", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
 const POS = { Avondale: [-1, 3], Belvedere: [-2.5, .5], Borrowdale: [5, 8], Budiriro: [-9, -6], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Mabelreign: [-5, 4.5], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
 const kmBetween = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.max(1.5, Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2); };
 
-const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
+const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
 let S = fresh();
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -253,24 +266,29 @@ function money() {
 // ---------- chat + log ----------
 function bot(html, extra = {}) { S.chat.push({ from: "in", html, at: clock(), ...extra }); }
 function me(text, extra = {}) { S.chat.push({ from: "out", html: esc(text), at: clock(), ...extra }); }
-function log(who, text) { S.log.unshift({ who, text, at: clock() }); }
+function log(who, text) { S.log.unshift({ who, text: String(text).replace(/([A-Z])\.\./g, "$1."), at: clock() }); }
 function typing(ms, fn) { S.typing = true; render(); setTimeout(() => { S.typing = false; fn(); render(); }, ms); }
 
 // ---------- what to do next ----------
 function next() {
   const t = S.t.stage, st = S.step;
   if (st === "start") return ["customer", "Customer: say hi to Basa seBasa on WhatsApp."];
-  if (["service", "describe", "photo", "location", "confirm", "choose"].includes(st)) return ["customer", "Customer: answer the bot to book a pro."];
+  if (st === "who") return ["customer", "Customer: booking for your own home, or for family in Harare while you're abroad?"];
+  if (st === "family") return ["customer", "Customer: tell us who's at home in Harare."];
+  if (st === "describe") return ["customer", "Customer: describe the problem, or send a voice note."];
+  if (["service", "photo", "location", "confirm", "choose", "voicecheck"].includes(st)) return ["customer", "Customer: answer the bot to book a pro."];
   if (t === "offer") return ["tech", `Technician: ${first(S.pro.name)} has 60 seconds to accept the job.`];
   if (st === "pay1" && !S.pay) return ["customer", "Customer: pay the call-out with EcoCash."];
   if (S.pay) return ["customer", "Customer: enter any 4-digit PIN on the EcoCash prompt."];
   if (t === "ready") return ["tech", "Technician: tap \"I'm on my way\"."];
   if (t === "travelling") return ["tech", "Technician: travelling. Customer can tap the tracking link. Tap \"I've arrived\" when ready."];
+  if (st === "photocheck") return ["customer", "Customer: check the photo is the person at your gate."];
   if (t === "verify") return ["tech", `Technician: enter the customer's Basa Code (${S.code}, from the chat).`];
   if (t === "quote") return ["tech", "Technician: send the quote."];
   if (st === "quote") return ["customer", "Customer: approve the quote, or choose Later."];
   if (t === "working") return ["tech", "Technician: tick the checks and complete the job."];
-  if (st === "pay2" && !S.pay) return ["customer", "Customer: check the report and pay with EcoCash."];
+  if (st === "pay2" && !S.pay) return ["customer", "Customer: check the work. Pay if you're happy, or tap \"Something's not right\"."];
+  if (st === "issue") return ["", "Payment on hold: the team is sorting it out before anyone is paid. Start again to try the happy path."];
   if (st === "rate") return ["customer", "Customer: download the receipt and rate the pro."];
   if (st === "done") return ["", "Done. Start again to try another service, or choose Later on the quote."];
   if (st === "deferred") return ["", "Repair saved for later. Start again to try the full job."];
@@ -294,7 +312,7 @@ function renderChat() {
     return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
   }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
   box.scrollTop = box.scrollHeight;
-  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? [svc().hint] : S.step === "onway" ? ["Where are you?", "HELP"] : ["service", "start", "describe"].includes(S.step) ? [] : ["HELP"];
+  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : S.step === "onway" ? ["Where are you?", `Message ${first(S.pro.name)}: it's the blue gate`, "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
   $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
     : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
@@ -302,32 +320,32 @@ function renderChat() {
   if (S.track) startMap("cmap");
 }
 function renderLog() {
-  const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "Paynow" };
-  $("#log").innerHTML = (S.log.length ? "" : `<div class="explain"><b>This is the "kitchen".</b> Every WhatsApp message the customer sends arrives here, the server decides what happens next, and it talks to the technician's Pro app and to Paynow for EcoCash. Newest events appear at the top.</div>`) +
+  const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "Paynow", trust: "Trust" };
+  $("#log").innerHTML = (S.log.length ? "" : `<div class="explain"><b>This is the "kitchen".</b> Every WhatsApp message the customer sends arrives here, the server decides what happens next, and it talks to the technician's Pro app and to Paynow for EcoCash. Green <b>Trust</b> rows are the checks that make Basa seBasa different. Newest events appear at the top.</div>`) +
     S.log.map((l) => `<div class="log-row"><span class="mono muted">${l.at}</span><span class="tag ${l.who}">${tagName[l.who]}</span><span>${esc(l.text)}</span></div>`).join("");
 }
 function renderPro() {
   const p = S.pro || { name: "Tendai M.", trust: 94, home: "Avondale" }, t = S.t;
-  $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · Verified</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : t.stage === "paid" || t.stage === "deferred" ? "Online · job finished" : "On a job · " + esc(S.job)}</div>`;
+  $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · ✓ Checked in person</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : t.stage === "paid" || t.stage === "deferred" ? "Online · job finished" : "On a job · " + esc(S.job)}</div>`;
   $("#pro").innerHTML = proView();
   if (t.stage === "travelling") startMap("tmap");
 }
 function proView() {
   const t = S.t, m = money(), f = S.chat.length ? "Customer" : "", s = svc();
   const head = (title, sub, extra = "") => `<div class="card dark"><span class="mono muted">${esc(S.job)} · ${esc(s?.name || "")} repair</span><h2 style="color:#F5F1E6">${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}</div>`;
-  const cust = `<div class="card"><span class="eyebrow">Customer</span><b>Mrs C. Ndlovu · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km</span><p class="small">${esc(S.desc)}</p></div>`;
+  const cust = `<div class="card"><span class="eyebrow">Customer</span><b>Mrs C. Ndlovu · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km · number hidden, message through Basa</span>${S.family ? `<span class="muted small">Booked from abroad by family. ${esc(S.family.name)} will open the gate.</span>` : ""}<p class="small">${esc(S.desc)}</p></div>`;
   switch (t.stage) {
     case "idle": return `<div class="card" style="text-align:center;justify-items:center;padding:30px 16px"><div class="spin" style="width:34px;height:34px"></div><h3>Waiting for jobs</h3><p class="muted small">When a customer books on WhatsApp, the job appears here instantly.</p></div>`;
-    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="muted small">Repair · ${esc(S.suburb)}</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
+    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="muted small">Repair · ${esc(S.suburb)} · customer verified, paying through Basa</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
     case "await_callout": return head("Waiting for call-out", `The customer is paying ${usd(m.pay1)} on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span>We'll tell you the moment it's paid.</div>`) + cust;
     case "ready": return head("Call-out paid", "You're cleared to travel. The customer sees you on a live map.") + `<button class="btn gold" type="button" data-act="t-trip">I'm on my way</button>` + cust;
     case "travelling": return head("On the way", "", mapSvg("tmap")) + `<button class="btn gold" type="button" data-act="t-arrive">I've arrived</button>` + cust;
-    case "verify": return head("Check the Basa Code", "Ask the customer for their 4-digit Basa Code.") + `<div class="card"><div class="field"><label for="tcode">Basa Code</label><input id="tcode" class="codein" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: it's in the customer's chat (${esc(S.code)}).</p><p class="err" id="tcode-err" hidden></p><button class="btn gold" type="button" data-act="t-verify">Confirm arrival</button></div>`;
+    case "verify": return head("Check the Basa Code", "The customer has just been sent your photo. Wear your Basa seBasa ID card, then ask for their 4-digit Basa Code.") + `<div class="card"><div class="field"><label for="tcode">Basa Code</label><input id="tcode" class="codein" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: it's in the customer's chat (${esc(S.code)}).</p><p class="err" id="tcode-err" hidden></p><button class="btn gold" type="button" data-act="t-verify">Confirm arrival</button></div>`;
     case "quote": return head("Arrival confirmed", "Diagnose, then send the full quote. Never start before it's approved.") + `<div class="card"><div class="field"><label for="qd">What's wrong?</label><textarea id="qd">${esc(s.diag)}</textarea></div><div class="two"><div class="field"><label for="ql">Labour ($)</label><input id="ql" type="number" min="1" value="${s.labour}"></div><div class="field"><label for="qp">Parts ($)</label><input id="qp" type="number" min="0" value="${s.parts}"></div></div><p class="muted small">Warranty: ${P.warrantyDays} days.</p><p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-act="t-quote">Send quote to customer</button></div>`;
     case "quote_sent": return head("Quote sent", "Waiting for the customer to approve on WhatsApp.", `<div class="wait"><span class="spin"></span>They see the diagnosis and total.</div>`) + `<div class="card">${splitTable(m)}</div>`;
     case "working": return head("Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">Job complete</button></div>`;
-    case "await_payment": return head("Waiting for payment", "The customer has your service report and is paying on EcoCash.", `<div class="wait"><span class="spin"></span>Never accept cash.</div>`) + `<div class="card">${splitTable(m)}</div>`;
-    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">Sent to your EcoCash within ${P.payoutHours} hours.</p><button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
+    case "await_payment": return head(S.issue ? "Customer isn't happy yet" : "Customer is checking the work", S.issue ? "Stay on site and put it right. Our team has joined the chat. You're paid once the customer confirms." : "You're paid once the customer confirms the work and pays Basa seBasa.", `<div class="wait"><span class="spin"></span>Never accept cash, even if offered.</div>`) + `<div class="card">${splitTable(m)}</div>`;
+    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
     case "deferred": return head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first chance at the repair for 30 days.") + `<div class="card"><table class="split"><tr class="you"><td>You earned</td><td>${usd(m.calloutShare)}</td></tr></table></div>`;
     case "declined": return `<div class="card" style="text-align:center;padding:24px 16px"><h3>Job declined</h3><p class="muted small">It went to the next pro straight away.</p></div>`;
   }
@@ -351,6 +369,7 @@ function customerSays(text) {
   me(text); log("wa", `Message from customer +263 77 •••• 120: "${text}"`);
   if (S.step === "start") return typing(700, greet);
   if (S.step === "describe") { S.desc = text.trim(); return typing(700, askPhoto); }
+  if (S.step === "family") { S.family = { name: (text.replace(/\+?\d[\d\s-]{6,}\d/, "").replace(/[,:-]+\s*$/, "").trim() || "your family").slice(0, 40) }; log("server", `Booking for family: updates also go to ${S.family.name} at the house.`); return typing(600, () => { bot(`Thanks. We'll send ${esc(S.family.name)} the pro's photo and Basa Code too, so they know who to let in. You'll get every update and the receipt here.<br><br>What do they need help with?`, { list: true, buttons: SERVICES.map((s) => ({ html: `${esc(s.name)}<small>Repairs, installs and servicing</small>`, act: "svc:" + s.id })) }); S.step = "service"; }); }
   const t = text.trim(), pro = S.pro?.name ? first(S.pro.name) : "your pro";
   if (/^(help|agent|human|person|operator|complain|complaint|problem|emergency)\b|talk to (a|someone)|speak to/i.test(t)) {
     S.human = true; log("server", `Customer asked for a person. Chat flagged on the ops desk${S.job ? " for " + S.job : ""}.`);
@@ -360,15 +379,27 @@ function customerSays(text) {
   const lastIn = S.chat.map((m) => m.from).lastIndexOf("in"), live = lastIn >= 0 && S.chat[lastIn].buttons && !S.chat[lastIn].used;
   if (S.step === "onway" && /where|eta|how long|late|coming|arriv/i.test(t)) { log("server", "Answered an ETA question automatically."); return typing(500, () => bot(`${esc(pro)} is on the way, about <b>${S.pro.eta} min</b> out. Tap <b>Track live</b> above to see them on the map. When they arrive, give them your Basa Code <b>${esc(S.code)}</b> at the door.`)); }
   if (/code/i.test(t) && S.code && ["onway", "wait"].includes(S.step)) return typing(400, () => bot(`Your Basa Code is <b>${esc(S.code)}</b>. Only give it to ${esc(pro)} at your door, never over the phone.`));
+  if (S.pro && new RegExp("^message " + first(S.pro.name), "i").test(t)) { log("trust", `Masked relay: the customer's message was passed to ${S.pro.name}. Neither side sees the other's number.`); log("app", `Message for ${S.pro.name}: "${t}"`); return typing(500, () => bot(`Sent to ${esc(first(S.pro.name))}. Keep chatting here: your number stays private, and every message is kept on the job record in case you need us.`)); }
+  if (/number|phone|call (him|her|me)/i.test(t) && S.pro) return typing(500, () => bot(`For your safety we don't share numbers. Message ${esc(first(S.pro.name))} here and we pass it on straight away, or type <b>HELP</b> to reach our team.`));
   if (/cash/i.test(t)) return typing(500, () => bot("Please don't pay in cash. All payments go to Basa seBasa on EcoCash, so your money is protected and covered by our warranty. If a pro asks for cash, type HELP."));
   if (live) return typing(500, () => bot("Please tap one of the options above so I can help you faster. Type <b>HELP</b> any time to talk to a person."));
   if (["wait", "onway", "work"].includes(S.step)) { log("app", `Customer message forwarded to ${S.pro?.name || "the pro"}: "${t}"`); return typing(500, () => bot(`Got it. I've passed your message to ${esc(pro)}. Type <b>HELP</b> if you need the Basa seBasa team.`)); }
   if (S.step === "done") return typing(600, greet);
   typing(500, () => bot("Thanks for your message. Type <b>HELP</b> to talk to a person on the Basa seBasa team."));
 }
+function voiceNote() {
+  S.chat.push({ from: "out", at: clock(), html: `<span class="voice">▶ <i></i> 0:07</span>` });
+  log("wa", "Voice note received (7 seconds).");
+  log("server", `Voice note transcribed: "${svc().hint}".`);
+  typing(800, () => { bot(`🎤 I heard: <i>"${esc(svc().hint)}, it started yesterday."</i><br>Is that right?`, { buttons: [{ label: "Yes, that's right", act: "voice:ok" }, { label: "No, I'll type it", act: "voice:no" }] }); S.step = "voicecheck"; });
+}
 function greet() {
-  log("server", "New conversation. Sent welcome and the service list.");
-  bot("Hi, welcome to <b>Basa seBasa</b>. Every pro is ID-checked, trade-verified and met in person by our team. Pay safely on EcoCash, never in cash.<br><br>What do you need help with?", { list: true, buttons: SERVICES.map((s) => ({ html: `${esc(s.name)}<small>Repairs, installs and servicing</small>`, act: "svc:" + s.id })) });
+  log("server", "New conversation. Sent welcome.");
+  bot(`Hi, welcome to <b>Basa seBasa</b>.<div class="guarantee"><b>Our promise</b><br>✓ Only pros we've met in person and tested. No unverified listings.<br>✓ A confirmed pro in minutes, not "pending".<br>✓ Pay Basa seBasa after the work, never the pro, never cash.<br>✓ ${P.warrantyDays}-day warranty: if it fails, we send someone back free.</div><br>Who is the job for?`, { buttons: [{ label: "My home", act: "who:me" }, { label: "Family in Harare (I'm abroad)", act: "who:family" }] });
+  S.step = "who";
+}
+function askService() {
+  bot("What do you need help with?", { list: true, buttons: SERVICES.map((s) => ({ html: `${esc(s.name)}<small>Repairs, installs and servicing</small>`, act: "svc:" + s.id })) });
   S.step = "service";
 }
 function askPhoto() {
@@ -383,14 +414,16 @@ function askLocation() {
 function confirmBooking() {
   const s = svc();
   log("server", `Location received: ${S.suburb}. Ready to match.`);
-  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br>Shall we find you a pro?`, { buttons: [{ label: "Find me a pro", act: "find" }, { label: "Cancel", act: "cancel" }] });
+  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br><b>Price guide:</b> similar ${esc(s.name.toLowerCase())} repairs usually come to <b>$${PRICE_GUIDE[S.svc][0]}–$${PRICE_GUIDE[S.svc][1]}</b> in total, including the call-out and parts. Your exact quote comes first, and nothing starts until you approve it.<br><br>Shall we find you a pro?`, { buttons: [{ label: "Find me a pro", act: "find" }, { label: "Cancel", act: "cancel" }] });
   S.step = "confirm";
 }
 function showMatches() {
   const list = PROS[S.svc].map(([name, trust, rating, jobs, home]) => { const km = kmBetween(home, S.suburb); return { name, trust, rating, jobs, home, km, eta: Math.round(8 + km * 2.4) }; }).sort((a, b) => a.km * 4 - b.km * 4 + (b.trust - a.trust) / 4);
   S.matches = list;
-  log("server", `Job ${S.job} created. Matched ${list.length} verified pros by distance and Trust Score.`);
-  bot("Here are the best verified pros near you. Tap one to choose.", { list: true, buttons: list.map((p, i) => ({ html: `${esc(p.name)}${i === 0 ? " · best match" : ""}<small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>`, act: "pro:" + i })) });
+  S.findAt = Date.now();
+  log("server", `Job ${S.job} created. Matched ${list.length} pros by distance and Trust Score.`);
+  log("trust", `Only pros with every check passed can be matched: ID, trade certificate, references, in-person practical test and safety must-pass. Unverified pros are never shown.`);
+  bot("These pros are near you. Every one has been met in person by our team, tested on a real job and passed our safety check. Tap one to choose.", { list: true, buttons: list.map((p, i) => ({ html: `${esc(p.name)}${i === 0 ? " · best match" : ""}<small>✓ Checked in person · Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>`, act: "pro:" + i })) });
   S.step = "choose";
 }
 function offerTo(i) {
@@ -403,8 +436,14 @@ function accepted() {
   log("app", `${S.pro.name} accepted ${S.job}.`);
   log("server", `Basa Code ${S.code} created for this job. Asked customer for the call-out.`);
   const m = money();
-  bot(`<b>${esc(S.pro.name)}</b> accepted your job.<br>Trust Score ${S.pro.trust} · ★${S.pro.rating} · ${S.pro.jobs} jobs · ID and trade verified.<br><br>Pay the <b>${usd(m.pay1)}</b> call-out to send ${esc(first(S.pro.name))} on the way.`, { buttons: [{ label: `Pay ${usd(m.pay1)} with EcoCash`, act: "pay1" }] });
+  const secs = Math.max(8, Math.round((Date.now() - (S.findAt || Date.now())) / 1000)), took = secs < 60 ? `${secs} seconds` : `${Math.floor(secs / 60)} min ${secs % 60} s`;
+  log("trust", `Confirmed in ${took}. Customer and pro will talk through Basa seBasa; neither sees the other's number.`);
+  bot(`<span class="sla">CONFIRMED IN ${took.toUpperCase()}</span>${proCard()}<br>Message ${esc(first(S.pro.name))} right here: your number stays private.<br><br>Pay the <b>${usd(m.pay1)}</b> call-out to send ${esc(first(S.pro.name))} on the way. The call-out covers the inspection, so you're never charged for a visit without a diagnosis.`, { buttons: [{ label: `Pay ${usd(m.pay1)} with EcoCash`, act: "pay1" }] });
   S.t = { stage: "await_callout" }; S.step = "pay1";
+}
+function proCard() {
+  const p = S.pro, initials = p.name.split(" ").map((x) => x[0]).join(""), since = 2026 - Math.min(3, Math.floor(p.jobs / 45));
+  return `<div class="procard"><span class="face">${esc(initials)}</span><b>${esc(p.name)} · ${esc(svc().name)}</b><small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · 0 complaints · on Basa seBasa since ${since}</small></div><div class="checks"><span>✓ ID</span><span>✓ Trade certificate</span><span>✓ Police clearance</span><span>✓ Met in person</span><span>✓ Safety test passed</span></div>`;
 }
 function paid(which) {
   const m = money(), amount = which === 1 ? m.pay1 : m.pay2, r = ref(); S.refs.push({ what: which === 1 ? "Call-out" : "Repair", amount, ref: r });
@@ -412,9 +451,11 @@ function paid(which) {
   if (which === 1) {
     log("app", `Told ${S.pro.name}: call-out paid, cleared to travel.`);
     bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. ${esc(first(S.pro.name))} is getting ready.`);
+    if (S.family) log("wa", `Same update sent to ${S.family.name} at the house.`);
     S.t = { stage: "ready" }; S.step = "wait";
   } else {
-    log("server", `Payout of ${usd(m.payout)} to ${S.pro.name} queued: due within ${P.payoutHours} hours. Receipt PDF created.`);
+    log("trust", `Customer confirmed the work before paying. Payout of ${usd(m.payout)} to ${S.pro.name} released: due within ${P.payoutHours} hours. Warranty starts today.`);
+    log("server", "Receipt PDF created.");
     log("app", `Told ${S.pro.name}: customer paid ${usd(amount)}.`);
     bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. Thank you.<br><br>Here's your receipt:<br><button type="button" class="doc" data-act="receipt"><span class="pdf">PDF</span><span><b>Basa-seBasa-receipt-${esc(S.job)}.pdf</b><br><small>1 page · tap to download</small></span></button>`);
     bot(`How did ${esc(first(S.pro.name))} do? Your rating keeps every pro honest.`, { buttons: [5, 4, 3, 2, 1].map((n) => ({ label: `${"★".repeat(n)}  ${["", "Poor", "Below par", "OK", "Good", "Excellent"][n]}`, act: "rate:" + n })) });
@@ -440,15 +481,20 @@ function techAct(act) {
       log("app", `${S.pro.name} is on the way. Live location every 10 seconds.`);
       bot(`<b>${esc(first(S.pro.name))} is on the way</b>, about ${S.pro.eta} minutes.<br><button type="button" class="link" data-act="track">Track live: basasebasa.co.zw/t/${esc(S.job)}</button>`);
       bot(`Your <b>Basa Code</b> for this job:<br><span class="code">${esc(S.code)}</span><br>Only give it to ${esc(first(S.pro.name))} at your door. It proves he's the pro we sent.`);
+      log("trust", `Basa Code ${S.code} sent to the customer only. The pro never sees it until the customer reads it out at the door.`);
+      if (S.family) log("wa", `Basa Code and ${S.pro.name}'s photo also sent to ${S.family.name} at the house.`);
       S.step = "onway"; render(); break;
     case "t-arrive":
-      S.t = { stage: "verify" }; log("app", `${S.pro.name} marked arrival. Waiting for the Basa Code.`);
-      bot(`${esc(first(S.pro.name))} is at your door. He'll ask for your Basa Code.`); render(); break;
+      S.t = { stage: "verify" }; log("app", `${S.pro.name} marked arrival. GPS matches the customer's pin.`);
+      log("trust", "Sent the customer the pro's photo to check before opening the gate.");
+      bot(`<b>${esc(first(S.pro.name))} is at your gate.</b> Before you open, check it's him:${proCard()}<br>He'll be wearing his Basa seBasa ID card.`, { buttons: [{ label: "Yes, it's him", act: "face:ok" }, { label: "It's someone else", act: "face:no" }] });
+      S.step = "photocheck"; render(); break;
     case "t-verify": {
       const c = ($("#tcode")?.value || "").trim();
       if (c !== S.code) { const e = $("#tcode-err"); e.textContent = c.length === 4 ? "That code doesn't match. Check you're at the right house." : "Enter the 4-digit code."; e.hidden = false; return; }
       S.t = { stage: "quote" }; S.track = false; log("server", "Basa Code matched. Arrival verified.");
-      bot(`${esc(first(S.pro.name))} confirmed your Basa Code. You can let him in. Ask to see his Basa seBasa ID if you like.`); render(); break;
+      log("trust", "Two checks passed at the door: the customer recognised the pro's photo, and he entered the right Basa Code.");
+      bot(`✓ ${esc(first(S.pro.name))} entered your Basa Code. You can let him in.<br>He'll diagnose the problem and send you a quote here. Nothing starts until you approve it.`); render(); break;
     }
     case "t-quote": {
       const d = ($("#qd")?.value || "").trim(), l = Number($("#ql")?.value), pt = Number($("#qp")?.value) || 0;
@@ -463,7 +509,8 @@ function techAct(act) {
       if (!ok) { const e = $("#w-err"); e.textContent = "Tick every check first."; e.hidden = false; return; }
       const mm = money(), wEnd = new Date(Date.now() + P.warrantyDays * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       S.t = { stage: "await_payment" }; log("app", `${S.pro.name} completed the job. Checks and photos attached.`); log("server", "Service report created and sent. Asked customer for the final payment.");
-      bot(`<b>Job done. Here's your service report</b><dl class="report"><dt>Pro</dt><dd>${esc(S.pro.name)} · Trust ${S.pro.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd><dt>Fault</dt><dd>${esc(S.quote.diag)}</dd><dt>Checks</dt><dd>${s.checks.length}/${s.checks.length} passed, photos attached</dd><dt>Warranty</dt><dd>Until ${wEnd}</dd></dl><br>Please check the work, then pay. We pay ${esc(first(S.pro.name))} after you do. Never pay in cash.`, { buttons: [{ label: `Pay ${usd(mm.pay2)} with EcoCash`, act: "pay2" }] });
+      bot(`<b>Job done. Here's your service report</b><dl class="report"><dt>Pro</dt><dd>${esc(S.pro.name)} · Trust ${S.pro.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd><dt>Fault</dt><dd>${esc(S.quote.diag)}</dd><dt>Checks</dt><dd>${s.checks.length}/${s.checks.length} passed, photos attached</dd><dt>Warranty</dt><dd>Until ${wEnd}</dd></dl><div class="guarantee"><b>Check the work before you pay.</b> ${esc(first(S.pro.name))} gets paid only after you confirm. If the same fault comes back within ${P.warrantyDays} days, we send a pro back free.</div>`, { buttons: [{ label: `All good: pay ${usd(mm.pay2)}`, act: "pay2" }, { label: "Something's not right", act: "issue" }] });
+      log("trust", `Payout to ${S.pro.name} on hold until the customer confirms the work.`);
       S.step = "pay2"; render(); break;
     }
     case "receipt": downloadReceipt(); break;
@@ -527,12 +574,23 @@ async function downloadReceipt() {
 document.addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.show) { S.show = b.dataset.show; render(); window.scrollTo(0, 0); return; }
-  if (b.dataset.chip) { customerSays(b.dataset.chip); return; }
+  if (b.dataset.chip) { if (b.dataset.chip.startsWith("🎤")) voiceNote(); else customerSays(b.dataset.chip); return; }
   if (b.dataset.chat) {
     const [i, k] = b.dataset.chat.split(":").map(Number), m = S.chat[i], opt = m.buttons[k]; m.used = true; const act = opt.act;
     if (act === "photo") { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.onchange = () => { const f = inp.files?.[0]; if (!f) { m.used = false; return; } const r = new FileReader(); r.onload = () => { S.photo = r.result; me("Photo", { html: `<img src="${r.result}" alt="Photo sent">Photo` }); log("wa", "Photo received from customer, attached to the job."); typing(600, askLocation); }; r.readAsDataURL(f); }; inp.click(); m.used = false; return; }
-    if (act === "location") { log("wa", "Customer tapped Share location."); bot("Which area are you in? (In the real chat, WhatsApp shares your exact pin.)", { list: true, buttons: SUBURBS.map((s2) => ({ html: esc(s2), act: "sub:" + s2 })) }); render(); return; }
+    if (act === "location") { log("wa", "Customer tapped Share location."); bot("Which area are you in? (In the real chat, WhatsApp shares your exact pin.)", { list: true, buttons: [...SUBURBS.map((s2) => ({ html: esc(s2), act: "sub:" + s2 })), { html: `Ruwa<small>Outside our launch area: try it</small>`, act: "out:Ruwa" }] }); render(); return; }
     me(opt.label || opt.html.replace(/<small>.*$/, "").replace(/<[^>]+>/g, ""));
+    if (act === "voice:ok") { S.desc = svc().hint + ", it started yesterday"; typing(500, askPhoto); return; }
+    if (act === "voice:no") { typing(400, () => { bot("No problem. Type a few words about the problem."); S.step = "describe"; }); return; }
+    if (act === "who:me") { log("wa", "Booking for the customer's own home."); typing(500, askService); return; }
+    if (act === "who:family") { log("wa", "Customer is booking from abroad for family in Harare."); typing(600, () => { bot("Lovely, we do this a lot. Who's at the house in Harare? Type their name and WhatsApp number, for example <i>Mai Ndlovu 0772 123 456</i>.<br><br>We'll send them the pro's photo and the Basa Code, and you'll get every update, the photos and the receipt here."); S.step = "family"; }); return; }
+    if (act.startsWith("out:")) { const place = act.slice(4); S.chat.pop(); me(`📍 ${place}`); log("server", `${place} is outside the launch area. Customer added to the waitlist; no empty promise made.`); typing(600, () => { bot(`We're not in <b>${esc(place)}</b> yet, so we won't send you an unchecked stranger. You're on our list, and we'll message you the day we open there.<br><br>Is the job somewhere else in Harare?`, { buttons: [{ label: "Choose another area", act: "location" }] }); S.step = "location"; }); return; }
+    if (act === "face:ok") { log("trust", "Customer confirmed the person at the gate matches the photo."); typing(400, () => bot(`Thanks. Read your Basa Code <b>${esc(S.code)}</b> out to ${esc(first(S.pro.name))} when he asks.`)); S.step = "onway"; return; }
+    if (act === "face:no") { log("trust", `ALERT: customer says the person at the gate isn't ${S.pro.name}. Job frozen, founder called, pro's live location checked.`); S.t = { stage: "verify" }; typing(500, () => { bot(`<b>Don't open the gate.</b> We've frozen this job and our team is calling you now. If you feel unsafe, call <b>995</b>.`, { buttons: [{ label: "Sorry, it is him", act: "face:ok" }] }); }); return; }
+    if (act === "issue") { S.issue = true; log("trust", `Customer reported a problem before paying. Payout to ${S.pro.name} stays on hold; founder alerted with the photos and checklist.`); log("app", `Told ${S.pro.name}: the customer isn't happy yet, please stay on site.`); typing(600, () => { bot(`Thanks for telling us before paying. Nobody gets paid until this is sorted. What's wrong?`, { buttons: [{ label: "It still isn't working", act: "issue:fix" }, { label: "Price is not what was quoted", act: "issue:price" }] }); S.step = "issue"; }); return; }
+    if (act.startsWith("issue:")) { log("server", `Issue logged: ${act === "issue:fix" ? "fault not fixed" : "price dispute"}. ${S.pro.name} asked to resolve on site; team joins the chat.`); typing(600, () => bot(act === "issue:fix" ? `${esc(first(S.pro.name))} will look again now, at no extra charge. You'll only be asked to pay once it's working. If he can't fix it, we'll send another pro.` : `You only ever pay the approved quote. Our team has the quote on file and is joining this chat now.`));
+      setTimeout(() => { log("server", act === "issue:fix" ? `${S.pro.name} re-tested the unit and sent new photos.` : "Team confirmed the total matches the approved quote."); S.issue = false; bot(act === "issue:fix" ? `${esc(first(S.pro.name))} says it's working now and has sent new photos. Please check it yourself.` : "Sorted: the total is exactly the quote you approved.", { buttons: [{ label: `All good: pay ${usd(money().pay2)}`, act: "pay2" }, { label: "Still not right", act: "issue" }] }); S.step = "pay2"; render(); }, 4000);
+      return; }
     if (act.startsWith("svc:")) { S.svc = act.slice(4); log("wa", `Customer chose: ${svc().name}.`); typing(600, () => { bot(`Got it: <b>${esc(svc().name)}</b>. Please describe the problem in a few words.`); S.step = "describe"; }); return; }
     if (act === "skip-photo") { log("wa", "Customer skipped the photo."); typing(500, askLocation); return; }
     if (act.startsWith("sub:")) { S.suburb = act.slice(4); S.chat.pop(); S.chat.push({ from: "out", at: clock(), html: `<div class="loc"><div class="minimap"><span class="pin"></span></div><b>Location</b><span>${esc(S.suburb)}, Harare</span></div>` }); log("wa", `Location pin received from customer (${S.suburb}).`); typing(700, confirmBooking); return; }
