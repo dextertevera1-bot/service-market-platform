@@ -134,6 +134,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .voice { display: flex; align-items: center; gap: 8px; min-width: 170px; }
 .voice i { flex: 1; height: 16px; background: repeating-linear-gradient(90deg, var(--chat-accent) 0 2px, transparent 2px 5px); opacity: .55; border-radius: 2px; }
 .guarantee { border-left: 3px solid var(--good); padding-left: 8px; margin-top: 6px; }
+.plan { margin: 4px 0; padding-left: 18px; }
+.plan li { margin: 1px 0; }
+.daybar { display: flex; gap: 4px; }
+.daybar span { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.daybar span.done { background: var(--good); }
+.daybar span.now { background: #F0AE00; }
 .sla { display: inline-block; font: 700 12px/1 var(--mono); color: var(--good); background: var(--good-bg); border-radius: 6px; padding: 3px 6px; margin-bottom: 4px; }
 .explain { background: var(--sunk); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
 
@@ -257,13 +263,15 @@ const PROS = {
   auto: [["Tafadzwa B.", 95, 4.8, 156, "Msasa"], ["Brian Z.", 82, 4.7, 48, "Waterfalls"], ["Gift N.", 71, 4.5, 16, "Budiriro"]],
   solar: [["Takudzwa S.", 91, 4.9, 71, "Mount Pleasant"], ["Ropa C.", 79, 4.6, 26, "Borrowdale"], ["Peter H.", 70, 4.5, 11, "Greendale"]],
 };
+const STAGE_RULE = { days: 3, labour: 150 }; // labour paid in stages from 3 days, or labour over $150 (proposed)
+const DAY_PLAN = { 1: "Diagnose fully, strip out, buy the parts", 2: "Fit the new parts and test", 3: "Final test, clean-up and handover" };
 const PRICE_GUIDE = { hvac: [45, 85], elec: [35, 70], plumb: [40, 90], appl: [35, 65], auto: [45, 95], solar: [30, 120] };
 const OUTSIDE = ["Ruwa", "Norton", "Chitungwiza"];
 const SUBURBS = ["Avondale", "Borrowdale", "Eastlea", "Glen View", "Greendale", "Hatfield", "Mabelreign", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
 const POS = { Avondale: [-1, 3], Belvedere: [-2.5, .5], Borrowdale: [5, 8], Budiriro: [-9, -6], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Mabelreign: [-5, 4.5], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
 const kmBetween = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.max(1.5, Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2); };
 
-const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, thread: [], proTab: "job", proUnread: 0, chatIntro: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
+const fresh = () => ({ step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, multi: null, thread: [], proTab: "job", proUnread: 0, chatIntro: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
 let S = fresh();
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -281,7 +289,8 @@ function money() {
   const q = S.quote || { labour: s?.labour || 0, parts: s?.parts || 0 };
   const fee = r2(q.labour * P.commission / 100), payout = r2(P.callout - P.calloutPlatform + travel + q.labour - fee + q.parts), rate = P.rate / 100;
   const base1 = P.callout + travel, pay1 = r2(base1 * (1 + rate)), base2 = r2(q.labour + q.parts), charges2 = r2(base2 * rate + payout * rate), pay2 = r2(base2 + charges2);
-  return { travel, labour: q.labour, parts: q.parts, fee, payout, pay1, pay2, charges2, base2, calloutShare: P.callout - P.calloutPlatform + travel };
+  const partsPay = S.multi ? r2(q.parts * (1 + rate)) : 0, stagePay = S.multi && S.multi.staged ? r2(q.labour / 2 * (1 + rate)) : 0, finalPay = r2(pay2 - partsPay - stagePay);
+  return { travel, labour: q.labour, parts: q.parts, fee, payout, pay1, pay2, charges2, base2, partsPay, stagePay, finalPay, calloutShare: P.callout - P.calloutPlatform + travel };
 }
 
 // ---------- chat + log ----------
@@ -307,7 +316,10 @@ function next() {
   if (t === "verify") return ["tech", `Technician: enter the customer's Basa Code (${S.code}, from the chat).`];
   if (t === "quote") return ["tech", "Technician: send the quote."];
   if (st === "quote") return ["customer", "Customer: approve the quote, or choose Later."];
+  if (t === "working" && S.multi && S.multi.day < S.multi.days) return ["tech", `Technician: day ${S.multi.day} of ${S.multi.days}. ${S.multi.receipt ? "" : "Upload the parts receipt, then "}tick the site-safe checks and end the day.`];
   if (t === "working") return ["tech", "Technician: tick the checks and complete the job."];
+  if (st === "parts") return ["customer", "Customer: pay for the parts up front, so the pro can buy them."];
+  if (t === "overnight") return S.multi.staged && !S.multi.stagePaid ? ["customer", "Customer: check today's summary and pay for stage 1."] : ["tech", "Overnight. Technician: tap \"Start day " + (S.multi.day + 1) + "\" to jump to tomorrow morning."];
   if (st === "pay2" && !S.pay) return ["customer", "Customer: check the work. Pay if you're happy, or tap \"Something's not right\"."];
   if (st === "issue") return ["", "Payment on hold: the team is sorting it out before anyone is paid. Start again to try the happy path."];
   if (st === "rate") return ["customer", "Customer: download the receipt and rate the pro."];
@@ -333,7 +345,7 @@ function renderChat() {
     return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
   }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
   box.scrollTop = box.scrollHeight;
-  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : chatOpen() && ["onway", "wait", "photocheck"].includes(S.step) ? ["Where are you?", "It's the blue gate opposite the church", "Can I have his number?", "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
+  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : chatOpen() && ["ready", "travelling", "verify"].includes(S.t.stage) ? ["Where are you?", "It's the blue gate opposite the church", "Can I have his number?", "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
   $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
     : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
@@ -375,11 +387,13 @@ function proView() {
     case "ready": return head("Call-out paid", "You're cleared to travel. The customer sees you on a live map.") + `<button class="btn gold" type="button" data-act="t-trip">I'm on my way</button>` + cust;
     case "travelling": return head("On the way", "", mapSvg("tmap")) + `<button class="btn gold" type="button" data-act="t-arrive">I've arrived</button>` + cust;
     case "verify": return head("Check the Basa Code", "The customer has just been sent your photo. Wear your Basa seBasa ID card, then ask for their 4-digit Basa Code.") + `<div class="card"><div class="field"><label for="tcode">Basa Code</label><input id="tcode" class="codein" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: it's in the customer's chat (${esc(S.code)}).</p><p class="err" id="tcode-err" hidden></p><button class="btn gold" type="button" data-act="t-verify">Confirm arrival</button></div>`;
-    case "quote": return head("Arrival confirmed", "Diagnose, then send the full quote. Never start before it's approved.") + `<div class="card"><div class="field"><label for="qd">What's wrong?</label><textarea id="qd">${esc(s.diag)}</textarea></div><div class="two"><div class="field"><label for="ql">Labour ($)</label><input id="ql" type="number" min="1" value="${s.labour}"></div><div class="field"><label for="qp">Parts ($)</label><input id="qp" type="number" min="0" value="${s.parts}"></div></div><p class="muted small">Warranty: ${P.warrantyDays} days.</p><p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-act="t-quote">Send quote to customer</button></div>`;
+    case "quote": return head("Arrival confirmed", "Diagnose, then send the full quote. Never start before it's approved.") + `<div class="card"><div class="field"><label for="qd">What's wrong?</label><textarea id="qd">${esc(s.diag)}</textarea></div><div class="two"><div class="field"><label for="ql">Labour ($)</label><input id="ql" type="number" min="1" value="${s.labour}"></div><div class="field"><label for="qp">Parts ($)</label><input id="qp" type="number" min="0" value="${s.parts}"></div></div><div class="field"><label for="qdays">How long will it take?</label><select id="qdays" style="width:100%;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:9px 10px;font:inherit;color:inherit"><option value="1">Today (same day)</option><option value="2">2 days</option><option value="3">3 days</option></select></div><p class="muted small">Longer jobs: the customer pays for parts up front (released to you against the supplier receipt). From ${STAGE_RULE.days} days, or labour over $${STAGE_RULE.labour}, labour is paid in stages. Warranty: ${P.warrantyDays} days.</p><p class="err" id="q-err" hidden></p><button class="btn gold" type="button" data-act="t-quote">Send quote to customer</button></div>`;
     case "quote_sent": return head("Quote sent", "Waiting for the customer to approve on WhatsApp.", `<div class="wait"><span class="spin"></span>They see the diagnosis and total.</div>`) + `<div class="card">${splitTable(m)}</div>`;
-    case "working": return head("Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">Job complete</button></div>`;
+    case "working": if (S.multi && S.multi.day < S.multi.days) return head(`Day ${S.multi.day} of ${S.multi.days}`, esc(DAY_PLAN[S.multi.day]), `<div class="daybar">${Array.from({ length: S.multi.days }, (_, i) => `<span class="${i < S.multi.day - 1 ? "done" : i === S.multi.day - 1 ? "now" : ""}"></span>`).join("")}</div>`) + `<div class="card"><h3>Parts</h3>${S.multi.receipt ? `<p class="small" style="color:var(--good);font-weight:700">Receipt checked. ${usd(m.parts)} sent to your EcoCash.</p>` : `<p class="muted small">The customer has paid ${usd(m.parts)} for parts. Upload the supplier's receipt and it's released to you.</p><button class="btn quiet" type="button" data-act="t-partsreceipt">📷 Upload supplier receipt</button>`}</div><div class="card"><h3>Before you leave today</h3><label class="tick"><input type="checkbox" id="sf1"> Power and water restored</label><label class="tick"><input type="checkbox" id="sf2"> No exposed wires, open pipes or trenches</label><label class="tick"><input type="checkbox" id="sf3"> Progress photos taken</label><label class="tick"><input type="checkbox" id="sf4"> Leaving tools here (customer agrees)</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-eod">End day ${S.multi.day}: send summary</button></div>`;
+      return head(S.multi ? `Day ${S.multi.day} of ${S.multi.days}: finish the job` : "Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">Job complete</button></div>`;
     case "await_payment": return head(S.issue ? "Customer isn't happy yet" : "Customer is checking the work", S.issue ? "Stay on site and put it right. Our team has joined the chat. You're paid once the customer confirms." : "You're paid once the customer confirms the work and pays Basa seBasa.", `<div class="wait"><span class="spin"></span>Never accept cash, even if offered.</div>`) + `<div class="card">${splitTable(m)}</div>`;
     case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
+    case "overnight": return head(`Day ${S.multi.day} done`, S.multi.staged && !S.multi.stagePaid ? "Waiting for the customer to check today's work and pay stage 1." : `Back tomorrow at 08:00 for day ${S.multi.day + 1}. The customer will get a new Basa Code in the morning.`, `<div class="daybar">${Array.from({ length: S.multi.days }, (_, i) => `<span class="${i < S.multi.day ? "done" : ""}"></span>`).join("")}</div>`) + (S.multi.staged ? `<div class="card"><table class="split"><tr><td>Parts (released)</td><td>${usd(m.parts)}</td></tr><tr><td>Stage 1 labour after 15% fee</td><td>${S.multi.stagePaid ? usd(m.labour / 2 * (1 - P.commission / 100)) : "on the way"}</td></tr></table></div>` : "") + `<button class="btn gold" type="button" data-act="t-nextday">Demo: skip to tomorrow, start day ${S.multi.day + 1}</button><p class="muted small">If you haven't checked in by 08:30, the team is alerted and the customer is told.</p>`;
     case "deferred": return head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first chance at the repair for 30 days.") + `<div class="card"><table class="split"><tr class="you"><td>You earned</td><td>${usd(m.calloutShare)}</td></tr></table></div>`;
     case "declined": return `<div class="card" style="text-align:center;padding:24px 16px"><h3>Job declined</h3><p class="muted small">It went to the next pro straight away.</p></div>`;
   }
@@ -510,7 +524,21 @@ function proCard() {
   return `<div class="procard"><span class="face">${esc(initials)}</span><b>${esc(p.name)} · ${esc(svc().name)}</b><small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · 0 complaints · on Basa seBasa since ${since}</small></div><div class="checks"><span>✓ ID</span><span>✓ Trade certificate</span><span>✓ Police clearance</span><span>✓ Met in person</span><span>✓ Safety test passed</span></div>`;
 }
 function paid(which) {
-  const m = money(), amount = which === 1 ? m.pay1 : m.pay2, r = ref(); S.refs.push({ what: which === 1 ? "Call-out" : "Repair", amount, ref: r });
+  const m = money(), amount = { 1: m.pay1, 2: m.finalPay, parts: m.partsPay, stage: m.stagePay }[which], r = ref(); S.refs.push({ what: { 1: "Call-out", 2: S.multi ? "Final payment" : "Repair", parts: "Parts (up front)", stage: "Stage 1 labour" }[which], amount, ref: r });
+  if (which === "parts") {
+    log("pay", `EcoCash payment confirmed: ${usd(amount)} for parts, reference ${r}.`);
+    log("trust", `Parts money held by Basa seBasa. Released to ${S.pro.name} only when the supplier's receipt is uploaded.`);
+    S.multi.partsPaid = true; S.t = { stage: "working", startedAt: Date.now() }; S.step = "work";
+    bot(`Parts payment received: <b>${usd(amount)}</b>, ref ${r}. ${esc(first(S.pro.name))} is starting day 1 of ${S.multi.days}.`);
+    return;
+  }
+  if (which === "stage") {
+    log("pay", `EcoCash payment confirmed: ${usd(amount)} for stage 1, reference ${r}.`);
+    log("trust", `Customer checked day 1 before paying. Stage 1 payout of ${usd(m.labour / 2 * (1 - P.commission / 100))} to ${S.pro.name} due within ${P.payoutHours} hours.`);
+    S.multi.stagePaid = true; S.step = "wait";
+    bot(`Stage 1 payment received: <b>${usd(amount)}</b>, ref ${r}. See you tomorrow.`);
+    return;
+  }
   log("pay", `EcoCash payment confirmed: ${usd(amount)} from 077 •••• 120, reference ${r}.`);
   if (which === 1) {
     log("app", `Told ${S.pro.name}: call-out paid, cleared to travel.`);
@@ -556,6 +584,7 @@ function techAct(act) {
     case "t-verify": {
       const c = ($("#tcode")?.value || "").trim();
       if (c !== S.code) { const e = $("#tcode-err"); e.textContent = c.length === 4 ? "That code doesn't match. Check you're at the right house." : "Enter the 4-digit code."; e.hidden = false; return; }
+      if (S.multi && S.multi.day > 1) { S.t = { stage: "working", startedAt: Date.now() }; S.track = false; S.step = "work"; log("trust", `Day ${S.multi.day}: photo checked and today's Basa Code entered. Work continues to the approved plan.`); bot(`✓ ${esc(first(S.pro.name))} entered today's Basa Code. Day ${S.multi.day} of ${S.multi.days}: ${esc(DAY_PLAN[S.multi.day === S.multi.days ? (S.multi.days === 2 ? 2 : 3) : S.multi.day])}.`); render(); break; }
       S.t = { stage: "quote" }; S.track = false; log("server", "Basa Code matched. Arrival verified.");
       log("trust", "Two checks passed at the door: the customer recognised the pro's photo, and he entered the right Basa Code.");
       bot(`✓ ${esc(first(S.pro.name))} entered your Basa Code. You can let him in.<br>He'll diagnose the problem and send you a quote here. Nothing starts until you approve it.`); render(); break;
@@ -563,7 +592,15 @@ function techAct(act) {
     case "t-quote": {
       const d = ($("#qd")?.value || "").trim(), l = Number($("#ql")?.value), pt = Number($("#qp")?.value) || 0;
       if (d.length < 5 || !(l > 0)) { const e = $("#q-err"); e.textContent = "Add the diagnosis and the labour price."; e.hidden = false; return; }
-      S.quote = { diag: d, labour: l, parts: pt }; const mm = money();
+      S.quote = { diag: d, labour: l, parts: pt };
+      const days = Number($("#qdays")?.value) || 1;
+      S.multi = days > 1 ? { days, day: 1, staged: days >= STAGE_RULE.days || l > STAGE_RULE.labour, partsPaid: false, receipt: false, stagePaid: false } : null;
+      const mm = money();
+      if (S.multi) {
+        S.t = { stage: "quote_sent" }; log("app", `Quote from ${S.pro.name}: ${days}-day job, labour ${usd(l)}, parts ${usd(pt)}.`); log("server", `Multi-day plan sent: parts up front${S.multi.staged ? ", labour in 2 stages" : ", labour at the end"}.`);
+        bot(`<b>Your quote</b> for ${esc(S.job)}: a <b>${days}-day job</b><br>What's wrong: ${esc(d)}<br><br><b>The plan</b><ol class="plan">${Array.from({ length: days }, (_, i) => `<li>Day ${i + 1}: ${esc(DAY_PLAN[i === days - 1 && days === 2 ? 2 : i + 1])}</li>`).join("")}</ol><b>How you pay</b> (labour ${usd(l)} + parts ${usd(pt)}, total <b>${usd(mm.pay2)}</b> incl. EcoCash charges)<br>• Parts now: <b>${usd(mm.partsPay)}</b>. We release it to ${esc(first(S.pro.name))} only against the supplier's receipt.<br>${S.multi.staged ? `• After day 1, once you've checked it: <b>${usd(mm.stagePay)}</b><br>` : ""}• When the job is finished and you're happy: <b>${usd(mm.finalPay)}</b><br><br>You get a new Basa Code each morning and a photo update each evening. Warranty: ${P.warrantyDays} days from the day it's finished.`, { buttons: [{ label: "Approve the plan", act: "approve" }, { label: "Later", act: "later" }] });
+        S.step = "quote"; render(); break;
+      }
       S.t = { stage: "quote_sent" }; log("app", `Quote from ${S.pro.name}: labour ${usd(l)}, parts ${usd(pt)}.`); log("server", `Sent the quote to the customer with Approve and Later buttons.`);
       bot(`<b>Your quote</b> for ${esc(S.job)}<br>What's wrong: ${esc(d)}<br><br>Labour: ${usd(l)}<br>Parts: ${usd(pt)}<br>EcoCash charges: ${usd(mm.charges2)}<br><b>Total after the work: ${usd(mm.pay2)}</b><br>Warranty: ${P.warrantyDays} days.<br><br>Nothing starts until you approve.`, { buttons: [{ label: "Approve and start", act: "approve" }, { label: "Later", act: "later" }] });
       S.step = "quote"; render(); break;
@@ -573,9 +610,31 @@ function techAct(act) {
       if (!ok) { const e = $("#w-err"); e.textContent = "Tick every check first."; e.hidden = false; return; }
       const mm = money(), wEnd = new Date(Date.now() + P.warrantyDays * 864e5).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
       S.t = { stage: "await_payment" }; log("app", `${S.pro.name} completed the job. Checks and photos attached.`); log("server", "Service report created and sent. Asked customer for the final payment.");
-      bot(`<b>Job done. Here's your service report</b><dl class="report"><dt>Pro</dt><dd>${esc(S.pro.name)} · Trust ${S.pro.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd><dt>Fault</dt><dd>${esc(S.quote.diag)}</dd><dt>Checks</dt><dd>${s.checks.length}/${s.checks.length} passed, photos attached</dd><dt>Warranty</dt><dd>Until ${wEnd}</dd></dl><div class="guarantee"><b>Check the work before you pay.</b> ${esc(first(S.pro.name))} gets paid only after you confirm. If the same fault comes back within ${P.warrantyDays} days, we send a pro back free.</div>`, { buttons: [{ label: `All good: pay ${usd(mm.pay2)}`, act: "pay2" }, { label: "Something's not right", act: "issue" }] });
+      bot(`<b>Job done. Here's your service report</b><dl class="report"><dt>Pro</dt><dd>${esc(S.pro.name)} · Trust ${S.pro.trust}</dd><dt>Arrival</dt><dd>Basa Code confirmed</dd><dt>Fault</dt><dd>${esc(S.quote.diag)}</dd>${S.multi ? `<dt>Days</dt><dd>${S.multi.days} days, a new Basa Code each morning, site left safe each night</dd>` : ""}<dt>Checks</dt><dd>${s.checks.length}/${s.checks.length} passed, photos attached</dd><dt>Warranty</dt><dd>Until ${wEnd}</dd></dl><div class="guarantee"><b>Check the work before you pay.</b> ${esc(first(S.pro.name))} gets paid only after you confirm. If the same fault comes back within ${P.warrantyDays} days, we send a pro back free.</div>`, { buttons: [{ label: `All good: pay ${usd(mm.finalPay)}`, act: "pay2" }, { label: "Something's not right", act: "issue" }] });
       log("trust", `Payout to ${S.pro.name} on hold until the customer confirms the work.`);
       S.step = "pay2"; render(); break;
+    }
+    case "t-partsreceipt":
+      S.multi.receipt = true; log("app", `${S.pro.name} uploaded the supplier's receipt for ${usd(m.parts)}.`); log("trust", `Receipt matches the quoted parts. ${usd(m.parts)} released to ${S.pro.name}'s EcoCash.`);
+      bot(`${esc(first(S.pro.name))} bought the parts. We've checked the supplier's receipt against your quote.`); render(); break;
+    case "t-eod": {
+      const ok = ["sf1", "sf2", "sf3"].every((id) => $("#" + id)?.checked);
+      if (!S.multi.receipt) { const e = $("#w-err"); e.textContent = "Upload the parts receipt first, so you're paid for the parts."; e.hidden = false; return; }
+      if (!ok) { const e = $("#w-err"); e.textContent = "Tick every site-safe check before you leave."; e.hidden = false; return; }
+      const tools = $("#sf4")?.checked, mm = money(), d = S.multi.day;
+      S.t = { stage: "overnight" }; log("app", `${S.pro.name} ended day ${d}: progress photos, site-safe checks${tools ? ", tools left on site with the customer's OK" : ""}.`);
+      log("trust", `Day ${d} check-out: power and water restored, nothing dangerous left open, progress photos on the job record.`);
+      bot(`<b>End of day ${d} of ${S.multi.days}</b><div class="daybar">${Array.from({ length: S.multi.days }, (_, i) => `<span class="${i < d ? "done" : ""}"></span>`).join("")}</div><dl class="report"><dt>Done today</dt><dd>${esc(DAY_PLAN[d])}</dd><dt>Photos</dt><dd>4 progress photos attached</dd><dt>Site</dt><dd>Power and water on, nothing left open</dd>${tools ? `<dt>Left here</dt><dd>Tool bag and pipe offcuts (${esc(first(S.pro.name))} collects tomorrow)</dd>` : ""}<dt>Tomorrow</dt><dd>${esc(first(S.pro.name))} arrives around 08:00. You'll get a new Basa Code in the morning.</dd></dl>${S.multi.staged ? `<div class="guarantee">Stage 1 is due: <b>${usd(mm.stagePay)}</b>. Check today's work first. ${esc(first(S.pro.name))} continues tomorrow once it's paid.</div>` : ""}`, { buttons: S.multi.staged ? [{ label: `Checked: pay ${usd(mm.stagePay)}`, act: "paystage" }, { label: "Something's not right", act: "issue" }] : [{ label: "OK, see you tomorrow", act: "eod:ok" }, { label: "Something's not right", act: "issue" }] });
+      if (S.family) log("wa", `Day summary also sent to ${S.family.name} at the house.`);
+      S.step = S.multi.staged ? "stage" : "wait"; render(); break;
+    }
+    case "t-nextday": {
+      if (S.multi.staged && !S.multi.stagePaid) { toast("Stage 1 isn't paid yet. The customer pays after checking today's work."); return; }
+      S.multi.day += 1; S.code = String(1000 + Math.floor(Math.random() * 9000));
+      log("server", `Next morning, 07:30. Day ${S.multi.day} of ${S.multi.days}.`);
+      log("trust", `New Basa Code ${S.code} for day ${S.multi.day}. Yesterday's code no longer works.`);
+      bot(`<b>Good morning. Day ${S.multi.day} of ${S.multi.days}</b><br>${esc(first(S.pro.name))} arrives around 08:00 to ${esc(DAY_PLAN[S.multi.day === S.multi.days ? (S.multi.days === 2 ? 2 : 3) : S.multi.day]).toLowerCase()}.<br><br>Today's <b>Basa Code</b>:<br><span class="code">${esc(S.code)}</span><br>Yesterday's code no longer works.`);
+      S.t = { stage: "travelling", tripAt: Date.now() }; S.step = "onway"; render(); break;
     }
     case "receipt": downloadReceipt(); break;
   }
@@ -592,9 +651,9 @@ function auto() {
   if (!$("#auto").checked) return;
   const st = S.t.stage, key = st + S.job + (S.pro?.name || "");
   if (key === autoKey) return;
-  const plan = { offer: ["t-accept", 2500], ready: ["t-trip", 2000], travelling: ["t-arrive", TRIP_MS + 300], verify: ["t-verify", 1800], quote: ["t-quote", 2500], working: ["t-complete", 4000] }[st];
+  const plan = { offer: ["t-accept", 2500], ready: ["t-trip", 2000], travelling: ["t-arrive", TRIP_MS + 300], verify: ["t-verify", 1800], quote: ["t-quote", 2500], working: [S.multi && S.multi.day < S.multi.days ? "t-eod" : "t-complete", 4000] }[st];
   if (!plan) return; autoKey = key;
-  setTimeout(() => { if (S.t.stage !== st) return; if (st === "verify") { const i = $("#tcode"); if (i) i.value = S.code; } if (st === "working") { svc().checks.forEach((_, i) => { const c = $("#ck" + i); if (c) c.checked = true; }); const p = $("#ckp"); if (p) p.checked = true; } techAct(plan[0]); }, plan[1]);
+  setTimeout(() => { if (S.t.stage !== st) return; if (st === "verify") { const i = $("#tcode"); if (i) i.value = S.code; } if (st === "working") { document.querySelectorAll("#pro input[type=checkbox]").forEach((c) => { if (c.id !== "sf4") c.checked = true; }); if (S.multi && !S.multi.receipt) techAct("t-partsreceipt"); } techAct(plan[0]); }, plan[1]);
 }
 
 // ---------- receipt PDF (same layout as the Pro app) ----------
@@ -651,6 +710,7 @@ document.addEventListener("click", (e) => {
     if (act === "photo") { const inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*"; inp.onchange = () => { const f = inp.files?.[0]; if (!f) { m.used = false; return; } const r = new FileReader(); r.onload = () => { S.photo = r.result; me("Photo", { html: `<img src="${r.result}" alt="Photo sent">Photo` }); log("wa", "Photo received from customer, attached to the job."); typing(600, askLocation); }; r.readAsDataURL(f); }; inp.click(); m.used = false; return; }
     if (act === "location") { log("wa", "Customer tapped Share location."); bot("Which area are you in? (In the real chat, WhatsApp shares your exact pin.)", { list: true, buttons: [...SUBURBS.map((s2) => ({ html: esc(s2), act: "sub:" + s2 })), { html: `Ruwa<small>Outside our launch area: try it</small>`, act: "out:Ruwa" }] }); render(); return; }
     me(opt.label || opt.html.replace(/<small>.*$/, "").replace(/<[^>]+>/g, ""));
+    if (act === "eod:ok") { log("wa", "Customer confirmed the end-of-day summary."); typing(400, () => bot("Thanks. Sleep well. We'll message you in the morning.")); S.step = "wait"; return; }
     if (act === "voice:ok") { S.desc = svc().hint + ", it started yesterday"; typing(500, askPhoto); return; }
     if (act === "voice:no") { typing(400, () => { bot("No problem. Type a few words about the problem."); S.step = "describe"; }); return; }
     if (act === "who:me") { log("wa", "Booking for the customer's own home."); typing(500, askService); return; }
@@ -660,7 +720,7 @@ document.addEventListener("click", (e) => {
     if (act === "face:no") { log("trust", `ALERT: customer says the person at the gate isn't ${S.pro.name}. Job frozen, founder called, pro's live location checked.`); S.t = { stage: "verify" }; typing(500, () => { bot(`<b>Don't open the gate.</b> We've frozen this job and our team is calling you now. If you feel unsafe, call <b>995</b>.`, { buttons: [{ label: "Sorry, it is him", act: "face:ok" }] }); }); return; }
     if (act === "issue") { S.issue = true; log("trust", `Customer reported a problem before paying. Payout to ${S.pro.name} stays on hold; founder alerted with the photos and checklist.`); log("app", `Told ${S.pro.name}: the customer isn't happy yet, please stay on site.`); typing(600, () => { bot(`Thanks for telling us before paying. Nobody gets paid until this is sorted. What's wrong?`, { buttons: [{ label: "It still isn't working", act: "issue:fix" }, { label: "Price is not what was quoted", act: "issue:price" }] }); S.step = "issue"; }); return; }
     if (act.startsWith("issue:")) { log("server", `Issue logged: ${act === "issue:fix" ? "fault not fixed" : "price dispute"}. ${S.pro.name} asked to resolve on site; team joins the chat.`); typing(600, () => bot(act === "issue:fix" ? `${esc(first(S.pro.name))} will look again now, at no extra charge. You'll only be asked to pay once it's working. If he can't fix it, we'll send another pro.` : `You only ever pay the approved quote. Our team has the quote on file and is joining this chat now.`));
-      setTimeout(() => { log("server", act === "issue:fix" ? `${S.pro.name} re-tested the unit and sent new photos.` : "Team confirmed the total matches the approved quote."); S.issue = false; bot(act === "issue:fix" ? `${esc(first(S.pro.name))} says it's working now and has sent new photos. Please check it yourself.` : "Sorted: the total is exactly the quote you approved.", { buttons: [{ label: `All good: pay ${usd(money().pay2)}`, act: "pay2" }, { label: "Still not right", act: "issue" }] }); S.step = "pay2"; render(); }, 4000);
+      setTimeout(() => { log("server", act === "issue:fix" ? `${S.pro.name} re-tested the unit and sent new photos.` : "Team confirmed the total matches the approved quote."); S.issue = false; bot(act === "issue:fix" ? `${esc(first(S.pro.name))} says it's working now and has sent new photos. Please check it yourself.` : "Sorted: the total is exactly the quote you approved.", { buttons: S.t.stage === "overnight" ? (S.multi.staged && !S.multi.stagePaid ? [{ label: `Checked: pay ${usd(money().stagePay)}`, act: "paystage" }, { label: "Still not right", act: "issue" }] : [{ label: "OK, see you tomorrow", act: "eod:ok" }, { label: "Still not right", act: "issue" }]) : [{ label: `All good: pay ${usd(money().finalPay)}`, act: "pay2" }, { label: "Still not right", act: "issue" }] }); S.step = S.t.stage === "overnight" ? "stage" : "pay2"; render(); }, 4000);
       return; }
     if (act.startsWith("svc:")) { S.svc = act.slice(4); log("wa", `Customer chose: ${svc().name}.`); typing(600, () => { bot(`Got it: <b>${esc(svc().name)}</b>. Please describe the problem in a few words.`); S.step = "describe"; }); return; }
     if (act === "skip-photo") { log("wa", "Customer skipped the photo."); typing(500, askLocation); return; }
@@ -668,7 +728,9 @@ document.addEventListener("click", (e) => {
     if (act === "find") { typing(1100, showMatches); return; }
     if (act === "cancel") { log("server", "Customer cancelled before booking."); typing(500, () => { bot("No problem. Message us anytime."); S.step = "done"; }); return; }
     if (act.startsWith("pro:")) { const i2 = Number(act.slice(4)); offerTo(i2); typing(500, () => bot(`Asking <b>${esc(S.pro.name)}</b> now. Verified pros have 60 seconds to accept.`)); toast("The job just appeared on the technician's phone."); return; }
-    if (act === "pay1" || act === "pay2") { S.pay = { which: act === "pay1" ? 1 : 2, amount: act === "pay1" ? money().pay1 : money().pay2 }; S.chat.pop(); log("pay", `Paynow: EcoCash payment request for ${usd(S.pay.amount)} sent to the customer's phone.`); render(); return; }
+    if (act === "payparts" || act === "paystage") { S.pay = { which: act === "payparts" ? "parts" : "stage", amount: act === "payparts" ? money().partsPay : money().stagePay }; S.chat.pop(); log("pay", `Paynow: EcoCash payment request for ${usd(S.pay.amount)} sent to the customer's phone.`); render(); return; }
+    if (act === "pay1" || act === "pay2") { S.pay = { which: act === "pay1" ? 1 : 2, amount: act === "pay1" ? money().pay1 : money().finalPay }; S.chat.pop(); log("pay", `Paynow: EcoCash payment request for ${usd(S.pay.amount)} sent to the customer's phone.`); render(); return; }
+    if (act === "approve" && S.multi) { log("wa", "Customer approved the multi-day plan."); typing(500, () => { bot(`Approved. To start, pay for the parts: <b>${usd(money().partsPay)}</b>. We hold it and release it to ${esc(first(S.pro.name))} only when he sends us the supplier's receipt.`, { buttons: [{ label: `Pay ${usd(money().partsPay)} for parts`, act: "payparts" }] }); S.step = "parts"; }); return; }
     if (act === "approve") { log("wa", "Customer approved the quote."); log("app", `Told ${S.pro.name}: quote approved, start work.`); S.t = { stage: "working", startedAt: Date.now() }; typing(500, () => bot(`Approved. ${esc(first(S.pro.name))} is starting now.`)); S.step = "work"; return; }
     if (act === "later") { log("wa", "Customer chose to repair later."); log("server", `Diagnosis saved for 30 days. ${S.pro.name} gets first refusal when the customer resumes.`); S.t = { stage: "deferred" }; typing(500, () => { bot(`No problem. Your diagnosis is saved for <b>30 days</b>, and ${esc(first(S.pro.name))} gets first chance to finish the job. Message "RESUME ${esc(S.job)}" when you're ready. You've only paid the call-out.`); S.step = "deferred"; }); return; }
     if (act.startsWith("rate:")) { S.rating = Number(act.slice(5)); log("wa", `Customer rated ${S.pro.name} ${S.rating} out of 5.`); log("app", `Rating shown on ${S.pro.name}'s app; Trust Score updates tonight.`); typing(500, () => { bot(`Thank you. Your warranty runs for ${P.warrantyDays} days. Message us anytime to book again.`); S.step = "done"; }); return; }
@@ -676,7 +738,7 @@ document.addEventListener("click", (e) => {
   }
   const act = b.dataset.act; if (!act) return;
   if (act === "reset") { S = fresh(); autoKey = ""; $("#typed").value = ""; render(); window.scrollTo(0, 0); return; }
-  if (act === "pin-cancel") { log("pay", "Customer cancelled the EcoCash prompt."); const w = S.pay.which; S.pay = null; bot("Payment not completed. Tap Pay when you're ready.", { buttons: [{ label: `Pay ${usd(w === 1 ? money().pay1 : money().pay2)} with EcoCash`, act: w === 1 ? "pay1" : "pay2" }] }); render(); return; }
+  if (act === "pin-cancel") { log("pay", "Customer cancelled the EcoCash prompt."); const w = S.pay.which, mm = money(), amt = { 1: mm.pay1, 2: mm.finalPay, parts: mm.partsPay, stage: mm.stagePay }[w]; S.pay = null; bot("Payment not completed. Tap Pay when you're ready.", { buttons: [{ label: `Pay ${usd(amt)} with EcoCash`, act: { 1: "pay1", 2: "pay2", parts: "payparts", stage: "paystage" }[w] }] }); render(); return; }
   if (act === "track") { S.track = true; log("server", "Customer opened the live tracking page."); render(); return; }
   if (act === "track-close") { S.track = false; render(); return; }
   techAct(act);
