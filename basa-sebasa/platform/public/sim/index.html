@@ -44,9 +44,15 @@ let after = 0, log = [];
 const me = () => $("#me").value.trim();
 function add(html, cls) { const c = $("#chat"); c.insertAdjacentHTML("beforeend", `<div class="m ${cls}">${html}<time>${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div>`); c.scrollTop = c.scrollHeight; }
 async function send(payload, shown) { add(esc(shown), "out"); await fetch("/sim/api/inbound", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: me(), ...payload }) }); poll(); }
+let polling = false;
 async function poll() {
+  if (polling) return; polling = true; // one check at a time, so no message shows twice
+  try { await pollOnce(); } finally { polling = false; }
+}
+async function pollOnce() {
   const r = await fetch(`/sim/api/outbox?to=${encodeURIComponent(me())}&after=${after}`); if (!r.ok) return;
   for (const m of await r.json()) {
+    if (m.id <= after) continue;
     after = m.id; const p = m.payload;
     if (p.type === "text") add(fmt(p.text.body), "in");
     else if (p.type === "image") add(`🖼️ <i>Photo</i><br>${fmt(p.image.caption)}`, "in");
