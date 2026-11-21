@@ -195,13 +195,13 @@ const TRADES = [
   { id: "Maid / cleaning", name: "Maids", tech: false, skills: ["House cleaning", "Laundry & ironing", "Cooking"] },
 ];
 const SUBURBS = ["Avondale", "Belvedere", "Borrowdale", "Budiriro", "CBD", "Chitungwiza", "Eastlea", "Glen View", "Greendale", "Hatfield", "Highfield", "Kuwadzana", "Mabelreign", "Marlborough", "Mbare", "Mount Pleasant", "Msasa", "Waterfalls"];
-const INDUCTION = ["Basa Code at every arrival", "Quote before any repair work", "Service report, photos and warranty", "SOS button and safety line", "No cash, ever: EcoCash through Basa seBasa only", "No jobs taken off the app", "Payouts within 24 hours of the customer paying"];
+const INDUCTION = ["Basa Code at every arrival", "Quote before any repair work", "Service report, photos and warranty", "Safety check-ins with your PIN: 15 minutes into every job, and when you finish", "Duress PIN: if you're ever forced to check in, use it. It looks normal, but our Harare admin is alerted and calls the police", "SOS and \"I feel uneasy\" buttons. You can decline or leave any job that feels unsafe", "Day jobs only for now", "Report every safety incident to Basa seBasa", "No cash, ever: EcoCash through Basa seBasa only", "No jobs taken off the app", "Payouts within 24 hours of the customer paying"];
 const SLOTS = ["Fri 7 Nov · 10:00 · Avondale office", "Sat 8 Nov · 09:00 · Avondale office", "Mon 10 Nov · 14:00 · Msasa test workshop"];
-const PRO_APP = "https://claude.ai/artifact/C9EpP5ZCHQ9KSzN9mcgPs4";
+const PRO_APP = "https://claude.ai/artifact/JbEP93vDTo4t4VbVvun3o2";
 
 const fresh = () => ({
   screen: "phone", phone: "", code: "", codeIn: "", consent: { checks: false, location: false, data: false },
-  name: "", trade: "HVAC/Refrigeration", skills: [], suburb: "", years: "", hours: "Mon–Sat, 7am–6pm", ecoNum: "", ecoName: "", warranty: true, noQual: false,
+  name: "", trade: "HVAC/Refrigeration", skills: [], suburb: "", years: "", hours: "Mon–Sat, daytime", emName: "", emPhone: "", pin: "", duress: "", ecoNum: "", ecoName: "", warranty: true, noQual: false,
   docs: {}, refs: [{ name: "", phone: "" }, { name: "", phone: "" }],
   status: "draft", auto: [], fix: null, msgs: [], log: [], submittedAt: 0,
   review: { id: false, qual: false, police: false, askItem: "", askNote: "Photo is blurry. Please retake it in good light." },
@@ -287,7 +287,7 @@ function viewProvider() {
     case "otp": return `<div class="steps"><span class="on"></span><span></span><span></span><span></span></div><h2>Enter your code</h2><p class="muted">We sent a 6-digit code to ${esc(A.phone)} on WhatsApp.</p>
       <div class="card"><input id="f-code" class="code" data-bind="codeIn" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" value="${val("codeIn")}" aria-label="6-digit code"><p class="note small">Preview: your code is <b class="mono">${esc(A.code)}</b></p><p class="err" id="e-code" hidden></p><button class="btn gold" type="button" data-act="verify-code">Verify</button><button class="btn quiet" type="button" data-act="back-phone">Change number</button></div>`;
     case "consent": return `<div class="steps"><span class="on"></span><span class="on"></span><span></span><span></span></div><h2>Before you start</h2>
-      <div class="card"><label class="check"><input type="checkbox" data-consent="checks" ${A.consent.checks ? "checked" : ""}> I agree to Basa seBasa checking my ID, qualifications and references.</label><label class="check"><input type="checkbox" data-consent="location" ${A.consent.location ? "checked" : ""}> I'll share my location while I'm online or on a job.</label><label class="check"><input type="checkbox" data-consent="data" ${A.consent.data ? "checked" : ""}> I agree my documents are stored privately and seen only by the vetting team.</label><p class="err" id="e-consent" hidden></p><button class="btn gold" type="button" data-act="consent">Continue</button></div>`;
+      <div class="card"><label class="check"><input type="checkbox" data-consent="checks" ${A.consent.checks ? "checked" : ""}> I agree to Basa seBasa checking my ID, qualifications and references.</label><label class="check"><input type="checkbox" data-consent="location" ${A.consent.location ? "checked" : ""}> I'll share my location with Basa seBasa only while I'm on a job: on the way, on site, until I check out.</label><label class="check"><input type="checkbox" data-consent="data" ${A.consent.data ? "checked" : ""}> I agree my documents are stored privately and seen only by the vetting team.</label><p class="err" id="e-consent" hidden></p><button class="btn gold" type="button" data-act="consent">Continue</button></div>`;
     case "details": {
       const t = trade();
       return `<div class="steps"><span class="on"></span><span class="on"></span><span class="on"></span><span></span></div><h2>About you</h2>
@@ -299,6 +299,10 @@ function viewProvider() {
         <div class="field"><label for="f-hours">Working hours</label><input id="f-hours" data-bind="hours" type="text" value="${val("hours")}"></div>
         <div class="two"><div class="field"><label for="f-econum">EcoCash number</label><input id="f-econum" data-bind="ecoNum" type="tel" inputmode="tel" value="${val("ecoNum")}" placeholder="077…"></div><div class="field"><label for="f-econame">EcoCash account name</label><input id="f-econame" data-bind="ecoName" type="text" value="${val("ecoName")}"></div></div>
         <p class="muted small">Payouts can only go to an EcoCash account in your own name.</p>
+        <h3 style="margin-top:6px">Your safety</h3>
+        <div class="two"><div class="field"><label for="f-emname">Emergency contact name</label><input id="f-emname" data-bind="emName" type="text" value="${val("emName")}" placeholder="e.g. Rudo (wife)"></div><div class="field"><label for="f-emphone">Emergency contact number</label><input id="f-emphone" data-bind="emPhone" type="tel" inputmode="tel" value="${val("emPhone")}" placeholder="077…"></div></div>
+        <div class="two"><div class="field"><label for="f-pin">Safety PIN (4 digits)</label><input id="f-pin" data-bind="pin" type="password" inputmode="numeric" maxlength="4" value="${val("pin")}"></div><div class="field"><label for="f-duress">Duress PIN (a different 4 digits)</label><input id="f-duress" data-bind="duress" type="password" inputmode="numeric" maxlength="4" value="${val("duress")}"></div></div>
+        <p class="muted small">You check in with your safety PIN 15 minutes into every job and when you finish. If anyone ever forces you to check in, enter your duress PIN instead: your screen looks normal, but our Harare admin is alerted at once and calls the police. Your emergency contact is only called if we can't reach you.</p>
         ${t.tech ? `<label class="check"><input type="checkbox" data-flag="warranty" ${A.warranty ? "checked" : ""}> I give a warranty on my work</label>` : ""}
         <p class="err" id="e-details" hidden></p><button class="btn gold" type="button" data-act="details">Next: documents</button></div>`;
     }
@@ -377,6 +381,7 @@ function actionPanel() {
     case "fix": return `<div class="note">Waiting for ${esc(firstName())} to fix: ${esc(docList().find((d) => d.key === A.fix.item)?.label || "")}.</div>`;
     case "review": return box("4 · Document review", `<p class="muted small">Look at each photo. Is it genuine, readable and does it match the person and the trade?</p>
       <label class="check"><input type="checkbox" data-rev="id" ${A.review.id ? "checked" : ""}> ID is genuine, readable, and the selfie matches the ID photo</label>
+      <p class="small"><b>Safety on file:</b> emergency contact ${esc(A.emName || "-")} (${esc(A.emPhone || "-")}) · safety PIN and duress PIN set ${A.pin && A.duress ? "✓" : "✗"}</p>
       ${t.tech ? `<label class="check"><input type="checkbox" data-rev="qual" ${A.review.qual ? "checked" : ""}> ${A.noQual ? "Past work photos look genuine for this trade" : "Qualification is genuine and matches the trade"}</label>` : ""}
       ${A.docs.police ? `<label class="check"><input type="checkbox" data-rev="police" ${A.review.police ? "checked" : ""}> Police clearance is valid and in the applicant's name</label>` : ""}
       <p class="err" id="e-review" hidden></p><button class="btn gold" type="button" data-act="accept-docs">Accept documents</button>
@@ -392,7 +397,7 @@ function actionPanel() {
         <div class="two"><div class="field"><label for="t-score">Practical test score</label><select id="t-score" data-ipsel="score"><option value="">Score out of 10</option>${[10, 9, 8, 7, 6, 5, 4, 3].map((n) => `<option ${String(n) === A.inperson.score ? "selected" : ""}>${n}</option>`).join("")}</select></div><div class="field"><label for="t-ipnotes">Notes</label><input id="t-ipnotes" data-ipnote type="text" value="${esc(A.inperson.notes)}" placeholder="${t.id === "HVAC/Refrigeration" ? "Found the faulty relay in 10 min" : "How the test went"}"></div></div>
         <p class="muted small">Pass mark: 7 out of 10${A.noQual ? " (longer test, no certificate)" : ""}, and safety must pass. A high score can't make up for unsafe work.</p><p class="err" id="e-ip" hidden></p><div class="two"><button class="btn danger" type="button" data-act="ip-fail">Failed</button><button class="btn gold" type="button" data-act="ip-pass">Passed</button></div>`);
     case "induction": return box("7 · Induction", `<p class="muted small">Walk ${esc(firstName())} through the app and the rules.</p>${INDUCTION.map((x, i) => `<label class="check"><input type="checkbox" data-ind="${i}" ${A.induction[i] ? "checked" : ""}> ${esc(x)}</label>`).join("")}
-      <label class="check" style="border-top:1px solid var(--line);padding-top:10px"><input type="checkbox" data-signed ${A.signed ? "checked" : ""}> <b>Service Provider Agreement signed</b> (15% commission, 24-hour payouts)</label><p class="err" id="e-ind" hidden></p><button class="btn gold" type="button" data-act="induct">Induction complete</button>`);
+      <label class="check" style="border-top:1px solid var(--line);padding-top:10px"><input type="checkbox" data-signed ${A.signed ? "checked" : ""}> <b>Service Provider Agreement signed</b> (independent professional: you choose which jobs to accept · 15% commission · 24-hour payouts · safety check-ins and incident reporting)</label><p class="err" id="e-ind" hidden></p><button class="btn gold" type="button" data-act="induct">Induction complete</button>`);
     case "decision": { const s = trust(); return box("8 · Decision", `<table class="score">${s.rows.map(([l, p]) => `<tr><td>${esc(l)}</td><td>+${p}</td></tr>`).join("")}<tr class="total"><td>Starting Trust Score</td><td>${s.total}</td></tr></table><p class="muted small">Ratings and completed jobs raise it over time. Level: Bronze, on probation for 5 jobs.</p>
       <div class="two"><button class="btn danger" type="button" data-act="decline">Not approved</button><button class="btn gold" type="button" data-act="approve">Approve</button></div>`); }
     case "approved": return `<div class="note good"><b>${esc(A.name)} is approved.</b> Status Verified, Bronze level, Trust Score ${trust().total}. They can go online now.</div>`;
@@ -462,6 +467,11 @@ document.addEventListener("click", (e) => {
       if (!A.suburb) return fail("e-details", "Choose your base suburb.");
       if (A.years === "" || Number(A.years) < 0) return fail("e-details", "Enter your years of experience.");
       if (A.ecoNum.replace(/\D/g, "").length < 9 || !A.ecoName.trim()) return fail("e-details", "Enter your EcoCash number and the name on that account.");
+      if (!A.emName.trim() || A.emPhone.replace(/\D/g, "").length < 9) return fail("e-details", "Add an emergency contact and their phone number.");
+      if (A.emPhone.replace(/\D/g, "") === A.phone.replace(/\D/g, "")) return fail("e-details", "Your emergency contact needs a different number from yours.");
+      if (!/^\d{4}$/.test(A.pin) || !/^\d{4}$/.test(A.duress)) return fail("e-details", "Choose a 4-digit safety PIN and a 4-digit duress PIN.");
+      if (A.pin === A.duress) return fail("e-details", "Your duress PIN must be different from your safety PIN.");
+      if (/^(\d)\1{3}$|^(1234|4321|0000)$/.test(A.pin) || /^(\d)\1{3}$|^(1234|4321|0000)$/.test(A.duress)) return fail("e-details", "Choose PINs that are harder to guess than 1234 or 1111.");
       A.screen = "docs"; render(); window.scrollTo(0, 0); break;
     case "back-details": A.screen = "details"; render(); break;
     case "sample-refs": A.refs = [{ name: "Mr P. Mutasa (past employer)", phone: "077 300 4411" }, { name: "Mrs L. Chiweshe (customer)", phone: "078 552 9020" }]; render(); break;
@@ -505,6 +515,4 @@ document.addEventListener("click", (e) => {
 render();
 })();
 </script>
-
-</body>
-</html>
+</body></html>

@@ -349,7 +349,7 @@ form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%;
       <section class="panel"><h3>Jobs <small>status, money and who acts next</small></h3><div class="filters" id="filters"></div><div class="tablewrap"><table class="jobs" id="jobs"></table></div></section>
     </div>
     <div style="display:grid;gap:14px;min-width:0">
-      <section class="panel"><h3>Field safety <small>pros on duty · location shared only while on a job</small></h3><div id="fieldsafety"></div></section>
+      <section class="panel"><h3>Field safety <small>watched by the Harare admin and Dex (Dubai) · location only while on a job</small></h3><div id="fieldsafety"></div></section>
       <section class="panel"><h3>Payouts due <small>manual EcoCash payouts within 24 hours</small></h3><div class="alerts" id="payouts"></div></section>
       <section class="panel"><h3>Live activity <small>all jobs, newest first</small></h3><div class="feed" id="feed"></div></section>
       <section class="panel"><h3>Pros <small>on duty now</small></h3><div class="pros" id="prolist"></div></section>
@@ -494,7 +494,7 @@ function simControls() {
   if (payDemo && !S.payPending && S.lastPay && !S.money2.overpaid) c.push(["twice", "Customer pays twice (new reference)"]);
   if (["travelling"].includes(S.t.stage) && !S.returning) c.push(["missing", "Pro stops responding"]);
   if (S.t.stage === "travelling" && !openSafety().some((a) => a.kind === "longstop")) c.push(["longstop", "Pro stops 15 min off the route"]);
-  if (ONSITE.includes(S.t.stage) && !openSafety().some((a) => a.kind === "missed")) c.push(["missed", "Pro misses a check-in"]);
+  if (ONSITE.includes(S.t.stage) && !S.safety.firstDone && !openSafety().some((a) => a.kind === "missed")) c.push(["missed", "Pro misses the 15-minute check-in"]);
   if (ONSITE.includes(S.t.stage) && !openSafety().some((a) => a.kind === "offline")) c.push(["offline", "Pro's phone goes offline"]);
   return c.length ? `<div class="simctl"><span>Simulate something going wrong (demo controls, not part of the product):</span>${c.map(([k, l]) => `<button type="button" data-sim="${k}">${esc(l)}</button>`).join("")}</div>` : "";
 }
@@ -564,23 +564,26 @@ function renderPro() {
   if (t.stage === "travelling" && S.proTab === "job") startMap("tmap");
 }
 // ---------- technician safety ----------
-// Location is shared only while the pro is on a job (on the way, on site, leaving). Check-ins on site every 45 minutes.
+// Location is shared only while the pro is on a job (on the way, on site, until they check out).
+// Agreed: a safety check-in 15 minutes into each visit, and a final check-in with the PIN when they finish.
 const TRACK_STAGES = ["travelling", "verify", "quote", "quote_sent", "working", "variation", "await_payment", "inspect"];
 const ONSITE = ["verify", "quote", "quote_sent", "working", "variation", "await_payment", "inspect"];
-const CHECK_MIN = 45, PIN_OK = "1357", PIN_DURESS = "9753";
+const CHECK_MIN = 15, PIN_OK = "1357", PIN_DURESS = "9753";
+// Agreed: the Harare admin and the founder in Dubai both watch alerts; for any security concern the Harare admin calls the police at once.
 const LADDERS = {
-  sos: ["Call the pro now", "Send armed response to the job address (simulated)", "Call the pro's emergency contact", "Report to police: 999, or 112 / 114 from a mobile"],
-  duress: ["Don't call the pro or the customer: it could warn an attacker", "Watch the pro's live location", "Send armed response / police to the job address (simulated)", "Call the pro's emergency contact"],
-  missed: ["Automatic WhatsApp reminder sent to the pro", "Call the pro", "Call the customer to check on the pro", "Call the pro's emergency contact", "Send armed response / police (simulated)"],
-  longstop: ["Automatic \"Are you OK?\" sent to the pro", "Call the pro", "Call the pro's emergency contact", "Send armed response / police (simulated)"],
-  offline: ["Wait 5 minutes for the phone to reconnect", "Call the pro", "Call the customer to check on the pro", "Call the pro's emergency contact"],
-  uneasy: ["Call the pro within 2 minutes with a cover story (\"head office calling\")", "If they say the code phrase, send help"],
+  sos: ["Harare admin calls the police (ZRP) now, with the job address and live location", "Harare admin calls the pro", "Call the pro's emergency contact", "Dex (Dubai) informed; incident report opened"],
+  duress: ["Don't call the pro or the customer: it could warn an attacker", "Harare admin calls the police (ZRP) now, with the live location", "Call the pro's emergency contact", "Dex (Dubai) informed; incident report opened"],
+  missed: ["Automatic WhatsApp reminder sent to the pro", "Harare admin calls the pro", "Harare admin calls the customer to check on the pro", "Still no answer: Harare admin calls the police (ZRP)", "Call the pro's emergency contact"],
+  longstop: ["Automatic \"Are you OK?\" sent to the pro", "Harare admin calls the pro", "No answer: Harare admin calls the police (ZRP)", "Call the pro's emergency contact"],
+  offline: ["Wait 5 minutes for the phone to reconnect", "Harare admin calls the pro", "Harare admin calls the customer to check on the pro", "Call the pro's emergency contact"],
+  uneasy: ["Harare admin calls the pro within 2 minutes with a cover story (\"head office calling\")", "If they say the code phrase: Harare admin calls the police (ZRP)"],
 };
 const ALERT_NAME = { sos: "SOS pressed", duress: "Duress PIN used (silent)", missed: "Missed safety check-in", longstop: "Long stop off the route", offline: "Pro's phone went offline on site", uneasy: "Pro feels uneasy" };
 const onDuty = () => S.pro && (TRACK_STAGES.includes(S.t.stage) || (["paid"].includes(S.t.stage) && !S.safety.left && !S.claim));
 function ensureSafety() {
   S.safety = S.safety || { alerts: [], checkins: 0 };
-  if (ONSITE.includes(S.t.stage) && !S.safety.checkDue) S.safety.checkDue = Date.now() + CHECK_MIN * 6e4;
+  // each visit (first visit, next day, return visit) has its own Basa Code, so it gets its own 15-minute check-in
+  if (ONSITE.includes(S.t.stage) && S.code && S.safety.visit !== S.code) { S.safety.visit = S.code; S.safety.checkDue = Date.now() + CHECK_MIN * 6e4; S.safety.firstDone = false; }
 }
 function raiseSafety(kind, note) {
   if (S.safety.alerts.some((a) => a.kind === kind && !a.closed)) return;
@@ -593,7 +596,8 @@ function escalate(id, how) {
   const L = LADDERS[a.kind];
   if (how === "close") { a.closed = true; log("trust", `Safety alert closed: ${S.pro.name} confirmed safe (${ALERT_NAME[a.kind].toLowerCase()}).`); if (a.kind === "sos") S.sos = null; if (a.kind === "missed" || a.kind === "longstop") S.safety.checkPrompt = null; if (a.kind === "offline") S.safety.offline = false; if (a.kind === "uneasy") S.safety.uneasy = null; render(); return; }
   if (a.step >= L.length) return;
-  log("server", `Ops: ${L[a.step].replace(/ \(simulated\)/, "")}${/armed|police/i.test(L[a.step]) ? " (simulated)" : ""}.`);
+  log("server", `${L[a.step]}${/police/i.test(L[a.step]) ? " (simulated in the demo)" : ""}.`);
+  if (/police/i.test(L[a.step])) log("agreed", "Any security concern: the Harare admin contacts the police immediately.");
   a.step++; render();
 }
 const SOS_STAGES = ["travelling", "verify", "quote", "quote_sent", "working", "variation", "await_payment", "inspect", "paused"];
@@ -601,15 +605,15 @@ function safetyStrip() {
   if (!onDuty()) return S.pro && ["paid", "cancelled", "noshow", "deferred"].includes(S.t.stage) && S.safety.left ? `<div class="safestrip"><span>📍 Location sharing is off. You're off this job.</span></div>` : "";
   const sf = S.safety, onsite = ONSITE.includes(S.t.stage);
   const due = sf.checkDue ? Math.max(0, Math.round((sf.checkDue - Date.now()) / 6e4)) : null;
-  return `<div class="safestrip"><div class="row"><span>📍 Sharing your location with Basa seBasa: on this job only</span>${sf.uneasy ? `<span style="color:#F0AE00;font-weight:700">We'll call you shortly</span>` : `<button type="button" class="uneasy" data-act="t-uneasy">I feel uneasy</button>`}</div>${onsite && due !== null && !sf.checkPrompt ? `<div class="row"><span>Next safety check-in in ${due} min</span><button type="button" data-act="t-checkdue">Demo: check in now</button></div>` : ""}${S.t.stage === "paid" ? `<div class="row"><span>Finished? Tell us you've left safely.</span><button type="button" data-act="t-checkout">I've left safely</button></div>` : ""}</div>`;
+  return `<div class="safestrip"><div class="row"><span>📍 Sharing your location with Basa seBasa: on this job only</span>${sf.uneasy ? `<span style="color:#F0AE00;font-weight:700">Our Harare admin will call you in 2 minutes</span>` : `<button type="button" class="uneasy" data-act="t-uneasy">I feel uneasy</button>`}</div>${onsite && due !== null && !sf.firstDone && !sf.checkPrompt ? `<div class="row"><span>Safety check-in due in ${due} min</span><button type="button" data-act="t-checkdue">Demo: check in now</button></div>` : onsite && sf.firstDone ? `<div class="row"><span>✓ Checked in. Next check-in: when you finish.</span></div>` : ""}${S.t.stage === "paid" && sf.checkPrompt !== "finish" ? `<div class="row"><span>Finished? Check out with your PIN.</span><button type="button" data-act="t-checkout">I've left safely</button></div>` : ""}</div>`;
 }
 function checkCard() {
   const p = S.safety.checkPrompt; if (!p) return "";
-  return `<div class="card checkcard"><h3>${p === "longstop" ? "Are you OK? You've stopped for a while" : "Safety check-in"}</h3><p class="small">Enter your safety PIN to confirm you're OK.</p><div class="field"><label for="ckpin">Safety PIN</label><input id="ckpin" class="codein" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: your PIN is <b>${PIN_OK}</b>. Under threat, enter your duress PIN <b>${PIN_DURESS}</b>: the screen looks exactly the same, but our team is alerted silently.</p><p class="err" id="ck-err" hidden></p><button class="btn gold" type="button" data-act="t-checkin">Check in</button></div>`;
+  return `<div class="card checkcard"><h3>${p === "longstop" ? "Are you OK? You've stopped for a while" : p === "finish" ? "Finished: check out" : "Safety check-in (15 minutes in)"}</h3><p class="small">Enter your safety PIN to confirm you're OK.</p><div class="field"><label for="ckpin">Safety PIN</label><input id="ckpin" class="codein" type="password" inputmode="numeric" maxlength="4" autocomplete="off"></div><p class="muted small">Demo: your PIN is <b>${PIN_OK}</b>. Under threat, enter your duress PIN <b>${PIN_DURESS}</b>: the screen looks exactly the same, but our Harare admin is alerted silently and calls the police.</p><p class="err" id="ck-err" hidden></p><button class="btn gold" type="button" data-act="t-checkin">${p === "finish" ? "Check out" : "Check in"}</button></div>`;
 }
 function sosBox() {
-  if (S.sos) return `<div class="sos-card"><b>SOS sent at ${esc(S.sos.at)}</b><span class="small">The Basa seBasa team has your location and is calling you. If you're in danger, call <b>112</b> (Econet) or <b>114</b> (NetOne) now.</span><button class="btn" type="button" data-act="t-sos-safe">I'm safe now</button></div>`;
-  if (S.t.sosConfirm) return `<div class="sos-card"><b>Send an SOS?</b><span class="small">Your location and this job go to the Basa seBasa team straight away. The customer isn't told.</span><div class="two"><button class="btn" type="button" data-act="t-sos-no">Back</button><button class="btn" type="button" data-act="t-sos-yes" style="background:#fff;color:#C7362B">Send SOS</button></div></div>`;
+  if (S.sos) return `<div class="sos-card"><b>SOS sent at ${esc(S.sos.at)}</b><span class="small">Our Harare admin has your location and is calling the police and you. If you're in danger, call <b>112</b> (Econet) or <b>114</b> (NetOne) now.</span><button class="btn" type="button" data-act="t-sos-safe">I'm safe now</button></div>`;
+  if (S.t.sosConfirm) return `<div class="sos-card"><b>Send an SOS?</b><span class="small">Your location and this job go to our Harare admin straight away, who calls the police. The customer isn't told.</span><div class="two"><button class="btn" type="button" data-act="t-sos-no">Back</button><button class="btn" type="button" data-act="t-sos-yes" style="background:#fff;color:#C7362B">Send SOS</button></div></div>`;
   return "";
 }
 function cancelBox() {
@@ -634,7 +638,7 @@ function proView() {
   const cust = `<div class="card"><span class="eyebrow">Customer</span><b>${S.family ? esc(S.family.name) + " (at the house)" : "Mrs C. Ndlovu"} · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km · number hidden, message through Basa</span>${S.landmark ? `<span class="small"><b>Landmark:</b> ${esc(S.landmark)}</span>` : ""}${S.family ? `<span class="muted small">Booked from abroad by family. ${esc(S.family.name)} will open the gate.</span>` : ""}<p class="small">${esc(S.desc)}</p></div>`;
   switch (t.stage) {
     case "idle": return `<div class="card" style="text-align:center;justify-items:center;padding:30px 16px"><div class="spin" style="width:34px;height:34px"></div><h3>Waiting for jobs</h3><p class="muted small">When a customer books on WhatsApp, the job appears here instantly.</p></div>`;
-    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="small" style="color:var(--good);font-weight:600">✓ Customer checks: WhatsApp number verified · address pinned · pays the call-out before you travel</p><p class="muted small">Repair · ${esc(S.suburb)}${S.sched ? ` · <b>${esc(S.sched)}</b>` : " · now"} · customer verified, paying through Basa</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
+    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="small" style="color:var(--good);font-weight:600">✓ Customer checks: WhatsApp number verified · address pinned · pays the call-out before you travel</p><p class="muted small">Your choice: accept only if you're comfortable with it. Day jobs only.</p><p class="muted small">Repair · ${esc(S.suburb)}${S.sched ? ` · <b>${esc(S.sched)}</b>` : " · now"} · customer verified, paying through Basa</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
     case "await_callout": return head(S.payPending ? "Payment pending" : "Waiting for call-out", S.payPending ? "EcoCash hasn't confirmed the call-out yet. Don't leave until we tell you it's paid." : `The customer is paying ${usd(m.pay1)} on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span>We'll tell you the moment it's confirmed.</div>`) + cust;
     case "ready": return cancelBox() + head("Call-out paid", "You're cleared to travel. The customer sees you on a live map.") + `<button class="btn gold" type="button" data-act="t-trip">I'm on my way</button>${S.t.confirmCancel ? "" : `<button class="btn quiet" type="button" data-act="t-cancel">I can't make this job</button>`}` + cust;
     case "travelling": return cancelBox() + head(S.claim ? "Warranty visit: on the way" : "On the way", "", mapSvg("tmap")) + `<button class="btn gold" type="button" data-act="t-arrive">I've arrived</button>${S.t.confirmCancel || S.returning ? "" : `<button class="btn quiet" type="button" data-act="t-cancel">I can't make this job</button>`}` + cust;
@@ -743,7 +747,7 @@ function confirmBooking() {
   const s = svc();
   log("server", `Location received: ${S.suburb}. Inside the launch area. Ready to match.`);
   log("rule", "Price guide ranges are samples, not agreed prices.");
-  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br><b>Price guide:</b> similar ${esc(s.name.toLowerCase())} repairs usually come to <b>$${PRICE_GUIDE[S.svc][0]}–$${PRICE_GUIDE[S.svc][1]}</b> in total, including the call-out and parts. Your exact quote comes first, and nothing starts until you approve it.<br><br>When do you need someone?`, { buttons: [{ label: "As soon as possible", act: "find" }, { label: "Tomorrow, 08:00", act: "findlater" }, { label: "Cancel", act: "cancel" }] });
+  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br><b>Price guide:</b> similar ${esc(s.name.toLowerCase())} repairs usually come to <b>$${PRICE_GUIDE[S.svc][0]}–$${PRICE_GUIDE[S.svc][1]}</b> in total, including the call-out and parts. Your exact quote comes first, and nothing starts until you approve it.<br><br>We book day jobs only (07:00–18:00). When do you need someone?`, { buttons: [{ label: "As soon as possible", act: "find" }, { label: "Tomorrow, 08:00", act: "findlater" }, { label: "Cancel", act: "cancel" }] });
   S.step = "confirm";
 }
 function showMatches() {
@@ -764,7 +768,7 @@ function offerTo(i) {
   S.offerIx = i; S.pro = S.matches[i];
   S.t = { stage: "offer", expires: Date.now() + 60000 };
   log("app", `Push notification to ${S.pro.name}'s Pro app: new job ${S.job}, ${S.pro.km} km away. 60 seconds to accept.`);
-  log("trust", `Customer checks before dispatch: WhatsApp number verified, address pinned, ${new Date().getHours() >= 18 || new Date().getHours() < 6 ? "after-hours booking: needs ops approval (proposed)" : "daytime booking"}. Pro can decline without penalty if anything feels wrong.`);
+  log("trust", `Customer checks before dispatch: WhatsApp number verified, address pinned, day jobs only. ${S.pro.name} is independent and decides whether to accept.`);
 }
 function accepted() {
   S.code = String(1000 + Math.floor(Math.random() * 9000));
@@ -921,21 +925,23 @@ function techAct(act) {
   if (S.typing && act !== "receipt") return;
   if (/^t-rate-\d$/.test(act)) { if (t.stage !== "paid") return; const n = Number(act.slice(7)); if (S.proRating === n) return; S.proRating = n; log("app", `${S.pro.name} rated the customer ${n}/5.`); log("trust", "Two-way rating recorded: customers with repeated low ratings are reviewed."); render(); return; }
   if (act === "t-uneasy") { if (!onDuty() || S.safety.uneasy) return; S.safety.uneasy = clock(); raiseSafety("uneasy"); log("app", `${S.pro.name} tapped "I feel uneasy". The customer isn't told.`); render(); return; }
-  if (act === "t-checkdue") { if (!ONSITE.includes(t.stage) || S.safety.checkPrompt) return; S.safety.checkPrompt = "checkin"; log("server", `Safety check-in due for ${S.pro.name} (every ${CHECK_MIN} min on site).`); render(); return; }
+  if (act === "t-checkdue") { if (!ONSITE.includes(t.stage) || S.safety.checkPrompt || S.safety.firstDone) return; S.safety.checkPrompt = "checkin"; log("agreed", `Safety check-in due for ${S.pro.name}: ${CHECK_MIN} minutes into the job.`); render(); return; }
   if (act === "t-checkin") {
     if (!S.safety.checkPrompt) return;
     const pin = ($("#ckpin")?.value || "").trim();
     if (pin !== PIN_OK && pin !== PIN_DURESS) { const e = $("#ck-err"); e.textContent = "That PIN isn't right. Try again."; e.hidden = false; return; }
-    const was = S.safety.checkPrompt; S.safety.checkPrompt = null; S.safety.checkins++; S.safety.checkDue = Date.now() + CHECK_MIN * 6e4;
-    if (pin === PIN_DURESS) { raiseSafety("duress", "pro checked in with the duress PIN"); toast("Checked in ✓"); render(); return; }
+    const was = S.safety.checkPrompt; S.safety.checkPrompt = null; S.safety.checkins++;
+    if (was !== "longstop") { S.safety.firstDone = true; S.safety.checkDue = null; }
+    if (pin === PIN_DURESS) { raiseSafety("duress", was === "finish" ? "pro used the duress PIN when checking out" : "pro checked in with the duress PIN"); toast(was === "finish" ? "Checked out ✓" : "Checked in ✓"); render(); return; }
+    if (was === "finish") { S.safety.left = clock(); S.safety.uneasy = null; log("app", `${S.pro.name} checked out with their safety PIN. Location sharing stopped.`); log("agreed", "Final safety check-in when the job is finished."); toast("Checked out ✓"); render(); return; }
     log("app", `${S.pro.name} checked in OK${was === "longstop" ? " after the long stop" : ""}.`);
     (S.safety.alerts || []).filter((a) => !a.closed && ["missed", "longstop"].includes(a.kind)).forEach((a) => { a.closed = true; log("trust", `Safety alert closed: ${S.pro.name} checked in with the right PIN.`); });
     toast("Checked in ✓"); render(); return;
   }
-  if (act === "t-checkout") { if (t.stage !== "paid" || S.safety.left) return; S.safety.left = clock(); S.safety.uneasy = null; log("app", `${S.pro.name} left the site safely. Location sharing stopped.`); log("trust", "Return-safe check complete for this job."); render(); return; }
+  if (act === "t-checkout") { if (t.stage !== "paid" || S.safety.left || S.safety.checkPrompt) return; S.safety.checkPrompt = "finish"; render(); return; }
   if (act === "t-sos") { if (!SOS_STAGES.includes(t.stage) || S.sos) return; t.sosConfirm = true; render(); return; }
   if (act === "t-sos-no") { delete t.sosConfirm; render(); return; }
-  if (act === "t-sos-yes") { if (S.sos) return; delete t.sosConfirm; S.sos = { at: clock() }; raiseSafety("sos"); log("trust", `SOS from ${S.pro.name} on ${S.job}: location and job details sent to the team. Founder calling now.`); log("app", "SOS alert received."); render(); return; }
+  if (act === "t-sos-yes") { if (S.sos) return; delete t.sosConfirm; S.sos = { at: clock() }; raiseSafety("sos"); log("trust", `SOS from ${S.pro.name} on ${S.job}: location and job details sent to the Harare admin and Dex.`); log("app", "SOS alert received."); render(); return; }
   if (act === "t-sos-safe") { if (!S.sos) return; S.sos = null; (S.safety.alerts || []).filter((a) => a.kind === "sos" && !a.closed).forEach((a) => (a.closed = true)); log("trust", `${S.pro.name} confirmed they're safe. SOS closed and logged.`); render(); return; }
   switch (act) {
     case "t-sched-go": log("server", `Reminder sent to the customer and ${S.pro.name}: job ${S.job} at ${S.sched}.`); bot(`Reminder: ${esc(first(S.pro.name))} arrives at <b>${esc((S.sched || "").replace(/^(Today|Tomorrow) /, ""))}</b> today.`); S.t = { stage: "ready" }; S.step = "wait"; render(); break;
@@ -1241,7 +1247,7 @@ function renderFieldSafety() {
   const sub = Object.keys(POS).map((n) => { const [x, y] = MAPXY(n); return `<g><circle cx="${x}" cy="${y}" r="1.6" fill="#5E7568"/><text x="${x + 4}" y="${y - 3}" font-size="7" fill="#7E9688">${esc(n)}</text></g>`; }).join("");
   const me = pos ? `<g><circle cx="${pos[0]}" cy="${pos[1]}" r="11" fill="${al.length ? "#E5483B" : "#F0AE00"}" opacity=".25"/><circle cx="${pos[0]}" cy="${pos[1]}" r="6" fill="${al.length ? "#E5483B" : "#F0AE00"}" stroke="#14120D" stroke-width="1.5"/><text x="${pos[0] + 9}" y="${pos[1] + 3}" font-size="9" font-weight="700" fill="#F5F1E6">${esc(S.pro.name)}</text></g>` : "";
   const map = `<svg class="fieldmap" viewBox="0 0 340 240" role="img" aria-label="Map of Harare with pros on duty"><rect width="340" height="240" fill="#1B2A22"/>${sub}${dots}${S.suburb && pos ? (() => { const [x, y] = MAPXY(S.suburb); return `<rect x="${x - 4}" y="${y - 4}" width="8" height="8" fill="#F5F1E6"/>`; })() : ""}${me}<text x="8" y="232" font-size="8" fill="#7E9688">Simulated positions · gold: demo pro (red: alert) · white: job address</text></svg>`;
-  const list = pos ? `<div class="pros"><div><span class="dotst ${al.length ? "" : "job"}" style="${al.length ? "background:var(--bad)" : ""}"></span><span><b>${esc(S.pro.name)}</b> · ${esc(S.job)} · ${esc(pos[2])}</span><small class="muted">${S.safety.checkDue && ONSITE.includes(S.t.stage) ? `check-in due in ${Math.max(0, Math.round((S.safety.checkDue - Date.now()) / 6e4))} min` : "live"}</small></div></div>` : `<p class="muted small">No pro from the demo is on a job right now.</p>`;
+  const list = pos ? `<div class="pros"><div><span class="dotst ${al.length ? "" : "job"}" style="${al.length ? "background:var(--bad)" : ""}"></span><span><b>${esc(S.pro.name)}</b> · ${esc(S.job)} · ${esc(pos[2])}</span><small class="muted">${S.safety.checkDue && !S.safety.firstDone && ONSITE.includes(S.t.stage) ? `first check-in due in ${Math.max(0, Math.round((S.safety.checkDue - Date.now()) / 6e4))} min` : S.safety.firstDone && ONSITE.includes(S.t.stage) ? "checked in · next: on finishing" : S.t.stage === "paid" ? "waiting for check-out" : "live"}</small></div></div>` : `<p class="muted small">No pro from the demo is on a job right now.</p>`;
   const alerts = al.map((a) => { const L = LADDERS[a.kind]; return `<div class="safetyalert ${a.kind === "uneasy" ? "amber" : ""}"><b>${esc(ALERT_NAME[a.kind])} · ${esc(S.pro.name)} · ${esc(S.job)}</b><small>${esc(a.at)}${a.note ? " · " + esc(a.note) : ""}${a.kind === "duress" ? " · the pro's screen shows a normal check-in" : ""}</small><ol class="ladder">${L.map((x, i) => `<li class="${i < a.step ? "done" : i === a.step ? "now" : ""}">${esc(x)}</li>`).join("")}</ol><div class="acts">${a.step < L.length ? `<button class="mini" type="button" data-esc="${a.id}:next">Done: next step</button>` : ""}<button class="mini gold" type="button" data-esc="${a.id}:close">Pro is safe: close</button></div></div>`; }).join("");
   el.innerHTML = map + list + (alerts ? `<div style="display:grid;gap:8px;margin-top:8px">${alerts}</div>` : "");
 }
@@ -1344,7 +1350,7 @@ function autoStep() {
     $("#ckpin").value = PIN_DURESS; f.duress = true; techAct("t-checkin"); return true;
   }
   if (openSafety().length && sc === "safety") { const a = openSafety()[0]; escalate(a.id, a.step < LADDERS[a.kind].length ? "next" : "close"); return true; }
-  if (t === "paid" && onDuty() && !S.safety.left) { techAct("t-checkout"); return true; }
+  if (t === "paid" && onDuty() && !S.safety.left) { if (S.safety.checkPrompt === "finish") { $("#ckpin").value = PIN_OK; techAct("t-checkin"); } else techAct("t-checkout"); return true; }
   if (t === "working") {
     if (sc === "extra" && !f.variation && !S.claim) { f.variation = true; $("#varcard").open = true; techAct("t-variation"); return true; }
     if (sc === "zesa" && !f.paused) { f.paused = true; $(".pausecard").open = true; $("#preason").value = "zesa"; $("#ps1").checked = $("#ps2").checked = true; techAct("t-pause"); return true; }
@@ -1372,7 +1378,7 @@ function simulate(kind) {
   if (kind === "dup") { if (!S.lastPay || S.flags.dupDone) return; S.flags.dupDone = true; log("pay", `A second confirmation arrived for ${S.lastPay.ref}.`); log("server", `Already recorded for ${S.job}: ignored. The customer is charged once.`); render(); return; }
   if (kind === "twice") { if (!S.lastPay || S.money2.overpaid) return; S.money2.overpaid = S.lastPay.amount; log("pay", `A second, separate payment of ${usd(S.lastPay.amount)} arrived with a new reference.`); log("rule", "How and when double payments are refunded is undecided."); bot(`We received a second payment of <b>${usd(S.lastPay.amount)}</b>. You won't be charged twice: it's flagged for a refund and our team will confirm how and when.`); render(); return; }
   if (kind === "longstop") { if (S.t.stage !== "travelling") return; raiseSafety("longstop", "stopped 15 min, 2 km off the route"); S.safety.checkPrompt = "longstop"; log("wa", `Automatic message to ${S.pro.name}: "Are you OK?"`); render(); return; }
-  if (kind === "missed") { if (!ONSITE.includes(S.t.stage)) return; S.safety.checkPrompt = "checkin"; raiseSafety("missed", "check-in 10 min overdue"); render(); return; }
+  if (kind === "missed") { if (!ONSITE.includes(S.t.stage) || S.safety.firstDone) return; S.safety.checkPrompt = "checkin"; raiseSafety("missed", "15-minute check-in is 10 minutes overdue"); render(); return; }
   if (kind === "offline") { if (!ONSITE.includes(S.t.stage)) return; S.safety.offline = true; raiseSafety("offline", "last location 8 min ago at the job address"); render(); return; }
   if (kind === "missing") { if (S.t.stage !== "travelling" || S.returning) return; reassign("missing"); }
 }
@@ -1494,7 +1500,7 @@ document.addEventListener("click", (e) => {
     if (act.startsWith("svc:")) { S.svc = act.slice(4); log("wa", `Customer chose: ${svc().name}.`); typing(600, () => { bot(`Got it: <b>${esc(svc().name)}</b>. Please describe the problem in a few words.`); S.step = "describe"; }); return; }
     if (act === "skip-photo") { log("wa", "Customer skipped the photo."); typing(500, askLocation); return; }
     if (act.startsWith("sub:")) { S.suburb = act.slice(4); S.chat.pop(); S.chat.push({ from: "out", at: clock(), html: `<div class="loc"><div class="minimap"><span class="pin"></span></div><b>Location</b><span>${esc(S.suburb)}, Harare</span></div>` }); log("wa", `Location pin received from customer (${S.suburb}).`); typing(700, askLandmark); return; }
-    if (act === "find") { typing(1100, showMatches); return; }
+    if (act === "find") { log("agreed", "Day jobs only for now (07:00–18:00)."); typing(1100, showMatches); return; }
     if (act === "findlater") { S.sched = "Tomorrow 08:00"; log("wa", "Customer booked for tomorrow 08:00."); typing(1100, showMatches); return; }
     if (act === "lm:skip") { typing(500, confirmBooking); return; }
     if (act === "cancel") { log("server", "Customer cancelled before booking."); typing(500, () => { bot("No problem. Message us anytime."); S.step = "done"; }); return; }
@@ -1559,6 +1565,4 @@ route();
 if (restored) toast("Restored the demo where you left it. Start again for a fresh run.");
 })();
 </script>
-
-</body>
-</html>
+</body></html>
