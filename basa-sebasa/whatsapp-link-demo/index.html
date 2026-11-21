@@ -35,6 +35,7 @@
   --chat-bg: #10161A; --chat-in: #1E2A30; --chat-out: #11493D; --chat-head: #17262D; --chat-accent: #4FC3A1; --chat-meta: #8FA19A;
   color-scheme: dark; }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.42; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: #14120D; }
 h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.04; margin: 0; text-wrap: balance; }
@@ -87,6 +88,52 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .simctl span { font-size: 12px; color: var(--muted); width: 100%; }
 .simctl button { border: 1px dashed var(--gold-deep); background: var(--warn-bg); color: var(--ink); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
 .jobcard .warn { color: var(--bad); font-weight: 700; }
+.tabs { display: flex; gap: 4px; background: rgba(255,255,255,.08); border-radius: 999px; padding: 3px; }
+.tabs a { color: #CFC9BA; text-decoration: none; font-weight: 700; font-size: 13.5px; padding: 6px 12px; border-radius: 999px; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.tabs a[aria-current="page"] { background: #F5F1E6; color: #14120D; }
+.tabs .n { background: #E5483B; color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 6px; }
+.ops { max-width: 1320px; margin: 0 auto; padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 14px; }
+.ops-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; }
+.ops-head h2 { font-size: 26px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--good); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+@media (prefers-reduced-motion: no-preference) { .live i { animation: blink 1.6s infinite; } @keyframes blink { 50% { opacity: .25; } } }
+.live.off { color: var(--muted); } .live.off i { background: var(--muted); animation: none; }
+.kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.kpi small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.kpi b { font-family: var(--display); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi.alert { border-color: var(--bad); } .kpi.alert b { color: var(--bad); }
+.ops-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; min-width: 0; }
+.panel h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h3 small { font-family: var(--body); font-size: 12.5px; color: var(--muted); font-weight: 600; text-transform: none; }
+.alerts { display: grid; gap: 6px; }
+.alert-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border-radius: 10px; padding: 8px 10px; background: var(--sunk); border-left: 4px solid var(--gold); }
+.alert-row.high { border-left-color: var(--bad); background: var(--bad-bg); }
+.alert-row b { font-size: 14px; } .alert-row small { display: block; color: var(--muted); font-size: 12.5px; }
+.alert-row .mono { font-size: 12px; }
+.mini { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; color: var(--ink); text-decoration: none; }
+.mini.gold { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tablewrap { overflow-x: auto; }
+table.jobs { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 640px; }
+table.jobs th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+table.jobs td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.jobs td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.jobs tr.demo td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; font-weight: 700; background: var(--sunk); white-space: nowrap; }
+.pill.warn { background: var(--bad-bg); color: var(--bad); } .pill.good { background: var(--good-bg); color: var(--good); } .pill.gold { background: var(--warn-bg); color: var(--gold-deep); }
+.feed { display: grid; gap: 0; max-height: 420px; overflow-y: auto; }
+.feed .log-row { grid-template-columns: auto auto auto 1fr; }
+.pros { display: grid; gap: 4px; }
+.pros div { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.dotst { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.dotst.on { background: var(--good); } .dotst.job { background: var(--gold); }
+@media (max-width: 1060px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ops-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tabs a { padding: 6px 9px; } }
 .tag.rule { background: #FFF1C9; color: #7A5600; border: 1px dashed #C9A23A; }
 .guide-in { max-width: 1320px; margin: 0 auto; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 600; font-size: 14.5px; }
 .guide button { border: 1.5px solid var(--on-gold); background: transparent; color: var(--on-gold); border-radius: 999px; padding: 3px 12px; font-weight: 700; cursor: pointer; }
@@ -253,6 +300,7 @@ form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%;
 
 <header class="top"><div class="top-in">
   <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>Customer WhatsApp · platform · technician app <span class="demo-pill">DEMO · SIMULATED</span></small></span></div>
+  <nav class="tabs" aria-label="Views"><a href="#demo" id="tab-demo">Live demo</a><a href="#ops" id="tab-ops">Ops dashboard <span class="n" id="ops-badge" hidden></span></a></nav>
   <label class="scen"><span class="sr">Scenario</span><select id="scenario" aria-label="Demo scenario"><optgroup label="Main journeys"><option value="standard">Standard repair</option><option value="family">Booking from abroad for family</option><option value="multi">Three-day job</option></optgroup><optgroup label="Recovery scenarios"><option value="zesa">ZESA cut before testing</option><option value="extra">Extra work found mid-job</option><option value="cancel">Technician cancels</option><option value="payment">EcoCash slow or duplicate</option><option value="dispute">Fault returns after payment</option><option value="issue">Problem found before paying</option></optgroup><option value="free">Free play (no script)</option></select></label>
   <button class="ctl" type="button" id="nextstep">Next step</button>
   <button class="ctl gold" type="button" id="play" aria-pressed="false">▶ Play</button>
@@ -271,6 +319,22 @@ form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%;
   <section class="pane pane-tech" aria-label="Technician's phone"><div class="label"><span class="eyebrow">Technician's phone</span><span class="sim">Pro app · sample data</span></div>
     <div class="phone"><div class="pro-head" id="pro-head"></div><div class="pro-body" id="pro"></div></div></section>
 </div>
+<main class="ops" id="ops" hidden aria-label="Operations dashboard">
+  <div class="ops-head"><div><h2>Operations dashboard</h2><p class="muted small">Everything happening on the platform right now. The highlighted job is the one in the live demo; the others are <span class="sim">simulated sample jobs</span> that move on their own.</p></div>
+    <div style="display:flex;gap:10px;align-items:center"><span class="live" id="live"><i></i>Live</span><button class="mini" type="button" id="ops-pause">Pause updates</button></div></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="ops-grid">
+    <div style="display:grid;gap:14px;min-width:0">
+      <section class="panel"><h3>Needs attention <small id="att-count"></small></h3><div class="alerts" id="alerts"></div></section>
+      <section class="panel"><h3>Jobs <small>status, money and who acts next</small></h3><div class="filters" id="filters"></div><div class="tablewrap"><table class="jobs" id="jobs"></table></div></section>
+    </div>
+    <div style="display:grid;gap:14px;min-width:0">
+      <section class="panel"><h3>Payouts due <small>manual EcoCash payouts within 24 hours</small></h3><div class="alerts" id="payouts"></div></section>
+      <section class="panel"><h3>Live activity <small>all jobs, newest first</small></h3><div class="feed" id="feed"></div></section>
+      <section class="panel"><h3>Pros <small>on duty now</small></h3><div class="pros" id="prolist"></div></section>
+    </div>
+  </div>
+</main>
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -308,7 +372,7 @@ const SUBURBS = ["Avondale", "Borrowdale", "Eastlea", "Glen View", "Greendale", 
 const POS = { Avondale: [-1, 3], Belvedere: [-2.5, .5], Borrowdale: [5, 8], Budiriro: [-9, -6], Eastlea: [2.5, 0], "Glen View": [-9, -4], Greendale: [7, 1.5], Hatfield: [4.5, -6], Highfield: [-5, -5], Mabelreign: [-5, 4.5], Mbare: [-1.5, -3], "Mount Pleasant": [1.5, 6.5], Msasa: [8, -2], Waterfalls: [-1, -8] };
 const kmBetween = (a, b) => { const p = POS[a] || [0, 0], q = POS[b] || [0, 0]; return Math.max(1.5, Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]) * 1.3 * 2) / 2); };
 
-const fresh = () => ({ sid: Math.random(), money2: { paid: 0, released: 0 }, flags: {}, step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, multi: null, pause: null, pauses: [], returning: false, thread: [], proTab: "job", proUnread: 0, chatIntro: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
+const fresh = () => ({ ops: opsSeed(), sid: Math.random(), money2: { paid: 0, released: 0 }, flags: {}, step: "start", svc: null, desc: "", photo: "", suburb: "", matches: [], offerIx: 0, pro: null, code: "", chat: [], log: [], t: { stage: "idle" }, pay: null, track: false, rating: 0, show: "customer", family: null, findAt: 0, issue: false, multi: null, pause: null, pauses: [], returning: false, thread: [], proTab: "job", proUnread: 0, chatIntro: false, job: "BSB-" + (2400 + Math.floor(Math.random() * 500)), refs: [] });
 let S = fresh();
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -333,7 +397,7 @@ function money() {
 // ---------- chat + log ----------
 function bot(html, extra = {}) { S.chat.push({ from: "in", html, at: clock(), ...extra }); }
 function me(text, extra = {}) { S.chat.push({ from: "out", html: esc(text), at: clock(), ...extra }); }
-function log(who, text) { S.log.unshift({ who, text: String(text).replace(/([A-Z])\.\./g, "$1."), at: clock() }); }
+function log(who, text) { S.log.unshift({ who, text: String(text).replace(/([A-Z])\.\./g, "$1."), at: clock(), ts: Date.now() }); }
 const prov = () => `<span class="prov">provisional</span>`;
 // timers belong to one demo run: "Start again" cancels anything still pending
 function later(fn, ms) { const sid = S.sid; setTimeout(() => { if (S.sid === sid) fn(); }, ms); }
@@ -426,7 +490,7 @@ function render() {
   $("#stage").dataset.show = S.show;
   document.querySelectorAll(".switch button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === S.show)));
   $("#ping-customer").hidden = !(who === "customer" && S.show !== "customer"); $("#ping-tech").hidden = !(who === "tech" && S.show !== "tech");
-  renderChat(); renderLog(); renderPro(); renderJob(); persist(); $("#play").setAttribute("aria-pressed", String(!!S.playing)); $("#play").textContent = S.playing ? "❚❚ Pause" : "▶ Play";
+  renderChat(); renderLog(); renderPro(); renderJob(); renderOps(); persist(); $("#play").setAttribute("aria-pressed", String(!!S.playing)); $("#play").textContent = S.playing ? "❚❚ Pause" : "▶ Play";
 }
 function renderChat() {
   const box = $("#chat"); const lastIn = S.chat.map((m) => m.from).lastIndexOf("in");
@@ -496,7 +560,7 @@ function proView() {
       return head(S.multi ? `Day ${S.multi.day} of ${S.multi.days}: finish the job` : "Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">${S.claim ? "Warranty repair done and tested" : "Job complete"}</button></div>` + (S.claim ? "" : variationCard()) + pauseCard();
     case "await_payment": if (S.issue && S.issueKind) return head("Customer isn't happy yet", "Look again and put it right. If it needs work beyond the quote, ask the customer first.") + `<button class="btn gold" type="button" data-act="t-recheck">Re-tested: ask the customer to check</button>`;
       return head(S.issue ? "Customer isn't happy yet" : "Customer is checking the work", S.issue ? "Stay on site and put it right. Our team has joined the chat. You're paid once the customer confirms." : "You're paid once the customer confirms the work and pays Basa seBasa.", `<div class="wait"><span class="spin"></span>Never accept cash, even if offered.</div>`) + `<div class="card">${splitTable(m)}</div>`;
-    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
+    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">${S.payoutDone ? `✓ Paid out to your EcoCash, ref ${esc(S.payoutDone.ref)}.` : `Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.`}</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
     case "paused": { const pz = PAUSES[S.pause.reason]; return head(`Paused: ${pz.short}`, S.pause.when ? `Return visit booked for <b>${esc(S.pause.when)}</b>. The customer gets a new Basa Code before you arrive.` : S.pause.reason === "unsafe" ? "Work stopped for safety. The Basa seBasa team is calling the customer. Don't continue until they say so." : "Waiting for the customer to tell us it can carry on. We check with them every 3 hours.", `<div class="wait"><span class="spin"></span>${pz.icon} ${esc(pz.label)} · paused at ${esc(S.pause.at)}</div>`) + `<div class="card"><table class="split"><tr><td>Work so far</td><td>saved with photos</td></tr><tr><td>Labour</td><td>paid after the test</td></tr><tr><td>Return visit</td><td>no call-out for the customer</td></tr></table></div>` + (S.pause.when ? `<button class="btn gold" type="button" data-act="t-return">Start return visit</button>` : ""); }
     case "overnight": return head(`Day ${S.multi.day} done`, S.multi.staged && !S.multi.stagePaid ? "Waiting for the customer to check today's work and pay stage 1." : `Back tomorrow at 08:00 for day ${S.multi.day + 1}. The customer will get a new Basa Code in the morning.`, `<div class="daybar">${Array.from({ length: S.multi.days }, (_, i) => `<span class="${i < S.multi.day ? "done" : ""}"></span>`).join("")}</div>`) + (S.multi.staged ? `<div class="card"><table class="split"><tr><td>Parts (released)</td><td>${usd(m.parts)}</td></tr><tr><td>Stage 1 labour after 15% fee</td><td>${S.multi.stagePaid ? usd(m.labour / 2 * (1 - P.commission / 100)) : "on the way"}</td></tr></table></div>` : "") + `<button class="btn gold" type="button" data-act="t-nextday">Demo: skip to tomorrow, start day ${S.multi.day + 1}</button><p class="muted small">If you haven't checked in by 08:30, the team is alerted and the customer is told.</p>`;
     case "deferred": return head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first chance at the repair for 30 days.") + `<div class="card"><table class="split"><tr class="you"><td>You earned</td><td>${usd(m.calloutShare)}</td></tr></table></div>`;
@@ -673,7 +737,7 @@ function paid(which, rr) {
   S.lastPay = { ref: r, amount };
   if (which === 1) { S.callPaid = true; S.travelFrozen = m.travel; } S.money2.paid = r2(S.money2.paid + amount);
   if (which === "stage") S.money2.released = r2(S.money2.released + m.labour / 2 * (1 - P.commission / 100));
-  if (which === 2) S.money2.released = r2(m.payout); S.refs.push({ what: { 1: "Call-out", 2: S.multi ? "Final payment" : "Repair", parts: "Parts (up front)", stage: "Stage 1 labour" }[which], amount, ref: r });
+  if (which === 2) { S.money2.released = r2(m.payout); S.paidAt = Date.now(); } S.refs.push({ what: { 1: "Call-out", 2: S.multi ? "Final payment" : "Repair", parts: "Parts (up front)", stage: "Stage 1 labour" }[which], amount, ref: r });
   if (which === "parts") {
     log("pay", `EcoCash payment confirmed: ${usd(amount)} for parts, reference ${r}.`);
     log("trust", `Parts money held by Basa seBasa. Released to ${S.pro.name} only when the supplier's receipt is uploaded.`);
@@ -884,6 +948,131 @@ function techAct(act) {
   }
 }
 
+// ---------- operations dashboard ----------
+// Sample jobs are fictional and move on their own so the dashboard looks like a working day. The demo job is the real state above.
+function opsSeed() {
+  const now = Date.now(), m = 6e4;
+  const J = (id, svc, suburb, pro, steps, at, extra = {}) => ({ id, svc, suburb, pro, steps, at, i: 0, paid: 0, released: 0, ...extra });
+  return {
+    paused: false, filter: "all", nextId: 2340, lastTick: now,
+    feed: [
+      { ts: now - 9 * m, job: "BSB-2302", who: "pay", text: "Final payment confirmed: $78.40. Payout to Brian Z. due within 24 h." },
+      { ts: now - 6 * m, job: "BSB-2322", who: "app", text: "Simba R. paused the job: ZESA power cut. Site left safe, photos attached." },
+      { ts: now - 4 * m, job: "BSB-2329", who: "pay", text: "EcoCash request sent for $9.18. Waiting for confirmation." },
+      { ts: now - 2 * m, job: "BSB-2318", who: "app", text: "Kuda S. is on the way. Live location on." },
+    ],
+    jobs: [
+      J("BSB-2318", "Plumbing", "Hatfield", "Kuda S.", [["Pro on the way", "app", "Kuda S. confirmed the Basa Code at the gate."], ["Pro diagnosing", "app", "Quote sent: labour $30, parts $25."], ["Quote with the customer", "wa", "Customer approved the quote."], ["Work in progress", "app", "Work complete. Checks and photos attached."], ["Customer checking the work", "pay", "Final payment confirmed: $57.27.", { pay: 57.27, payout: 58.5, close: true }]], now - 2 * m, { paid: 9.18 }),
+      J("BSB-2322", "Electrical", "Borrowdale", "Simba R.", [["Paused, untested: power cut", "wa", "Customer: power is back. Return visit booked for 17:00.", { alert: "paused" }], ["Return visit booked", "app", "Simba R. is on the way back. New Basa Code sent."], ["Pro on the way", "app", "Re-tested: working. Report sent."], ["Customer checking the work", "pay", "Final payment confirmed: $48.94.", { pay: 48.94, payout: 49.75, close: true }]], now - 6 * m, { paid: 9.18, alert: "paused" }),
+      J("BSB-2325", "Solar & inverters", "Msasa", "Takudzwa S.", [["Quote with the customer", "wa", "Customer approved the 2-day plan.", { approval: true }], ["Work in progress: day 1 of 2", "app", "Day 1 check-out: site safe, progress photos."], ["Day 1 of 2 done: overnight", "app", "Day 2 started. New Basa Code used."], ["Work in progress: day 2 of 2", "app", "Tested under load. Work complete."], ["Customer checking the work", "pay", "Final payment confirmed: $121.40.", { pay: 121.4, payout: 112.75, close: true }]], now - 12 * m, { paid: 9.18, approval: true }),
+      J("BSB-2329", "Appliances", "Glen View", "Tonderai B.", [["EcoCash payment pending", "pay", "EcoCash confirmed the call-out: $9.18.", { alert: "payment", pay: 9.18 }], ["Call-out paid: pro getting ready", "app", "Tonderai B. is on the way."], ["Pro on the way", "app", "Basa Code confirmed at the gate."], ["Pro diagnosing", "app", "Quote sent: labour $30, parts $15."], ["Quote with the customer", "wa", "Customer chose: decide later. Quote saved for 30 days.", { deferred: true }]], now - 4 * m, { alert: "payment" }),
+      J("BSB-2297", "Fridge & aircon", "Mbare", "Ropa C.", [["Warranty claim opened", "server", "Warranty visit booked for tomorrow 08:00.", { alert: "claim" }], ["Warranty return visit booked", "app", "Ropa C. found the same fault. Fixing under warranty."], ["Warranty repair in progress", "app", "Fixed and tested. Claim closed.", { close: true, noPay: true }]], now - 20 * m, { paid: 64.2, released: 55.5, alert: "claim" }),
+      J("BSB-2302", "Mechanic", "Waterfalls", "Brian Z.", [["Paid: payout due", "server", "", { done: true }]], now - 9 * m, { paid: 78.4, payoutDue: now - 9 * m + 24 * 36e5, payoutAmt: 68.15, done: true }),
+    ],
+  };
+}
+const OPS_ALERT = { paused: ["Paused, untested", "Return visit or backup test needed", false], payment: ["EcoCash not confirmed yet", "Don't release the pro; check the reference if it drags on", true], claim: ["Warranty claim", "Return visit to inspect", false] };
+function opsTick() {
+  const o = S.ops; if (!o || o.paused) return;
+  const live = o.jobs.filter((j) => !j.done);
+  if (!live.length || Math.random() < .12) {
+    if (o.jobs.length < 12) { const id = "BSB-" + o.nextId++, sv = ["Plumbing", "Electrical", "Fridge & aircon", "Solar & inverters"][o.nextId % 4], sub = SUBURBS[o.nextId % SUBURBS.length], pro = ["Nyasha P.", "Kudzai C.", "Ruvimbo K.", "Tinashe K."][o.nextId % 4];
+      o.jobs.unshift({ id, svc: sv, suburb: sub, pro, steps: [["Offered to the pro: 60 s to accept", "app", `${pro} accepted.`], ["Waiting for the call-out payment", "pay", "EcoCash confirmed the call-out: $9.18.", { pay: 9.18 }], ["Call-out paid: pro getting ready", "app", `${pro} is on the way.`], ["Pro on the way", "app", "Basa Code confirmed at the gate."], ["Pro diagnosing", "app", "Quote sent to the customer."]], at: Date.now(), i: 0, paid: 0, released: 0 });
+      o.feed.unshift({ ts: Date.now(), job: id, who: "wa", text: `New booking: ${sv.toLowerCase()} in ${sub}. Matched ${pro}.` }); }
+    return;
+  }
+  const j = live[Math.floor(Math.random() * live.length)], st = j.steps[j.i];
+  const [, who, text, fx = {}] = st;
+  if (fx.pay) j.paid = r2(j.paid + fx.pay);
+  if (fx.deferred) { j.released = r2(j.released + 8); }
+  j.i++; j.at = Date.now();
+  if (fx.alert && j.alert === fx.alert) j.alert = null;
+  if (j.approval) j.approval = false;
+  const nxt = j.steps[j.i];
+  if (nxt && nxt[3] && nxt[3].alert) j.alert = nxt[3].alert;
+  if (nxt && nxt[3] && nxt[3].approval) j.approval = true;
+  if (fx.close) { j.done = true; if (!fx.noPay) { j.payoutDue = Date.now() + 24 * 36e5; j.payoutAmt = fx.payout; } j.closedLabel = fx.noPay ? "Warranty claim closed" : "Paid: payout due"; }
+  if (fx.deferred) { j.done = true; j.closedLabel = "Saved for later (30 days)"; }
+  if (text) o.feed.unshift({ ts: Date.now(), job: j.id, who, text });
+  o.feed = o.feed.slice(0, 80);
+}
+function sampleWork(j) {
+  const l = jobLabel(j);
+  if (j.done) return j.closedLabel === "Saved for later (30 days)" ? "Diagnosed, not repaired" : "Tested and working ✓";
+  if (/Paused/.test(l)) return "Untested (paused)";
+  if (/Warranty/.test(l)) return "Reopened: warranty claim";
+  if (/Quote|diagnosing/.test(l)) return "Diagnosed, not repaired";
+  if (/Work|day|checking/.test(l)) return "In progress, not tested";
+  return "Not started";
+}
+function jobLabel(j) { return j.done ? (j.closedLabel || "Closed") : j.steps[j.i][0]; }
+function demoAlerts() {
+  const a = [], t = S.t.stage;
+  if (!S.svc) return a;
+  if (S.payPending) a.push([S.payPending.timedOut ? "EcoCash not confirmed after 10 min" : "EcoCash not confirmed yet", S.payPending.checking ? "Customer says money left the wallet: check the reference with EcoCash" : "Don't release anything until it's confirmed", true]);
+  if (t === "paused") a.push([`Paused, untested: ${PAUSES[S.pause.reason].short}`, S.pause.reason === "unsafe" ? "Safety stop: call the customer" : S.pause.when ? `Return visit ${S.pause.when}` : "Waiting for the customer to say it can carry on", S.pause.reason === "unsafe"]);
+  if (t === "variation") a.push(["Extra work waiting for approval", S.variation.note, false]);
+  if (t === "reassigning") a.push(["Pro cancelled: reassigning", "Find a replacement; call-out already paid", true]);
+  if (S.issue) a.push(["Customer reported a problem before paying", "Pro asked to put it right; payout on hold", true]);
+  if (S.human) a.push(["Customer asked for a person (HELP)", S.humanReplied ? "You replied; waiting for the customer" : "Reply on WhatsApp", !S.humanReplied]);
+  if (t === "escalated") a.push(["Dispute escalated", "Review photos and reports from both visits", true]);
+  if (S.claim) a.push(["Warranty claim", S.claim.when ? `Return visit ${S.claim.when}` : "Booking a return visit", false]);
+  if (S.money2.overpaid) a.push([`Overpaid ${usd(S.money2.overpaid)}`, "Refund review (policy undecided)", true]);
+  if (t === "offer") a.push(["Waiting for the pro to accept", `${S.pro.name} has 60 seconds`, false]);
+  if (t === "verify" && S.t.waitFrom) a.push(["Customer not answering at the gate", "15-minute wait running", false]);
+  return a;
+}
+function opsData() {
+  const o = S.ops, rows = [];
+  if (S.svc) rows.push({ demo: true, id: S.job, svc: svc().name, suburb: S.suburb || "-", pro: S.pro && S.t.stage !== "idle" ? S.pro.name : "Matching…", status: stageLabel(), work: workStatus(), paid: S.money2.paid, released: S.money2.released, alerts: demoAlerts(), next: next()[1], at: S.log[0]?.ts || Date.now(), done: ["paid", "noshow"].includes(S.t.stage) && !S.claim, payoutDue: S.t.stage === "paid" && S.paidAt && !S.payoutDone && !S.claim ? S.paidAt + 24 * 36e5 : null, payoutAmt: money().payout });
+  o.jobs.forEach((j) => rows.push({ demo: false, id: j.id, svc: j.svc, suburb: j.suburb, pro: j.pro, status: jobLabel(j), work: sampleWork(j), paid: j.paid, released: j.released, alerts: j.alert ? [OPS_ALERT[j.alert]] : j.approval ? [["Quote waiting for the customer", "Nothing starts until they approve", false]] : [], next: j.done ? "" : "Waiting on the sample job", at: j.at, done: !!j.done, payoutDue: j.payoutDue && !j.paidOut ? j.payoutDue : null, payoutAmt: j.payoutAmt, sample: j }));
+  return rows;
+}
+const ago = (ts) => { const s = Math.max(0, Math.round((Date.now() - ts) / 1000)); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`; };
+const dueIn = (ts) => { const s = Math.round((ts - Date.now()) / 6e4); return s <= 0 ? "overdue" : s < 60 ? `${s} min left` : `${Math.floor(s / 60)} h ${s % 60} min left`; };
+function renderOps() {
+  const rows = opsData(), o = S.ops, attention = rows.flatMap((r) => r.alerts.map((a) => ({ r, a })));
+  const badge = $("#ops-badge"); badge.hidden = !attention.length; badge.textContent = attention.length;
+  if ($("#ops").hidden) return;
+  const live = rows.filter((r) => !r.done), pend = rows.filter((r) => r.alerts.some((a) => /EcoCash/.test(a[0]))).length;
+  // money customers have paid that isn't yet with the pro: open jobs, plus closed jobs whose payout hasn't been sent
+  const held = r2(rows.reduce((t, r) => t + (!r.done ? Math.max(0, r.paid - r.released) : r.payoutDue ? r.payoutAmt : 0), 0));
+  const dues = rows.filter((r) => r.payoutDue);
+  const busy = new Set(live.map((r) => r.pro));
+  const allPros = [...new Set(Object.values(PROS).flat().map((p) => p[0]).concat(o.jobs.map((j) => j.pro)))];
+  const online = allPros.filter((p, i) => busy.has(p) || i % 3 !== 2);
+  $("#kpis").innerHTML = [["Live jobs", live.length], ["Need attention", attention.length, attention.some((x) => x.a[2])], ["EcoCash pending", pend, pend > 0], ["Held by Basa", usd(held)], ["Payouts due", dues.length, dues.some((r) => r.payoutDue < Date.now())], ["Pros online", `${online.length} / ${allPros.length}`]].map(([l, v, al]) => `<div class="kpi ${al ? "alert" : ""}"><small>${l}</small><b>${v}</b></div>`).join("");
+  $("#att-count").textContent = attention.length ? `${attention.length} open` : "all clear";
+  $("#alerts").innerHTML = attention.length ? attention.sort((x, y) => y.a[2] - x.a[2]).map(({ r, a }) => `<div class="alert-row ${a[2] ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${esc(a[0])}</b><small>${esc(a[1])} · ${esc(r.svc)}, ${esc(r.suburb)}</small></span>${r.demo ? `<a class="mini" href="#demo">Open in demo</a>` : `<span class="pill">sample</span>`}</div>`).join("") : `<p class="muted small">Nothing needs you right now.</p>`;
+  const F = { all: ["All", () => true], attention: ["Needs attention", (r) => r.alerts.length], field: ["In the field", (r) => !r.done && /on the way|gate|diagnosing|Work|day/i.test(r.status)], money: ["Money moving", (r) => r.payoutDue || r.alerts.some((a) => /EcoCash|Overpaid/.test(a[0])) || /payment/i.test(r.status)], closed: ["Closed", (r) => r.done] };
+  $("#filters").innerHTML = Object.entries(F).map(([k, [l]]) => `<button type="button" data-ofilter="${k}" aria-pressed="${o.filter === k}">${l} (${rows.filter(F[k][1]).length})</button>`).join("");
+  const shown = rows.filter(F[o.filter][1]).sort((a, b) => b.demo - a.demo || (b.alerts.length - a.alerts.length) || b.at - a.at);
+  $("#jobs").innerHTML = `<tr><th>Job</th><th>Status</th><th>Work</th><th>Pro</th><th class="num">Paid</th><th class="num">To pro</th><th>Updated</th></tr>` + (shown.length ? shown.map((r) => `<tr class="${r.demo ? "demo" : ""}"><td><b>${esc(r.id)}</b>${r.demo ? ` <span class="pill gold">demo job</span>` : ""}<br><small class="muted">${esc(r.svc)} · ${esc(r.suburb)}</small></td><td><span class="pill ${r.alerts.some((a) => a[2]) ? "warn" : r.done ? "good" : ""}">${esc(r.status)}</span>${r.demo && r.next ? `<br><small class="muted">Next: ${esc(r.next)}</small>` : ""}</td><td>${esc(r.work)}</td><td>${esc(r.pro)}</td><td class="num">${usd(r.paid)}</td><td class="num">${usd(r.released)}</td><td><small class="muted">${ago(r.at)}</small></td></tr>`).join("") : `<tr><td colspan="7" class="muted">No jobs in this view.</td></tr>`);
+  $("#payouts").innerHTML = dues.length ? dues.sort((a, b) => a.payoutDue - b.payoutDue).map((r) => `<div class="alert-row ${r.payoutDue < Date.now() + 2 * 36e5 ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${usd(r.payoutAmt)} to ${esc(r.pro)}</b><small>${dueIn(r.payoutDue)} · customer paid ${usd(r.paid)}</small></span><button class="mini gold" type="button" data-payout="${esc(r.id)}">Mark paid out</button></div>`).join("") : `<p class="muted small">No payouts due.</p>`;
+  const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "EcoCash (sim)", trust: "Trust", rule: "Provisional", agreed: "Agreed rule", design: "Demo design" };
+  const feed = S.log.map((l) => ({ ...l, job: S.job, ts: l.ts || 0 })).concat(o.feed).sort((a, b) => b.ts - a.ts).slice(0, 60);
+  $("#feed").innerHTML = feed.map((l) => `<div class="log-row"><span class="mono muted">${new Date(l.ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><span class="mono">${esc(l.job)}</span><span class="tag ${l.who}">${tagName[l.who] || l.who}</span><span>${esc(l.text)}</span></div>`).join("");
+  $("#prolist").innerHTML = allPros.slice(0, 14).map((p) => { const job = live.find((r) => r.pro === p); return `<div><span class="dotst ${job ? "job" : online.includes(p) ? "on" : ""}"></span><span>${esc(p)}</span><small class="muted">${job ? `On ${esc(job.id)}` : online.includes(p) ? "Online" : "Offline"}</small></div>`; }).join("");
+  const lv = $("#live"); lv.classList.toggle("off", o.paused); lv.lastChild.textContent = o.paused ? "Paused" : "Live"; $("#ops-pause").textContent = o.paused ? "Resume updates" : "Pause updates";
+}
+function markPaidOut(id) {
+  const r = "PO" + String(Math.floor(100000 + Math.random() * 900000));
+  if (id === S.job) {
+    if (S.t.stage !== "paid" || S.payoutDone) return;
+    S.payoutDone = { ref: r, at: Date.now() }; log("pay", `Payout sent: ${usd(money().payout)} to ${S.pro.name}'s EcoCash, ref ${r} (simulated). Recorded by ops.`); log("agreed", `Payouts are sent manually within ${P.payoutHours} hours of the customer paying.`); toast("Payout recorded."); render(); return;
+  }
+  const j = S.ops.jobs.find((x) => x.id === id); if (!j || j.paidOut) return;
+  j.paidOut = true; j.released = r2(j.released + (j.payoutAmt || 0)); S.ops.feed.unshift({ ts: Date.now(), job: j.id, who: "pay", text: `Payout sent: ${usd(j.payoutAmt)} to ${j.pro}, ref ${r} (simulated).` }); toast("Payout recorded."); render();
+}
+function route() {
+  const ops = location.hash === "#ops";
+  $("#ops").hidden = !ops; $("#stage").hidden = ops; document.querySelector(".guide").hidden = ops; document.querySelector(".switch").hidden = ops;
+  $("#tab-ops").setAttribute("aria-current", ops ? "page" : "false"); $("#tab-demo").setAttribute("aria-current", ops ? "false" : "page");
+  render();
+}
+window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
+setInterval(() => { if (!S.ops) S.ops = opsSeed(); if (Date.now() - S.ops.lastTick > 7000) { S.ops.lastTick = Date.now(); opsTick(); render(); } else if (!$("#ops").hidden) renderOps(); }, 1000);
+
 // ---------- guided demo: scenarios, Next step, Play ----------
 const SCENARIOS = {
   standard: { svc: "hvac", where: "Avondale", intro: "A fridge repair in Avondale, from first message to receipt." },
@@ -1038,6 +1227,9 @@ document.addEventListener("click", (e) => {
   if (b.dataset.show) { S.show = b.dataset.show; render(); window.scrollTo(0, 0); return; }
   if (b.dataset.ptab) { S.proTab = b.dataset.ptab; if (S.proTab === "chat") S.proUnread = 0; render(); return; }
   if (b.dataset.pquick) { proSays(b.dataset.pquick); return; }
+  if (b.dataset.payout) { markPaidOut(b.dataset.payout); return; }
+  if (b.dataset.ofilter) { S.ops.filter = b.dataset.ofilter; render(); return; }
+  if (b.id === "ops-pause") { S.ops.paused = !S.ops.paused; render(); return; }
   if (b.dataset.sim) { if (S.playing) stopPlay(); simulate(b.dataset.sim); return; }
   if (b.dataset.chip) { if (b.dataset.chip.startsWith("🎤")) voiceNote(); else customerSays(b.dataset.chip); return; }
   if (b.dataset.chat) {
@@ -1134,7 +1326,8 @@ function restore() {
   } catch (e) { return false; }
 }
 const restored = restore();
-render();
+if (!S.ops) S.ops = opsSeed();
+route();
 if (restored) toast("Restored the demo where you left it. Start again for a fresh run.");
 })();
 </script>
