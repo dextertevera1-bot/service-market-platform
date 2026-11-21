@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Simulator</title>
+<link rel="icon" href="/assets/logo-64.png">
+<style>
+:root { --head: #0E5E4E; --bg: #E9E3D8; --in: #fff; --out: #DCF5D0; --accent: #0E7C66; --meta: #6F7A74; --ink: #111; }
+@media (prefers-color-scheme: dark) { :root { --head: #17262D; --bg: #10161A; --in: #1E2A30; --out: #11493D; --accent: #4FC3A1; --meta: #8FA19A; --ink: #EEE; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: #CFC8BB; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); display: grid; place-items: center; min-height: 100vh; }
+@media (prefers-color-scheme: dark) { body { background: #05080A; } }
+.note { max-width: 420px; font-size: 13px; padding: 8px 16px; color: #333; } @media (prefers-color-scheme: dark) { .note { color: #aaa; } }
+.phone { width: min(420px, 100vw); height: min(820px, 100vh); background: var(--bg); display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+@media (max-width: 440px) { .phone { border-radius: 0; height: 100vh; } .note { display: none; } }
+.head { background: var(--head); color: #fff; padding: 12px; display: flex; gap: 10px; align-items: center; }
+.head img { width: 40px; height: 40px; border-radius: 50%; } .head small { display: block; opacity: .8; font-size: 12px; }
+.head input { margin-left: auto; width: 130px; border: 0; border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+.chat { flex: 1; overflow-y: auto; padding: 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+.m { max-width: 86%; padding: 7px 10px 5px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.m.in { align-self: flex-start; background: var(--in); } .m.out { align-self: flex-end; background: var(--out); }
+.m time { display: block; text-align: right; font-size: 11px; color: var(--meta); }
+.btns { display: grid; gap: 4px; align-self: flex-start; width: 86%; } .btns button { border: 0; background: var(--in); color: var(--accent); font-weight: 600; padding: 9px; border-radius: 10px; cursor: pointer; }
+.compose { display: flex; gap: 6px; padding: 8px; } .compose input { flex: 1; border: 0; border-radius: 999px; padding: 10px 14px; background: var(--in); color: var(--ink); }
+.compose button { border: 0; border-radius: 50%; width: 42px; height: 42px; background: var(--accent); color: #fff; cursor: pointer; }
+.tools { display: flex; gap: 6px; padding: 0 8px 8px; flex-wrap: wrap; } .tools button, .tools select { border: 0; border-radius: 999px; padding: 6px 10px; background: var(--in); color: var(--accent); font-weight: 600; cursor: pointer; font-size: 13px; }
+</style>
+</head>
+<body>
+<p class="note"><b>Test mode.</b> This page stands in for a customer's WhatsApp until the real WhatsApp number is connected. Messages go through the real platform; it disappears once WhatsApp is live.</p>
+<div class="phone">
+  <div class="head"><img src="/assets/logo-64.png" alt="Basa seBasa profile picture"><span><b>Basa seBasa</b><small>Verified business account</small></span><input id="me" value="263771234567" aria-label="Your test number"></div>
+  <div class="chat" id="chat"></div>
+  <div class="tools"><select id="loc" aria-label="Share location"><option value="">📍 Share location…</option></select><button data-q="Hi">Hi</button><button data-q="status">status</button><button data-q="cancel">cancel</button></div>
+  <form class="compose" id="f"><input id="t" placeholder="Message" autocomplete="off"><button aria-label="Send">➤</button></form>
+</div>
+<script>
+const SUBS = { Avondale: [-17.795, 31.040], Borrowdale: [-17.757, 31.095], Mabelreign: [-17.790, 31.000], Mbare: [-17.855, 31.040], Hatfield: [-17.880, 31.095], "Glen View": [-17.905, 30.955], Eastlea: [-17.830, 31.075], "Mount Pleasant": [-17.770, 31.045] };
+const $ = (s) => document.querySelector(s), esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (s) => esc(s).replace(/\*([^*\n]+)\*/g, "<b>$1</b>");
+$("#loc").innerHTML += Object.keys(SUBS).map((s) => `<option>${s}</option>`).join("");
+let after = 0, log = [];
+const me = () => $("#me").value.trim();
+function add(html, cls) { const c = $("#chat"); c.insertAdjacentHTML("beforeend", `<div class="m ${cls}">${html}<time>${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div>`); c.scrollTop = c.scrollHeight; }
+async function send(payload, shown) { add(esc(shown), "out"); await fetch("/sim/api/inbound", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: me(), ...payload }) }); poll(); }
+async function poll() {
+  const r = await fetch(`/sim/api/outbox?to=${encodeURIComponent(me())}&after=${after}`); if (!r.ok) return;
+  for (const m of await r.json()) {
+    after = m.id; const p = m.payload;
+    if (p.type === "text") add(fmt(p.text.body), "in");
+    else if (p.type === "image") add(`🖼️ <i>Photo</i><br>${fmt(p.image.caption)}`, "in");
+    else if (p.type === "template") add(`<i>Template: ${esc(p.template.name)}</i>`, "in");
+    else if (p.type === "interactive") {
+      const i = p.interactive; add(fmt(i.body.text), "in");
+      const opts = i.type === "button" ? i.action.buttons.map((b) => b.reply) : i.type === "list" ? i.action.sections[0].rows : [];
+      if (i.type === "location_request_message") { $("#chat").insertAdjacentHTML("beforeend", `<div class="btns"><button data-locreq>📍 Send location</button></div>`); }
+      if (opts.length) $("#chat").insertAdjacentHTML("beforeend", `<div class="btns">${opts.map((o) => `<button data-id="${esc(o.id)}" data-title="${esc(o.title)}">${esc(o.title)}${o.description ? ` · <small>${esc(o.description)}</small>` : ""}</button>`).join("")}</div>`);
+      $("#chat").scrollTop = $("#chat").scrollHeight;
+    }
+  }
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.id) send({ type: "interactive", reply: b.dataset.id }, b.dataset.title);
+  else if (b.dataset.q) send({ text: b.dataset.q }, b.dataset.q);
+  else if ("locreq" in b.dataset) $("#loc").focus();
+});
+$("#loc").addEventListener("change", (e) => { const s = e.target.value; if (!s) return; const [lat, lng] = SUBS[s]; send({ type: "location", location: { lat: lat + 0.002, lng: lng + 0.002 } }, `📍 Location: ${s}`); e.target.value = ""; });
+$("#f").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#t").value.trim(); if (!v) return; $("#t").value = ""; send({ text: v }, v); });
+$("#me").addEventListener("change", () => { after = 0; $("#chat").innerHTML = ""; poll(); });
+setInterval(poll, 1500); poll();
+</script>
+</body>
+</html>

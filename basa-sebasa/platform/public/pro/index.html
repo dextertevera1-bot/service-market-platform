@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F4E9C">
+<title>Basa seBasa Pro</title>
+<link rel="manifest" href="/pro/manifest.webmanifest">
+<link rel="icon" href="/assets/logo-64.png">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<style>
+:root { --blue: #1F4E9C; --navy: #0E2A5C; --yellow: #F5B700; --pale: #DDE3F2; --grey: #C9CED6;
+  --bg: #F2F5FB; --card: #FFFFFF; --ink: #0F1B33; --muted: #56627A; --line: #D3DBEA; --sunk: #EBF0F9;
+  --good: #1E7A4A; --good-bg: #E2F3E9; --bad: #B3261E; --bad-bg: #FBE4E2; --warn-bg: #FFF4D1; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0B1838; --card: #12234A; --ink: #F2F5FB; --muted: #AEBBD8; --line: #2B427A; --sunk: #1A2F5C; --good: #7FD3A4; --good-bg: #143A2A; --bad: #F4948C; --bad-bg: #3D1B1A; --warn-bg: #3A2F0E; color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+button, input, textarea { font: inherit; color: inherit; }
+.top { background: var(--blue); color: #fff; padding: calc(10px + env(safe-area-inset-top)) 14px 12px; display: grid; gap: 10px; position: sticky; top: 0; z-index: 5; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand img { width: 28px; height: 28px; border-radius: 6px; }
+.brand b { font-size: 16px; } .brand b span { font-weight: 400; color: var(--pale); }
+.brand .pill { margin-left: auto; font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; color: var(--navy); background: var(--yellow); border-radius: 5px; padding: 5px 7px; }
+.who { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-weight: 800; flex: none; }
+.who small { display: block; color: var(--pale); font-size: 13px; }
+.trust { margin-left: auto; text-align: center; } .trust b { display: block; font-size: 26px; line-height: 1; color: var(--yellow); } .trust small { font-size: 10px; letter-spacing: .08em; color: var(--pale); }
+.status { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px 10px; font-size: 14px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #9AA6BF; flex: none; } .dot.on { background: #3DDC84; }
+.toggle { margin-left: auto; border: 0; border-radius: 999px; padding: 6px 12px; font-weight: 700; cursor: pointer; background: var(--yellow); color: var(--navy); }
+.toggle.off { background: rgba(255,255,255,.18); color: #fff; }
+.sos { margin-left: auto; background: #E5483B; color: #fff; border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 800; letter-spacing: .05em; cursor: pointer; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 4px; }
+.tabs button { border: 0; background: transparent; color: var(--pale); font-weight: 700; padding: 8px; border-radius: 9px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--yellow); color: var(--navy); }
+.n { background: #E5483B; color: #fff; border-radius: 999px; font-size: 11px; padding: 1px 6px; margin-left: 4px; }
+main { padding: 12px 12px calc(24px + env(safe-area-inset-bottom)); display: grid; gap: 10px; max-width: 560px; margin: 0 auto; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+.card.hero { background: var(--blue); color: #fff; border-color: var(--blue); }
+.card.hero .muted { color: var(--pale); }
+.card.offer { border: 3px solid var(--yellow); }
+h1, h2, h3 { margin: 0; line-height: 1.15; } h2 { font-size: 24px; text-transform: uppercase; letter-spacing: .01em; } h3 { font-size: 17px; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--yellow); }
+.card:not(.hero) .eyebrow { color: var(--blue); }
+@media (prefers-color-scheme: dark) { .card:not(.hero) .eyebrow { color: var(--yellow); } }
+.muted { color: var(--muted); } .small { font-size: 13.5px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; border: 2px solid var(--blue); background: transparent; color: var(--blue); padding: 12px 14px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; text-decoration: none; }
+@media (prefers-color-scheme: dark) { .btn { border-color: var(--pale); color: var(--pale); } }
+.btn.gold { background: var(--yellow); border-color: var(--yellow); color: var(--navy); box-shadow: 0 2px 0 #C99600; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: default; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.split { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.split td { padding: 5px 0; border-bottom: 1px dashed var(--line); } .split td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.split tr.you td { font-weight: 800; font-size: 17px; border-bottom: 0; color: var(--good); }
+.hero .split td { border-color: rgba(255,255,255,.2); color: var(--pale); } .hero .split tr.you td { color: var(--yellow); }
+.field { display: grid; gap: 4px; } .field label { font-weight: 600; font-size: 14px; }
+.field input, .field textarea { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px; font-size: 16px; }
+.code { font-family: ui-monospace, Menlo, monospace; font-size: 26px; letter-spacing: .4em; text-align: center; }
+.tick { display: flex; gap: 10px; align-items: center; font-size: 15px; } .tick input { width: 20px; height: 20px; accent-color: var(--blue); }
+.wait { display: flex; gap: 10px; align-items: center; background: var(--warn-bg); border-radius: 12px; padding: 10px 12px; font-size: 14.5px; }
+.hero .wait { background: rgba(255,255,255,.12); }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--blue); flex: none; animation: s 1s linear infinite; }
+@keyframes s { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; } .bar i { display: block; height: 100%; background: var(--yellow); transition: width 1s linear; }
+.safe { background: var(--navy); color: #fff; border-radius: 12px; padding: 10px 12px; font-size: 14px; display: grid; gap: 8px; }
+.safe .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.safe button { border: 1px solid var(--pale); background: transparent; color: #fff; border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.safe .uneasy { border-color: var(--yellow); color: var(--yellow); }
+.err { color: var(--bad); font-weight: 600; font-size: 14px; }
+.ok { color: var(--good); font-weight: 700; }
+.thread { display: flex; flex-direction: column; gap: 6px; min-height: 40vh; max-height: 58vh; overflow-y: auto; padding: 4px 0; }
+.msg { max-width: 84%; padding: 8px 11px 6px; border-radius: 12px; font-size: 15px; overflow-wrap: anywhere; }
+.msg time { display: block; font-size: 11px; opacity: .65; text-align: right; }
+.msg.customer { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+.msg.pro { align-self: flex-end; background: var(--blue); color: #fff; }
+form.compose { display: flex; gap: 8px; } form.compose input { flex: 1; min-width: 0; border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: 10px 14px; }
+form.compose button { border: 0; width: 44px; height: 44px; border-radius: 50%; background: var(--yellow); color: var(--navy); font-weight: 800; cursor: pointer; }
+.quick { display: flex; gap: 6px; overflow-x: auto; } .quick button { white-space: nowrap; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 11px; font-size: 13.5px; cursor: pointer; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 600; z-index: 20; max-width: 90vw; }
+.center { text-align: center; justify-items: center; }
+.login { max-width: 420px; margin: 0 auto; padding: 40px 16px; display: grid; gap: 14px; }
+.login img { width: 96px; height: 96px; border-radius: 20px; justify-self: center; }
+a { color: inherit; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast" hidden></div>
+<script>
+// Basa seBasa Pro app. Talks to the platform API; refreshes every 3 seconds; works on any phone browser.
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const usd = (n) => "$" + (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+let token = store.get("basa-pro-token"), S = null, tab = "job", home = false, login = { step: "phone" }, busy = false, geoWatch = null, lastGeo = 0, prevStage = null;
+
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3000); }
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { token = null; store.set("basa-pro-token", null); render(); }
+  if (!r.ok) throw new Error(j.error || "Something went wrong. Try again.");
+  return j;
+}
+async function refresh() {
+  if (!token) return render();
+  try { S = await api("/api/pro/state"); } catch (e) { /* keep last screen when the network drops */ }
+  render(); geo();
+}
+async function act(path, body, okMsg) {
+  if (busy) return; busy = true;
+  try { const r = await api(path, body || {}); if (r.state) S = r.state; else if (r.pro) S = r; if (okMsg) toast(okMsg); render(); geo(); return r; }
+  catch (e) { toast(e.message); throw e; } finally { busy = false; }
+}
+
+// Location is shared only while on a job (on the way, on site, until check-out).
+function geo() {
+  const on = !!(S && S.job && S.job.safety.tracking);
+  if (on && geoWatch == null && "geolocation" in navigator) {
+    geoWatch = navigator.geolocation.watchPosition((p) => { if (Date.now() - lastGeo < 30e3 || !S?.job) return; lastGeo = Date.now(); api(`/api/pro/job/${S.job.id}/location`, { lat: p.coords.latitude, lng: p.coords.longitude }).catch(() => {}); }, () => {}, { enableHighAccuracy: true, maximumAge: 20e3 });
+  }
+  if (!on && geoWatch != null) { navigator.geolocation.clearWatch(geoWatch); geoWatch = null; }
+}
+
+function header() {
+  const p = S.pro, j = S.job, onJob = !!j && !home;
+  const status = S.offer ? "New job offer" : j ? `${j.id} · ${j.label}` : p.online ? "Online · waiting for jobs" : "Offline";
+  const right = j && j.safety.tracking && !j.safety.needsCheckout ? `<button class="sos" data-a="sos">SOS</button>` : !j && !S.offer ? `<button class="toggle ${p.online ? "" : "off"}" data-a="online">${p.online ? "Go offline" : "Go online"}</button>` : "";
+  return `<header class="top"><div class="brand"><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa</b><span class="pill">PRO</span></div>
+    <div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span><span class="trust"><b>${p.trust}</b><small>TRUST</small></span></div>
+    <div class="status"><span class="dot ${p.online || j ? "on" : ""}"></span><span>${esc(status)}</span>${right}</div>
+    ${j && !home ? `<div class="tabs"><button data-tab="job" aria-pressed="${tab === "job"}">Job</button><button data-tab="chat" aria-pressed="${tab === "chat"}">Chat with customer${j.unread ? `<span class="n">${j.unread}</span>` : ""}</button></div>` : ""}</header>`;
+}
+
+function homeView() {
+  const h = S.home, p = S.pro;
+  return `<div class="card hero"><span class="eyebrow">Home</span><h2>Hi ${esc(p.name.split(" ")[0])}, ${p.online ? "you're online" : "you're offline"}</h2><p class="muted" style="margin:0">Day jobs only (07:00–18:00). You choose which jobs to accept.</p>
+      <table class="split"><tr><td>Jobs completed today</td><td>${h.jobsToday}</td></tr><tr class="you"><td>Earned today</td><td>${usd(h.earnedToday)}</td></tr></table></div>`
+    + (h.last ? `<div class="card"><span class="eyebrow">Last job</span><b>${esc(h.last.id)} · ${esc(h.last.service)} · ${esc(h.last.suburb)}</b><span class="muted small">${esc(h.last.label)}${h.last.payout ? ` · ${usd(h.last.payout.amount)} ${h.last.payout.paid ? `paid to your EcoCash, ref ${esc(h.last.payout.ref)}` : `on its way to your EcoCash within ${S.rules.payoutHours} hours`}` : ""}${h.last.rating ? ` · rated ${"★".repeat(h.last.rating)}` : ""}</span></div>` : "")
+    + (p.online ? `<div class="card center"><div class="spin" style="width:30px;height:30px"></div><h3>Waiting for jobs</h3><p class="muted small" style="margin:0">When a customer books on WhatsApp, the job appears here and your phone buzzes.</p></div>`
+      : `<div class="card center"><h3>You're offline</h3><p class="muted small" style="margin:0">Go online to receive jobs near you.</p><button class="btn gold" data-a="online">Go online</button></div>`);
+}
+
+function offerView() {
+  const o = S.offer, left = Math.max(0, Math.ceil((o.expires - Date.now()) / 1000));
+  return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${Math.min(100, left / 60 * 100)}%"></i></div>
+    <h3>${esc(o.service)} · ${esc(o.suburb)}</h3><p style="margin:0">"${esc(o.desc)}"</p>
+    <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Distance</td><td>${o.km} km</td></tr><tr class="you"><td>Call-out you get</td><td>${usd(o.earnings)}</td></tr></table>
+    <p class="small ok" style="margin:0">✓ Customer's WhatsApp number verified · pays the call-out before you travel</p><p class="muted small" style="margin:0">Your choice: accept only if you're comfortable with it.</p>
+    <div class="two"><button class="btn" data-a="decline">Decline</button><button class="btn gold" data-a="accept">Accept</button></div></div>`;
+}
+
+function safetyStrip(j) {
+  if (!j.safety.tracking || j.safety.needsCheckout) return "";
+  const due = j.safety.checkDue && !j.safety.firstDone ? Math.max(0, Math.round((j.safety.checkDue - S.now) / 60e3)) : null;
+  return `<div class="safe"><div class="row"><span>📍 Sharing your location with Basa seBasa: on this job only</span><button class="uneasy" data-a="uneasy">I feel uneasy</button></div>
+    ${due != null ? `<div class="row"><span>Safety check-in ${due > 0 ? `due in ${due} min` : "due now"}</span><button data-a="checkopen">Check in now</button></div>` : j.safety.firstDone ? `<div class="row"><span>✓ Checked in. Next check-in: when you finish.</span></div>` : ""}</div>`;
+}
+let pinFor = null;
+function pinCard(kind) {
+  return `<div class="card"><h3>${kind === "checkout" ? "Finished: check out" : "Safety check-in"}</h3><p class="muted small" style="margin:0">Enter your safety PIN to confirm you're OK.</p>
+    <div class="field"><input id="pin" class="code" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="Safety PIN"></div><div id="pinerr" class="err"></div>
+    <button class="btn gold" data-a="${kind}">${kind === "checkout" ? "Check out" : "Check in"}</button></div>`;
+}
+
+function jobView(j) {
+  const m = j.money, cust = `<div class="card"><span class="eyebrow">Customer</span><b>${esc(j.customer)}</b>${j.landmark ? `<span class="small">🏠 ${esc(j.landmark)}</span>` : ""}<span class="muted small">"${esc(j.desc)}" · ${esc(j.when)} · number hidden: message through the Chat tab</span>
+    <a class="btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${j.lat},${j.lng}">Open directions${j.exactPin ? "" : " (suburb only: ask for the gate)"}</a></div>`;
+  const head = (t, sub, extra = "") => `<div class="card hero"><span class="eyebrow">${esc(j.id)} · ${esc(j.service)}</span><h2>${esc(t)}</h2>${sub ? `<p class="muted" style="margin:0">${sub}</p>` : ""}${extra}</div>`;
+  const pay = `<div class="card"><table class="split"><tr><td>Call-out share${m.travel ? " + travel" : ""}</td><td>${usd(m.calloutShare)}</td></tr>${m.labour ? `<tr><td>Labour</td><td>${usd(m.labour)}</td></tr><tr><td>Basa fee (15% of labour)</td><td>−${usd(m.fee)}</td></tr><tr><td>Parts</td><td>${usd(m.parts)}</td></tr>` : ""}<tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table></div>`;
+  let body = "";
+  switch (j.stage) {
+    case "await_callout": body = head("Waiting for the call-out", "The customer is paying on EcoCash. Don't leave yet.", `<div class="wait"><span class="spin"></span>We'll tell you as soon as it's paid.</div>`) + cust; break;
+    case "ready": body = head("Call-out paid ✓", "Get your tools and set off. The customer gets their Basa Code when you do.") + cust + `<button class="btn gold" data-a="trip">I'm setting off</button>`; break;
+    case "travelling": body = head("On the way", `About ${Math.max(10, Math.round((j.km || 5) * 2.5))} min. Drive safely.`) + cust + `<button class="btn gold" data-a="arrive">I've arrived</button>`; break;
+    case "arrived": { const waited = Math.floor((S.now - j.arrivedAt) / 60e3), left = S.rules.noShowWaitMinutes - waited;
+      body = head("At the gate", "Ask the customer for their 4-digit Basa Code. Don't go in without it.") + `<div class="card"><div class="field"><label for="code">Basa Code</label><input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off"></div><div id="codeerr" class="err">${j.codeTries ? `${j.codeTries} wrong ${j.codeTries === 1 ? "try" : "tries"}. After 3, our Harare admin calls the customer.` : ""}</div><button class="btn gold" data-a="verify">Confirm code</button></div>`
+        + `<div class="card"><span class="muted small">Nobody home? Message them in the Chat tab. ${left > 0 ? `You can close the visit in ${left} min and keep your call-out share.` : "You can close the visit now and keep your call-out share."}</span><button class="btn danger" data-a="noshow" ${left > 0 ? "disabled" : ""}>Customer not home: close visit</button></div>`; break; }
+    case "diagnosing": body = head("Diagnose and quote", "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine."></textarea></div><div class="two"><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal"></div><div class="field"><label for="qparts">Parts ($)</label><input id="qparts" inputmode="decimal" value="0"></div></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p><button class="btn gold" data-a="quote">Send quote</button></div>`; break;
+    case "quote_sent": body = head("Quote sent", "Waiting for the customer to approve on WhatsApp. Don't start yet.", `<div class="wait"><span class="spin"></span>Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}</div>`) + pay; break;
+    case "working": body = head("Repair approved ✓", "Do the work, test it, then tick the checks.") + `<div class="card"><h3>Before you finish</h3>${j.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}" value="${esc(c)}"> ${esc(c)}</label>`).join("")}<button class="btn gold" data-a="complete">Finished and tested</button></div>` + pay; break;
+    case "confirm": body = head("Customer is checking", "They're confirming it works on WhatsApp.", `<div class="wait"><span class="spin"></span>Waiting for the customer</div>`) + pay; break;
+    case "await_final": body = head("Waiting for payment", "The customer is paying the balance on EcoCash.", `<div class="wait"><span class="spin"></span>Almost done</div>`) + pay; break;
+    case "paid": body = head("Paid. Well done", j.rating ? `The customer rated you ${"★".repeat(j.rating)}.` : "Waiting for the customer's rating.") + pay; break;
+    case "noshow": body = head("Visit closed", `Customer not home. You keep the ${usd(m.calloutShare)} call-out share.`); break;
+    case "deferred": body = head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first refusal on the repair."); break;
+    case "cancelled": body = head("Customer cancelled", "We've let you know what you're owed in the job log."); break;
+    default: body = head(j.label, "");
+  }
+  return safetyStrip(j) + (pinFor === "checkin" ? pinCard("checkin") : "") + body
+    + (j.safety.needsCheckout ? pinCard("checkout") : "");
+}
+
+function chatView(j) {
+  return `<div class="card"><p class="muted small" style="margin:0">🔒 Messages go through Basa seBasa. Phone numbers and contact details are removed for everyone's safety.</p>
+    <div class="thread" id="thread">${j.thread.length ? j.thread.map((m) => `<div class="msg ${m.from}">${esc(m.text)}<time>${new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time></div>`).join("") : `<p class="muted small center">No messages yet.</p>`}</div>
+    <div class="quick">${["I'm on my way", "I'm at your gate", "Running 10 minutes late", "Nearly done"].map((q) => `<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+    <form class="compose" id="compose"><input id="msg" placeholder="Message the customer" autocomplete="off" aria-label="Message"><button aria-label="Send">➤</button></form></div>`;
+}
+
+function loginView() {
+  return `<div class="login"><img src="/assets/icon-192.png" alt="Basa seBasa"><h2 style="text-align:center">Basa seBasa Pro</h2>
+    ${login.step === "phone" ? `<div class="field"><label for="phone">Your WhatsApp number</label><input id="phone" inputmode="tel" placeholder="077 123 4567" value="${esc(login.phone || "")}"></div><button class="btn gold" data-a="sendcode">Send me a code</button><p class="muted small center">Not registered yet? <a href="/join/">Apply to join</a></p>`
+      : `<p class="center">We sent a 6-digit code to your WhatsApp.</p><div class="field"><input id="otp" class="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" aria-label="Code"></div>${login.dev ? `<p class="muted small center">Test mode code: <b>${esc(login.dev)}</b></p>` : ""}<button class="btn gold" data-a="verifycode">Log in</button><button class="btn" data-a="back">Use another number</button>`}
+    <div id="loginerr" class="err center"></div></div>`;
+}
+
+function render() {
+  const app = $("#app");
+  // keep what the pro is typing between refreshes
+  const keep = {}; app.querySelectorAll("input, textarea").forEach((el) => { if (el.id) keep[el.id] = el.type === "checkbox" ? el.checked : el.value; });
+  const focus = document.activeElement?.id, th = $("#thread"), atBottom = !th || th.scrollHeight - th.scrollTop - th.clientHeight < 60;
+  if (!token || !S) { app.innerHTML = token ? `<main><div class="card center"><div class="spin"></div></div></main>` : loginView(); }
+  else {
+    const j = S.job;
+    if (j && j.stage !== prevStage) { if (!j.safety.needsCheckout) home = false; prevStage = j.stage; }
+    if (!j) { tab = "job"; prevStage = null; }
+    const main = S.offer ? offerView() : j && !home ? (tab === "chat" ? chatView(j) : jobView(j)) : homeView();
+    app.innerHTML = header() + `<main>${main}</main>`;
+  }
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
+  if (focus && document.getElementById(focus)) document.getElementById(focus).focus();
+  const t2 = $("#thread"); if (t2 && atBottom) t2.scrollTop = t2.scrollHeight;
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-a],[data-tab],[data-q]"); if (!t) return;
+  if (t.dataset.tab) { tab = t.dataset.tab; if (tab === "chat" && S.job?.unread) api(`/api/pro/job/${S.job.id}/read`, {}).catch(() => {}); render(); return; }
+  if (t.dataset.q) { $("#msg").value = t.dataset.q; $("#msg").focus(); return; }
+  const a = t.dataset.a, j = S?.job, J = j && `/api/pro/job/${j.id}`;
+  try {
+    if (a === "sendcode") { login.phone = $("#phone").value; const r = await api("/api/pro/login", { phone: login.phone }); login.step = "code"; login.dev = r.devCode || null; render(); }
+    else if (a === "verifycode") { const r = await api("/api/pro/verify", { phone: login.phone, code: $("#otp").value }); token = r.token; store.set("basa-pro-token", token); login = { step: "phone" }; await refresh(); }
+    else if (a === "back") { login = { step: "phone", phone: login.phone }; render(); }
+    else if (a === "online") await act("/api/pro/online", { on: !S.pro.online });
+    else if (a === "accept") await act(`/api/pro/offer/${S.offer.id}/accept`, {}, "Accepted. The customer is paying the call-out.");
+    else if (a === "decline") await act(`/api/pro/offer/${S.offer.id}/decline`, {}, "Declined.");
+    else if (a === "trip") await act(`${J}/trip`, {}, "Location sharing on for this job.");
+    else if (a === "arrive") await act(`${J}/arrive`);
+    else if (a === "verify") { try { await act(`${J}/verify`, { code: $("#code").value }, "Code confirmed ✓"); } catch (err) { const el = $("#codeerr"); if (el) el.textContent = err.message; } }
+    else if (a === "noshow") { if (confirm("Close this visit as customer not home?")) await act(`${J}/noshow`); }
+    else if (a === "quote") await act(`${J}/quote`, { labour: $("#qlab").value, parts: $("#qparts").value || 0, note: $("#qnote").value }, "Quote sent to the customer.");
+    else if (a === "complete") await act(`${J}/complete`, { checks: [...document.querySelectorAll("[id^=ck]:checked")].map((c) => c.value) });
+    else if (a === "checkopen") { pinFor = "checkin"; render(); $("#pin")?.focus(); }
+    else if (a === "checkin" || a === "checkout") {
+      try { await act(`${J}/${a}`, { pin: $("#pin").value }, a === "checkout" ? "Checked out ✓. Back to home" : "Checked in ✓"); pinFor = null; if (a === "checkout") { home = true; tab = "job"; } render(); }
+      catch (err) { const el = $("#pinerr"); if (el) el.textContent = err.message; }
+    }
+    else if (a === "sos") { if (confirm("Send an SOS? Our Harare admin will call the police and you straight away.")) await act(`${J}/sos`, {}, "SOS sent. Help is being called."); }
+    else if (a === "uneasy") await act(`${J}/uneasy`, {}, "Our Harare admin will call you in 2 minutes.");
+  } catch (err) { if (a === "sendcode" || a === "verifycode") { const el = $("#loginerr"); if (el) el.textContent = err.message; } }
+});
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "compose") return; e.preventDefault();
+  const v = $("#msg").value.trim(); if (!v || !S?.job) return;
+  try { const r = await act(`/api/pro/job/${S.job.id}/message`, { text: v }); $("#msg").value = ""; if (r?.scrubbed) toast("Contact details were removed from your message."); render(); } catch {}
+});
+// Tick the offer countdown every second without a full refresh.
+setInterval(() => { if (!S?.offer) return; const left = Math.max(0, Math.ceil((S.offer.expires - Date.now()) / 1000)); const c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = Math.min(100, left / 60 * 100) + "%"; if (left === 0) refresh(); }, 1000);
+setInterval(() => { if (document.visibilityState === "visible" && !busy) refresh(); }, 3000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/pro/sw.js", { scope: "/pro/" }).catch(() => {});
+refresh();
+</script>
+</body>
+</html>

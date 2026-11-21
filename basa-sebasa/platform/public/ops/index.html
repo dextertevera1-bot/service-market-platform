@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1F4E9C">
+<title>Basa seBasa Ops Desk</title>
+<link rel="icon" href="/assets/logo-64.png">
+<style>
+:root { --blue: #1F4E9C; --navy: #0E2A5C; --yellow: #F5B700; --pale: #DDE3F2;
+  --bg: #F2F5FB; --card: #FFFFFF; --ink: #0F1B33; --muted: #56627A; --line: #D3DBEA; --sunk: #EBF0F9;
+  --good: #1E7A4A; --good-bg: #E2F3E9; --bad: #B3261E; --bad-bg: #FBE4E2; --warn: #8A5A00; --warn-bg: #FFF4D1; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0B1838; --card: #12234A; --ink: #F2F5FB; --muted: #AEBBD8; --line: #2B427A; --sunk: #1A2F5C; --good: #7FD3A4; --good-bg: #143A2A; --bad: #F4948C; --bad-bg: #3D1B1A; --warn: #F5C542; --warn-bg: #3A2F0E; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+header { background: var(--blue); color: #fff; padding: 10px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 3; }
+header img { width: 32px; height: 32px; border-radius: 7px; }
+header b span { font-weight: 400; color: var(--pale); }
+.mode { font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .06em; background: rgba(255,255,255,.15); border-radius: 6px; padding: 5px 8px; }
+.mode.sim { background: var(--yellow); color: var(--navy); }
+header .sp { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+header button { border: 1px solid var(--pale); background: transparent; color: #fff; border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+main { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; } .kpi b { display: block; font-size: 26px; } .kpi small { color: var(--muted); }
+.kpi.hot { border-color: var(--bad); background: var(--bad-bg); }
+.grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+h2 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline; } h2 small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.empty { color: var(--muted); font-size: 14px; }
+.alert { border: 2px solid var(--bad); border-radius: 12px; padding: 12px; display: grid; gap: 8px; background: var(--bad-bg); }
+.alert.calm { border-color: var(--line); background: var(--sunk); }
+.alert h3 { margin: 0; font-size: 16px; }
+.ladder { margin: 0; padding-left: 20px; display: grid; gap: 4px; } .ladder li.done { text-decoration: line-through; opacity: .6; } .ladder li.now { font-weight: 700; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 0; background: var(--yellow); color: var(--navy); font-weight: 700; border-radius: 9px; padding: 7px 12px; cursor: pointer; }
+.btn.q { background: transparent; border: 1.5px solid var(--line); color: var(--ink); font-weight: 600; }
+.btn.r { background: var(--bad); color: #fff; }
+input.s { border: 1.5px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 8px; width: 140px; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; } th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12.5px; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 7px 6px; border-bottom: 1px dashed var(--line); vertical-align: top; } td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.wrap { overflow-x: auto; }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 6px; background: var(--sunk); }
+.tag.live { background: var(--warn-bg); color: var(--warn); } .tag.done { background: var(--good-bg); color: var(--good); } .tag.bad { background: var(--bad-bg); color: var(--bad); }
+.log { max-height: 420px; overflow-y: auto; font-size: 13.5px; display: grid; gap: 4px; }
+.log div { display: grid; grid-template-columns: 52px 74px 1fr; gap: 6px; border-bottom: 1px dashed var(--line); padding: 3px 0; }
+.log time, .log i { color: var(--muted); font-style: normal; font-size: 12px; }
+a { color: var(--blue); } @media (prefers-color-scheme: dark) { a { color: var(--yellow); } }
+.login { max-width: 360px; margin: 80px auto; display: grid; gap: 10px; padding: 0 16px; } .login img { width: 80px; height: 80px; border-radius: 16px; justify-self: center; }
+.login input { border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px; }
+.err { color: var(--bad); font-weight: 600; }
+dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); max-width: 720px; width: calc(100% - 32px); max-height: 85vh; }
+.thumbs { display: flex; gap: 6px; } .thumbs a img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg"><div id="dlgbody"></div><p><button class="btn q" onclick="document.getElementById('dlg').close()">Close</button></p></dialog>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const usd = (n) => "$" + (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
+const tm = (t) => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const ago = (t) => { const m = Math.round((Date.now() - t) / 60e3); return m < 1 ? "now" : m < 60 ? m + " min" : Math.round(m / 60) + " h"; };
+const store = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} } };
+let token = store.get("basa-ops"), user = store.get("basa-ops-user"), D = null, seenUrgent = new Set(), err = "";
+const URGENT = ["sos", "duress", "missed", "uneasy", "code"];
+
+async function api(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && token) { token = null; store.set("basa-ops", null); render(); }
+  if (!r.ok) throw new Error(j.error || "Failed");
+  return j;
+}
+function beep() { try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; o.connect(g); g.connect(a.destination); g.gain.value = .15; o.start(); setTimeout(() => { o.stop(); a.close(); }, 400); } catch {} }
+async function refresh() {
+  if (!token) return render();
+  try { D = await api("/api/ops/overview"); err = ""; } catch (e) { err = e.message; }
+  const fresh = (D?.alerts || []).filter((a) => URGENT.includes(a.kind) && !seenUrgent.has(a.id));
+  if (fresh.length) { beep(); fresh.forEach((a) => seenUrgent.add(a.id)); if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification("Basa seBasa: " + fresh[0].name); }
+  render();
+}
+
+const stageTag = (s, l) => `<span class="tag ${["paid", "noshow", "deferred"].includes(s) ? "done" : s === "cancelled" ? "bad" : "live"}">${esc(l)}</span>`;
+function alertsView() {
+  const al = [...D.alerts].sort((a, b) => URGENT.includes(b.kind) - URGENT.includes(a.kind) || b.at - a.at);
+  if (!al.length) return `<p class="empty">No alerts. All pros on jobs are checked in.</p>`;
+  return al.map((a) => { const urgent = URGENT.includes(a.kind), loc = a.job?.loc;
+    return `<div class="alert ${urgent ? "" : "calm"}"><div class="row"><h3>${urgent ? "🚨 " : ""}${esc(a.name)}</h3><span class="tag">${ago(a.at)} ago</span>${a.job ? `<a href="#" data-job="${a.job.id}">${a.job.id}</a>` : ""}</div>
+      ${a.note ? `<div>${esc(a.note)}</div>` : ""}
+      ${a.pro ? `<div><b>${esc(a.pro.name)}</b> · <a href="tel:+${esc(a.pro.phone)}">+${esc(a.pro.phone)}</a> · emergency contact ${esc(a.pro.em_name)} <a href="tel:+${esc(a.pro.em_phone)}">+${esc(a.pro.em_phone)}</a></div>` : ""}
+      ${a.job ? `<div>📍 ${esc(a.job.suburb)}${a.job.landmark ? ` · ${esc(a.job.landmark)}` : ""}${loc ? ` · <a target="_blank" rel="noopener" href="https://www.google.com/maps?q=${loc.lat},${loc.lng}">live location${loc.at ? ` (${ago(loc.at)} ago)` : ""}</a>` : ""} · customer <a href="tel:+${esc(a.job.customer)}">+${esc(a.job.customer)}</a></div>` : ""}
+      <ol class="ladder">${a.ladder.map((s, i) => `<li class="${i < a.step ? "done" : i === a.step ? "now" : ""}">${esc(s)}</li>`).join("")}</ol>
+      <div class="row">${a.step < a.ladder.length ? `<button class="btn" data-alert="${a.id}" data-do="step">Done: next step</button>` : ""}<button class="btn q" data-alert="${a.id}" data-do="close">Close: confirmed safe / resolved</button></div></div>`; }).join("");
+}
+function render() {
+  const app = $("#app");
+  if (!token) { app.innerHTML = `<div class="login"><img src="/assets/icon-192.png" alt=""><h2 style="justify-content:center">Ops desk</h2><input id="u" placeholder="Name (e.g. harare)" autocomplete="username"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" data-do="login">Log in</button><div class="err">${esc(err)}</div></div>`; return; }
+  if (!D) { app.innerHTML = `<main><p>Loading…</p></main>`; return; }
+  const keep = {}; app.querySelectorAll("input").forEach((el) => { if (el.id) keep[el.id] = el.value; }); const focus = document.activeElement?.id;
+  const live = D.jobs.filter((j) => !["paid", "cancelled", "deferred", "noshow"].includes(j.stage));
+  const urgent = D.alerts.filter((a) => URGENT.includes(a.kind)).length, apps = D.pros.filter((p) => p.status === "applied");
+  const dueSoon = D.payouts.filter((p) => p.due_at - Date.now() < 6 * 3600e3).length;
+  app.innerHTML = `<header><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa · Ops desk</b>
+    <span class="mode ${D.mode.whatsapp === "simulated" ? "sim" : ""}">WHATSAPP: ${D.mode.whatsapp.toUpperCase()}</span><span class="mode ${D.mode.payments === "sim" ? "sim" : ""}">PAYMENTS: ${D.mode.payments.toUpperCase()}</span>
+    <span class="sp"><span>${esc(user)}</span>${"Notification" in window && Notification.permission === "default" ? `<button data-do="notify">Turn on alerts</button>` : ""}<button data-do="logout">Log out</button></span></header>
+  <main>${err ? `<p class="err">${esc(err)}</p>` : ""}
+   <div class="kpis"><div class="kpi ${urgent ? "hot" : ""}"><b>${urgent}</b><small>Safety alerts</small></div><div class="kpi"><b>${live.length}</b><small>Live jobs</small></div>
+     <div class="kpi"><b>${D.pros.filter((p) => p.status === "verified" && p.online).length} / ${D.pros.filter((p) => p.status === "verified").length}</b><small>Pros online / verified</small></div>
+     <div class="kpi ${D.pending.length ? "hot" : ""}"><b>${D.pending.length}</b><small>EcoCash pending</small></div><div class="kpi ${dueSoon ? "hot" : ""}"><b>${D.payouts.length}</b><small>Payouts due (${usd(D.payouts.reduce((a, p) => a + p.amount, 0))})</small></div><div class="kpi"><b>${apps.length}</b><small>Applications</small></div></div>
+   <div class="grid"><div style="display:grid;gap:14px">
+    <section><h2>Alerts <small>Harare admin acts; Dex watches. Security concern: call the police immediately.</small></h2>${alertsView()}</section>
+    <section><h2>Live jobs</h2><div class="wrap">${live.length ? `<table><tr><th>Job</th><th>Stage</th><th>Pro</th><th>Where</th><th class="n">Paid</th><th>Updated</th></tr>${live.map((j) => `<tr><td><a href="#" data-job="${j.id}">${j.id}</a><br><small>${esc(j.service)}</small></td><td>${stageTag(j.stage, j.label)}${j.tracking ? "<br><small>📍 tracking</small>" : ""}</td><td>${esc(j.pro || "-")}</td><td>${esc(j.suburb)}<br><small>${esc(j.when)}</small></td><td class="n">${usd(j.paid)}</td><td>${ago(j.updated)}</td></tr>`).join("")}</table>` : `<p class="empty">No live jobs.</p>`}</div></section>
+    <section><h2>Recent jobs</h2><div class="wrap"><table><tr><th>Job</th><th>Outcome</th><th>Pro</th><th class="n">Paid</th><th class="n">Pro gets</th></tr>${D.jobs.filter((j) => !live.includes(j)).slice(0, 20).map((j) => `<tr><td><a href="#" data-job="${j.id}">${j.id}</a></td><td>${stageTag(j.stage, j.label)}</td><td>${esc(j.pro || "-")}</td><td class="n">${usd(j.paid)}</td><td class="n">${j.stage === "paid" ? usd(j.payout) : "-"}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">None yet.</td></tr>`}</table></div></section>
+   </div><div style="display:grid;gap:14px">
+    <section><h2>EcoCash to confirm <small>${D.mode.payments === "manual" ? "check the merchant statement first" : "confirmed automatically"}</small></h2>${D.pending.length ? `<table><tr><th>Ref</th><th class="n">Amount</th><th></th></tr>${D.pending.map((p) => `<tr><td>${esc(p.ref)}<br><small>${esc(p.kind)} · ${ago(p.created_at)} ago</small></td><td class="n">${usd(p.amount)}</td><td><div class="row"><input class="s" id="pr${p.id}" placeholder="EcoCash ref"><button class="btn" data-pay="${p.id}">Confirm</button></div></td></tr>`).join("")}</table>` : `<p class="empty">Nothing waiting.</p>`}</section>
+    <section><h2>Payouts due <small>within 24 h of the customer paying</small></h2>${D.payouts.length ? `<table><tr><th>Pro</th><th class="n">Amount</th><th></th></tr>${D.payouts.map((p) => `<tr><td><b>${esc(p.name)}</b><br><small>${esc(p.job_id)} · EcoCash +${esc(p.ecocash)} · due ${p.due_at > Date.now() ? "in " + Math.round((p.due_at - Date.now()) / 3600e3) + " h" : "<b style='color:var(--bad)'>overdue</b>"}</small></td><td class="n">${usd(p.amount)}</td><td><div class="row"><input class="s" id="po${p.id}" placeholder="EcoCash ref"><button class="btn" data-payout="${p.id}">Mark paid</button></div></td></tr>`).join("")}</table>` : `<p class="empty">All pros are paid.</p>`}</section>
+    ${D.refunds.length ? `<section><h2>Refunds to review</h2>${D.refunds.map((j) => `<div class="row"><a href="#" data-job="${j.id}">${j.id}</a> cancelled after paying ${usd(j.paid)} · customer +${esc(j.customer)}</div>`).join("")}</section>` : ""}
+    <section><h2>Applications <small>approve only after documents, references and the in-person check</small></h2>${apps.length ? apps.map((p) => `<div class="alert calm"><div class="row"><b>${esc(p.name)}</b><span class="tag">${esc(p.trade)}</span><span>${esc(p.suburb)}</span><span class="muted">+${esc(p.phone)}</span></div>
+      <div class="small">Experience: ${esc(p.data.experience || "-")}<br>Referees: ${esc(p.data.referees || "-")}<br>Emergency contact: ${esc(p.em_name)} +${esc(p.em_phone)} · EcoCash +${esc(p.ecocash)} · safety and duress PINs set ✓</div>
+      <div class="thumbs">${["idFront", "idBack", "selfie", "certificate"].filter((k) => p.data.files?.[k]).map((k) => `<a href="#" data-file="${p.id}/${k}" title="${k}">${k}</a>`).join(" · ")}</div>
+      <div class="row"><label>Starting Trust Score <input class="s" id="tr${p.id}" value="70" style="width:70px"></label><button class="btn" data-approve="${p.id}">Approve</button><button class="btn r" data-reject="${p.id}">Reject</button></div></div>`).join("") : `<p class="empty">No new applications.</p>`}</section>
+    <section><h2>Pros</h2><div class="wrap"><table><tr><th>Name</th><th>Trade</th><th>Status</th><th class="n">Trust</th><th></th></tr>${D.pros.filter((p) => p.status !== "applied").map((p) => `<tr><td>${p.online ? "🟢" : "⚪"} ${esc(p.name)}<br><small>+${esc(p.phone)}</small></td><td>${esc(p.trade)}<br><small>${esc(p.suburb)}</small></td><td>${esc(p.status)}</td><td class="n">${p.trust}${p.rating_n ? `<br><small>★${(p.rating_sum / p.rating_n).toFixed(1)} · ${p.jobs_done} jobs</small>` : ""}</td><td>${p.status === "verified" ? `<button class="btn q" data-suspend="${p.id}">Suspend</button>` : p.status === "suspended" ? `<button class="btn q" data-reinstate="${p.id}">Reinstate</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">No verified pros yet.</td></tr>`}</table></div></section>
+    <section><h2>Activity</h2><div class="log">${D.events.map((e) => `<div><time>${tm(e.at)}</time><i>${esc(e.tag)}</i><span>${e.job_id ? `<a href="#" data-job="${e.job_id}">${e.job_id}</a> ` : ""}${esc(e.text)}</span></div>`).join("")}</div></section>
+   </div></div></main>`;
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; }); if (focus && document.getElementById(focus)) document.getElementById(focus).focus();
+}
+
+async function showJob(id) {
+  const d = await api("/api/ops/job/" + id), j = d.job, m = j.money;
+  $("#dlgbody").innerHTML = `<h2>${esc(j.id)} · ${esc(j.label)}</h2><p>${esc(j.data.desc)}<br>📍 ${esc(j.data.suburb)}${j.data.landmark ? ` · ${esc(j.data.landmark)}` : ""} · ${esc(j.data.when)}<br>Customer +${esc(j.customer)} · Pro ${esc(j.data.pro?.name || "-")}</p>
+    <table><tr><td>Call-out (customer)</td><td class="n">${usd(m.pay1)}</td></tr><tr><td>Balance (customer)</td><td class="n">${usd(m.pay2)}</td></tr><tr><td>Pro gets</td><td class="n">${usd(m.payout)}</td></tr><tr><td>Basa keeps</td><td class="n">${usd(m.platform)}</td></tr></table>
+    <h3>Payments</h3>${d.payments.map((p) => `<div>${esc(p.kind)} ${usd(p.amount)} · ${esc(p.status)} · ${esc(p.ref || "")}</div>`).join("") || "<p class='empty'>None</p>"}
+    <h3>Messages (contacts removed)</h3>${(j.data.thread || []).map((t) => `<div><b>${esc(t.from)}</b> ${tm(t.at)}: ${esc(t.text)}</div>`).join("") || "<p class='empty'>None</p>"}
+    <h3>Log</h3><div class="log">${d.events.map((e) => `<div><time>${tm(e.at)}</time><i>${esc(e.tag)}</i><span>${esc(e.text)}</span></div>`).join("")}</div>
+    ${["paid", "cancelled", "deferred", "noshow"].includes(j.stage) ? "" : `<div class="row" style="margin-top:10px"><button class="btn q" data-reoffer="${j.id}">Re-offer to another pro</button><button class="btn r" data-cancel="${j.id}">Cancel job</button></div>`}`;
+  $("#dlg").showModal();
+}
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("button, a[data-job], a[data-file]"); if (!t) return;
+  const d = t.dataset;
+  try {
+    if (d.do === "login") { const r = await api("/api/ops/login", { user: $("#u").value.trim(), password: $("#p").value }); token = r.token; user = r.user; store.set("basa-ops", token); store.set("basa-ops-user", user); await refresh(); }
+    else if (d.do === "logout") { token = null; store.set("basa-ops", null); render(); }
+    else if (d.do === "notify") { await Notification.requestPermission(); render(); }
+    else if (d.alert) { await api(`/api/ops/alert/${d.alert}/${d.do}`, {}); await refresh(); }
+    else if (d.pay) { await api(`/api/ops/payment/${d.pay}/confirm`, { ref: $("#pr" + d.pay).value }); await refresh(); }
+    else if (d.payout) { await api(`/api/ops/payout/${d.payout}/paid`, { ref: $("#po" + d.payout).value }); await refresh(); }
+    else if (d.approve) { if (confirm("Approve this pro? Only after ID, references and the in-person check have passed.")) { await api(`/api/ops/pro/${d.approve}/approve`, { trust: Number($("#tr" + d.approve).value) || 70 }); await refresh(); } }
+    else if (d.reject) { const note = prompt("Reason (shared with the team only):"); if (note != null) { await api(`/api/ops/pro/${d.reject}/reject`, { note }); await refresh(); } }
+    else if (d.suspend) { const note = prompt("Why are you suspending this pro?"); if (note != null) { await api(`/api/ops/pro/${d.suspend}/suspend`, { note }); await refresh(); } }
+    else if (d.reinstate) { await api(`/api/ops/pro/${d.reinstate}/reinstate`, {}); await refresh(); }
+    else if (d.job) { e.preventDefault(); await showJob(d.job); }
+    else if (d.file) { e.preventDefault(); const [id, k] = d.file.split("/"); const r = await fetch(`/api/ops/file/${id}/${k}`, { headers: { Authorization: "Bearer " + token } }); if (r.ok) window.open(URL.createObjectURL(await r.blob()), "_blank"); }
+    else if (d.reoffer) { await api(`/api/ops/job/${d.reoffer}/reoffer`, {}); $("#dlg").close(); await refresh(); }
+    else if (d.cancel) { const note = prompt("Message to the customer:"); if (note != null) { await api(`/api/ops/job/${d.cancel}/cancel`, { note }); $("#dlg").close(); await refresh(); } }
+  } catch (x) { err = x.message; render(); alert(x.message); }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.target.id === "p" || e.target.id === "u")) $("[data-do=login]").click(); });
+setInterval(() => { if (!document.querySelector("dialog[open]")) refresh(); }, 5000);
+refresh();
+</script>
+</body>
+</html>
