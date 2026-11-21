@@ -285,7 +285,7 @@ export function startServer({ port = config.port, dbPath = config.dbPath } = {})
   if (!isDev && (Object.values(config.adminUsers).some((p) => p === "change-me" || p.length < 10) || config.sessionSecret === "dev-only-secret"))
     throw new Error("Set strong ADMIN_USERS passwords (10+ characters) and SESSION_SECRET before running in production.");
   if (!isDev && !simulated.whatsapp && !config.whatsapp.appSecret) throw new Error("Set WHATSAPP_APP_SECRET so webhook messages can be verified.");
-  if (!isDev && config.payments.mode === "sim") throw new Error("PAYMENT_MODE=sim isn't allowed in production. Use manual or paynow.");
+  if (!isDev && config.payments.mode === "sim" && process.env.ALLOW_TEST_MODE !== "1") throw new Error("PAYMENT_MODE=sim isn't allowed in production. Use manual or paynow (or set ALLOW_TEST_MODE=1 on a test server).");
   openDb(dbPath);
   const server = createServer((req, res) => route(req, res).catch((e) => { logEvent(null, "error", `${req.method} ${req.url}: ${e.message}`); if (!res.headersSent) send(res, 500, { error: "Something went wrong. Please try again." }); }));
   const timer = setInterval(() => { J.sweep().catch((e) => logEvent(null, "error", `Sweep: ${e.message}`)); pollPending().catch(() => {}); }, 15e3);
