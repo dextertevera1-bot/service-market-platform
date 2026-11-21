@@ -134,6 +134,12 @@ table.jobs tr.demo td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .dotst.on { background: var(--good); } .dotst.job { background: var(--gold); }
 @media (max-width: 1060px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } .ops-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tabs a { padding: 6px 9px; } }
+.sos { border: 0; background: #C7362B; color: #fff; font-weight: 800; border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 12.5px; }
+.sos-card { background: #C7362B; color: #fff; border-radius: 14px; padding: 12px; display: grid; gap: 6px; }
+.sos-card .btn { border-color: #fff; color: #fff; background: transparent; }
+.rate-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.rate-row button { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 4px 8px; cursor: pointer; font-weight: 700; }
+.rate-row button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); }
 .tag.rule { background: #FFF1C9; color: #7A5600; border: 1px dashed #C9A23A; }
 .guide-in { max-width: 1320px; margin: 0 auto; padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-weight: 600; font-size: 14.5px; }
 .guide button { border: 1.5px solid var(--on-gold); background: transparent; color: var(--on-gold); border-radius: 999px; padding: 3px 12px; font-weight: 700; cursor: pointer; }
@@ -301,7 +307,7 @@ form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%;
 <header class="top"><div class="top-in">
   <div class="logo"><span class="mark" aria-hidden="true">B</span><span><b>BASA <i>se</i>BASA</b><small>Customer WhatsApp · platform · technician app <span class="demo-pill">DEMO · SIMULATED</span></small></span></div>
   <nav class="tabs" aria-label="Views"><a href="#demo" id="tab-demo">Live demo</a><a href="#ops" id="tab-ops">Ops dashboard <span class="n" id="ops-badge" hidden></span></a></nav>
-  <label class="scen"><span class="sr">Scenario</span><select id="scenario" aria-label="Demo scenario"><optgroup label="Main journeys"><option value="standard">Standard repair</option><option value="family">Booking from abroad for family</option><option value="multi">Three-day job</option></optgroup><optgroup label="Recovery scenarios"><option value="zesa">ZESA cut before testing</option><option value="extra">Extra work found mid-job</option><option value="cancel">Technician cancels</option><option value="payment">EcoCash slow or duplicate</option><option value="dispute">Fault returns after payment</option><option value="issue">Problem found before paying</option></optgroup><option value="free">Free play (no script)</option></select></label>
+  <label class="scen"><span class="sr">Scenario</span><select id="scenario" aria-label="Demo scenario"><optgroup label="Main journeys"><option value="standard">Standard repair</option><option value="family">Booking from abroad for family</option><option value="multi">Three-day job</option><option value="later">Book for tomorrow, then move it</option></optgroup><optgroup label="Recovery scenarios"><option value="zesa">ZESA cut before testing</option><option value="extra">Extra work found mid-job</option><option value="cancel">Technician cancels</option><option value="payment">EcoCash slow or duplicate</option><option value="dispute">Fault returns after payment</option><option value="issue">Problem found before paying</option></optgroup><option value="free">Free play (no script)</option></select></label>
   <button class="ctl" type="button" id="nextstep">Next step</button>
   <button class="ctl gold" type="button" id="play" aria-pressed="false">▶ Play</button>
   <button class="reset" type="button" data-act="reset">Start again</button>
@@ -397,7 +403,7 @@ function money() {
 // ---------- chat + log ----------
 function bot(html, extra = {}) { S.chat.push({ from: "in", html, at: clock(), ...extra }); }
 function me(text, extra = {}) { S.chat.push({ from: "out", html: esc(text), at: clock(), ...extra }); }
-function log(who, text) { S.log.unshift({ who, text: String(text).replace(/([A-Z])\.\./g, "$1."), at: clock(), ts: Date.now() }); }
+function log(who, text) { S.log.unshift({ who, text: String(text).replace(/([A-Z])\.\./g, "$1."), at: clock(), ts: Date.now(), job: S.job }); }
 const prov = () => `<span class="prov">provisional</span>`;
 // timers belong to one demo run: "Start again" cancels anything still pending
 function later(fn, ms) { const sid = S.sid; setTimeout(() => { if (S.sid === sid) fn(); }, ms); }
@@ -417,6 +423,10 @@ function next() {
   if (st === "start") return ["customer", `${(SCENARIOS[$("#scenario")?.value] || SCENARIOS.free).intro} Press Play or Next step, or say hi as the customer.`];
   if (st === "who") return ["customer", "Customer: booking for your own home, or for family in Harare while you're abroad?"];
   if (st === "family") return ["customer", "Customer: tell us who's at home in Harare."];
+  if (st === "landmark") return ["customer", "Customer: add a landmark so the pro finds the gate, or skip."];
+  if (st === "tip") return ["customer", "Customer: add an optional tip, or No thanks."];
+  if (t === "scheduled") return ["tech", `Booked for ${S.sched}. Technician: \"Demo: skip to the booking time\". Customer can still change or cancel.`];
+  if (t === "cancelled") return ["", "Booking cancelled by the customer. Type Hi as the customer to book again, or Start again."];
   if (st === "describe") return ["customer", "Customer: describe the problem, or send a voice note."];
   if (["service", "photo", "location", "confirm", "choose", "voicecheck"].includes(st)) return ["customer", "Customer: answer the bot to book a pro."];
   if (t === "offer") return ["tech", `Technician: ${first(S.pro.name)} has 60 seconds to accept the job.`];
@@ -448,7 +458,7 @@ function stageLabel() {
   if (S.step === "noshow") return "Closed: customer not home";
   if (S.payPending) return S.payPending.timedOut ? "Payment not confirmed: checking" : "EcoCash payment pending";
   if (S.t.stage === "working" && S.claim) return "Warranty repair in progress";
-  return ({ idle: S.step === "start" ? "No booking yet" : "Customer is booking", offer: "Offered to the pro: 60 s to accept", declined: "Pro declined: offering the next one", await_callout: "Waiting for the call-out payment", ready: "Call-out paid: pro getting ready", travelling: S.returning ? "Pro on the way back" : m && m.day > 1 ? `Day ${m.day}: pro on the way` : "Pro on the way", verify: "Pro at the gate: identity check", quote: "Pro diagnosing", quote_sent: "Quote with the customer", working: m ? `Work in progress: day ${m.day} of ${m.days}` : "Work in progress", paused: S.pause ? `Paused, untested: ${PAUSES[S.pause.reason].short}` : "Paused, untested", variation: "Waiting for approval of extra work", reassigning: "Pro cancelled: reassigning", claim: "Warranty claim opened", claimbooked: "Warranty return visit booked", inspect: "Return visit: inspecting", escalated: "Escalated to the Basa team", overnight: m ? `Day ${m.day} of ${m.days} done: overnight` : "Overnight", await_payment: S.issue ? "Customer reported a problem" : "Customer checking the work", paid: "Paid and closed", deferred: "Repair saved for later (30 days)", noshow: "Closed: customer not home" })[t] || t;
+  return ({ idle: S.step === "start" ? "No booking yet" : "Customer is booking", offer: "Offered to the pro: 60 s to accept", declined: "Pro declined: offering the next one", await_callout: "Waiting for the call-out payment", ready: "Call-out paid: pro getting ready", travelling: S.returning ? "Pro on the way back" : m && m.day > 1 ? `Day ${m.day}: pro on the way` : "Pro on the way", verify: "Pro at the gate: identity check", quote: "Pro diagnosing", quote_sent: "Quote with the customer", working: m ? `Work in progress: day ${m.day} of ${m.days}` : "Work in progress", scheduled: `Booked for ${S.sched || "later"}`, cancelled: "Cancelled by the customer", paused: S.pause ? `Paused, untested: ${PAUSES[S.pause.reason].short}` : "Paused, untested", variation: "Waiting for approval of extra work", reassigning: "Pro cancelled: reassigning", claim: "Warranty claim opened", claimbooked: "Warranty return visit booked", inspect: "Return visit: inspecting", escalated: "Escalated to the Basa team", overnight: m ? `Day ${m.day} of ${m.days} done: overnight` : "Overnight", await_payment: S.issue ? "Customer reported a problem" : "Customer checking the work", paid: "Paid and closed", deferred: "Repair saved for later (30 days)", noshow: "Closed: customer not home" })[t] || t;
 }
 function workStatus() {
   const t = S.t.stage;
@@ -494,13 +504,17 @@ function render() {
 }
 function renderChat() {
   const box = $("#chat"); const lastIn = S.chat.map((m) => m.from).lastIndexOf("in");
+  // only jump to the newest message if you were already at the bottom, or something new arrived
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80, prevTop = box.scrollTop, sig = S.chat.length + ":" + (S.typing ? 1 : 0);
   box.innerHTML = `<span class="day">Today</span>` + S.chat.map((m, i) => {
     const live = i === lastIn && !m.used;
     const btns = m.buttons ? `<div class="chat-btns ${m.list ? "list" : ""}">${m.buttons.map((b, k) => `<button type="button" data-chat="${i}:${k}" ${live ? "" : "disabled"}>${b.html || esc(b.label)}</button>`).join("")}</div>` : "";
+    if (m.from === "sys") return `<span class="day">${m.html}</span>`;
     return `<div class="msg ${m.from}"><div class="bubble">${m.html}<time>${m.at}${m.from === "out" ? " ✓✓" : ""}</time></div>${btns}</div>`;
   }).join("") + (S.typing ? `<div class="typing">Basa seBasa is typing…</div>` : "");
-  box.scrollTop = box.scrollHeight;
-  const chips = S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : chatOpen() && ["ready", "travelling", "verify"].includes(S.t.stage) ? ["Where are you?", "It's the blue gate opposite the church", "Can I have his number?", "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
+  if (atBottom || sig !== renderChat.sig) box.scrollTop = box.scrollHeight; else box.scrollTop = prevTop;
+  renderChat.sig = sig;
+  const chips = MANAGEABLE.includes(S.t.stage) && !S.payPending && S.pro && !["pay1"].includes(S.step) || (S.t.stage === "await_callout" && !S.payPending && S.pro) ? (S.t.stage === "travelling" ? ["Where are you?", "Change or cancel", "Share live status", "HELP"] : ["Change or cancel", "HELP"]) : S.step === "start" ? ["Hi"] : S.step === "describe" && svc() ? ["🎤 Voice note", svc().hint] : chatOpen() && ["ready", "travelling", "verify"].includes(S.t.stage) ? ["Where are you?", "It's the blue gate opposite the church", "Can I have his number?", "HELP"] : ["service", "start", "describe", "who", "family"].includes(S.step) ? [] : ["HELP"];
   $("#chips").innerHTML = chips.map((c) => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join("");
   $("#overlay").innerHTML = S.pay ? `<div class="overlay"><form class="ussd" id="ussd"><span style="color:#F0AE00">SIMULATED · no money moves</span><span>EcoCash</span><span>Pay <b>USD ${r2(S.pay.amount).toFixed(2)}</b> to <b>BASA SEBASA</b> (merchant) for ${esc(S.job)}?</span><span>Enter PIN:</span><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="EcoCash PIN"><span class="err" id="pin-err" hidden></span><div class="row"><button type="button" data-act="pin-cancel">CANCEL</button><button type="submit">SEND</button></div></form></div>`
     : S.track ? `<div class="overlay"><div class="track"><div style="display:flex;justify-content:space-between;align-items:center"><b>Live tracking · ${esc(S.job)}</b><button type="button" class="btn quiet" style="width:auto;padding:4px 10px" data-act="track-close">Close</button></div>${mapSvg("cmap")}<p class="small muted">${esc(S.pro.name)} · Trust ${S.pro.trust} · ${S.t.stage === "travelling" ? "on the way" : "arrived"}</p></div></div>` : "";
@@ -517,15 +531,24 @@ function renderPro() {
   $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · ✓ Checked in person</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : ["paid", "deferred", "noshow"].includes(t.stage) ? "Online · job finished" : esc(S.job) + " · " + esc(stageLabel())}</div>`;
   const tabs = `<div class="ptabs" role="group" aria-label="Pro app sections"><button type="button" data-ptab="job" aria-pressed="${S.proTab === "job"}">Job</button><button type="button" data-ptab="chat" aria-pressed="${S.proTab === "chat"}">Chat with customer${S.proUnread ? `<span class="n">${S.proUnread}</span>` : ""}</button></div>`;
   $("#pro-head").insertAdjacentHTML("beforeend", tabs);
+  if (SOS_STAGES.includes(t.stage) && !S.sos && !t.sosConfirm) $("#pro-head .status").insertAdjacentHTML("beforeend", `<button class="sos" type="button" data-act="t-sos" style="margin-left:auto">SOS</button>`);
   // keep what the technician has typed, ticked or opened when the screen re-renders
   const prev = {}; document.querySelectorAll("#pro input, #pro select, #pro textarea, #pro details").forEach((el) => { if (el.id) prev[el.id] = el.tagName === "DETAILS" ? { open: el.open } : el.type === "checkbox" ? { checked: el.checked } : { value: el.value }; });
   const focusId = document.activeElement && document.activeElement.closest && document.activeElement.closest("#pro") ? document.activeElement.id : null;
+  const pkey = t.stage + "|" + S.proTab + "|" + S.job, ptop = $("#pro").scrollTop, th0 = $("#pthread"), thAtBottom = !th0 || th0.scrollHeight - th0.scrollTop - th0.clientHeight < 60, thTop = th0 ? th0.scrollTop : 0;
   $("#pro").classList.toggle("is-chat", S.proTab === "chat");
-  $("#pro").innerHTML = S.proTab === "chat" ? proChat() : proView();
+  $("#pro").innerHTML = S.proTab === "chat" ? proChat() : sosBox() + proView();
   Object.entries(prev).forEach(([id, v]) => { const el = document.getElementById(id); if (!el || !el.closest("#pro")) return; if ("open" in v) el.open = v.open; else if ("checked" in v) el.checked = v.checked; else el.value = v.value; });
   if (focusId && document.getElementById(focusId)) document.getElementById(focusId).focus();
-  const th = $("#pthread"); if (th) th.scrollTop = th.scrollHeight;
+  if (renderPro.k === pkey) $("#pro").scrollTop = ptop; renderPro.k = pkey;
+  const th = $("#pthread"); if (th) { const tsig = S.thread.length; th.scrollTop = thAtBottom || tsig !== renderPro.ts ? th.scrollHeight : thTop; renderPro.ts = tsig; }
   if (t.stage === "travelling" && S.proTab === "job") startMap("tmap");
+}
+const SOS_STAGES = ["travelling", "verify", "quote", "quote_sent", "working", "variation", "await_payment", "inspect", "paused"];
+function sosBox() {
+  if (S.sos) return `<div class="sos-card"><b>SOS sent at ${esc(S.sos.at)}</b><span class="small">The Basa seBasa team has your location and is calling you. If you're in danger, call <b>112</b> (Econet) or <b>114</b> (NetOne) now.</span><button class="btn" type="button" data-act="t-sos-safe">I'm safe now</button></div>`;
+  if (S.t.sosConfirm) return `<div class="sos-card"><b>Send an SOS?</b><span class="small">Your location and this job go to the Basa seBasa team straight away. The customer isn't told.</span><div class="two"><button class="btn" type="button" data-act="t-sos-no">Back</button><button class="btn" type="button" data-act="t-sos-yes" style="background:#fff;color:#C7362B">Send SOS</button></div></div>`;
+  return "";
 }
 function cancelBox() {
   return S.t.confirmCancel ? `<div class="card" style="border-color:var(--bad)"><h3>Cancel this job?</h3><p class="small">It goes to another pro straight away. Cancelling after the call-out is paid is recorded on your Trust Score.</p><div class="two"><button class="btn quiet" type="button" data-act="t-cancel-no">Keep the job</button><button class="btn danger" type="button" data-act="t-cancel-yes">Yes, cancel</button></div></div>` : "";
@@ -546,10 +569,10 @@ function proChat() {
 function proView() {
   const t = S.t, m = money(), f = S.chat.length ? "Customer" : "", s = svc();
   const head = (title, sub, extra = "") => `<div class="card dark"><span class="mono muted">${esc(S.job)} · ${esc(s?.name || "")} repair</span><h2 style="color:#F5F1E6">${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}</div>`;
-  const cust = `<div class="card"><span class="eyebrow">Customer</span><b>${S.family ? esc(S.family.name) + " (at the house)" : "Mrs C. Ndlovu"} · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km · number hidden, message through Basa</span>${S.family ? `<span class="muted small">Booked from abroad by family. ${esc(S.family.name)} will open the gate.</span>` : ""}<p class="small">${esc(S.desc)}</p></div>`;
+  const cust = `<div class="card"><span class="eyebrow">Customer</span><b>${S.family ? esc(S.family.name) + " (at the house)" : "Mrs C. Ndlovu"} · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km · number hidden, message through Basa</span>${S.landmark ? `<span class="small"><b>Landmark:</b> ${esc(S.landmark)}</span>` : ""}${S.family ? `<span class="muted small">Booked from abroad by family. ${esc(S.family.name)} will open the gate.</span>` : ""}<p class="small">${esc(S.desc)}</p></div>`;
   switch (t.stage) {
     case "idle": return `<div class="card" style="text-align:center;justify-items:center;padding:30px 16px"><div class="spin" style="width:34px;height:34px"></div><h3>Waiting for jobs</h3><p class="muted small">When a customer books on WhatsApp, the job appears here instantly.</p></div>`;
-    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="muted small">Repair · ${esc(S.suburb)} · customer verified, paying through Basa</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
+    case "offer": { const left = Math.max(0, Math.ceil((t.expires - Date.now()) / 1000)); return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b class="mono" id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${left / 60 * 100}%"></i></div><h2>${esc(S.desc || s.hint)}</h2><p class="muted small">Repair · ${esc(S.suburb)}${S.sched ? ` · <b>${esc(S.sched)}</b>` : " · now"} · customer verified, paying through Basa</p><div class="facts"><div><b>${S.pro.km} km</b><small>away</small></div><div><b>~${S.pro.eta} min</b><small>to get there</small></div><div><b>★4.8</b><small>customer</small></div></div>${S.photo ? `<img src="${S.photo}" alt="Customer's photo" style="border-radius:10px;max-height:110px;object-fit:cover;width:100%">` : ""}<div class="earn"><span><b style="font-family:var(--body);font-size:14px">You earn now</b><br><small>Call-out. Repair quoted on site.</small></span><b>${usd(m.calloutShare)}</b></div><div class="two"><button class="btn quiet" type="button" data-act="t-decline">Decline</button><button class="btn gold" type="button" data-act="t-accept">Accept</button></div></div>`; }
     case "await_callout": return head(S.payPending ? "Payment pending" : "Waiting for call-out", S.payPending ? "EcoCash hasn't confirmed the call-out yet. Don't leave until we tell you it's paid." : `The customer is paying ${usd(m.pay1)} on EcoCash. Don't leave yet.`, `<div class="wait"><span class="spin"></span>We'll tell you the moment it's confirmed.</div>`) + cust;
     case "ready": return cancelBox() + head("Call-out paid", "You're cleared to travel. The customer sees you on a live map.") + `<button class="btn gold" type="button" data-act="t-trip">I'm on my way</button>${S.t.confirmCancel ? "" : `<button class="btn quiet" type="button" data-act="t-cancel">I can't make this job</button>`}` + cust;
     case "travelling": return cancelBox() + head(S.claim ? "Warranty visit: on the way" : "On the way", "", mapSvg("tmap")) + `<button class="btn gold" type="button" data-act="t-arrive">I've arrived</button>${S.t.confirmCancel || S.returning ? "" : `<button class="btn quiet" type="button" data-act="t-cancel">I can't make this job</button>`}` + cust;
@@ -560,10 +583,12 @@ function proView() {
       return head(S.multi ? `Day ${S.multi.day} of ${S.multi.days}: finish the job` : "Job in progress", "") + `<div class="card"><div class="timer" id="timer">0:00</div></div><div class="card"><h3>Quality checks</h3>${s.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}"> ${esc(c)}</label>`).join("")}<label class="tick"><input type="checkbox" id="ckp"> After photo taken</label><p class="err" id="w-err" hidden></p><button class="btn gold" type="button" data-act="t-complete">${S.claim ? "Warranty repair done and tested" : "Job complete"}</button></div>` + (S.claim ? "" : variationCard()) + pauseCard();
     case "await_payment": if (S.issue && S.issueKind) return head("Customer isn't happy yet", "Look again and put it right. If it needs work beyond the quote, ask the customer first.") + `<button class="btn gold" type="button" data-act="t-recheck">Re-tested: ask the customer to check</button>`;
       return head(S.issue ? "Customer isn't happy yet" : "Customer is checking the work", S.issue ? "Stay on site and put it right. Our team has joined the chat. You're paid once the customer confirms." : "You're paid once the customer confirms the work and pays Basa seBasa.", `<div class="wait"><span class="spin"></span>Never accept cash, even if offered.</div>`) + `<div class="card">${splitTable(m)}</div>`;
-    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">${S.payoutDone ? `✓ Paid out to your EcoCash, ref ${esc(S.payoutDone.ref)}.` : `Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.`}</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div>`;
+    case "paid": return head("Paid. Well done", S.rating ? `The customer rated you ${"★".repeat(S.rating)}.` : "Waiting for the customer's rating.") + `<div class="card"><table class="split"><tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table><p class="muted small">${S.payoutDone ? `✓ Paid out to your EcoCash, ref ${esc(S.payoutDone.ref)}.` : `Customer confirmed the work. Sent to your EcoCash within ${P.payoutHours} hours.`}</p>${S.rating >= 4 ? `<p class="small" style="color:var(--good);font-weight:700">Trust Score +2: on time, code right first time, ${S.rating}★</p>` : ""}${S.tip ? `<p class="small" style="font-weight:700">+ ${usd(S.tip)} tip from the customer</p>` : ""}<button class="btn quiet" type="button" data-act="receipt">Download receipt (PDF)</button></div><div class="card"><h3>Rate the customer</h3><p class="muted small">Two-way ratings keep customers respectful too. Only Basa seBasa sees this.</p><div class="rate-row">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-act="t-rate-${n}" aria-pressed="${S.proRating === n}">${"★".repeat(n)}</button>`).join("")}</div>${S.proRating ? `<p class="small" style="color:var(--good);font-weight:700">Thanks, rating saved.</p>` : ""}</div>`;
     case "paused": { const pz = PAUSES[S.pause.reason]; return head(`Paused: ${pz.short}`, S.pause.when ? `Return visit booked for <b>${esc(S.pause.when)}</b>. The customer gets a new Basa Code before you arrive.` : S.pause.reason === "unsafe" ? "Work stopped for safety. The Basa seBasa team is calling the customer. Don't continue until they say so." : "Waiting for the customer to tell us it can carry on. We check with them every 3 hours.", `<div class="wait"><span class="spin"></span>${pz.icon} ${esc(pz.label)} · paused at ${esc(S.pause.at)}</div>`) + `<div class="card"><table class="split"><tr><td>Work so far</td><td>saved with photos</td></tr><tr><td>Labour</td><td>paid after the test</td></tr><tr><td>Return visit</td><td>no call-out for the customer</td></tr></table></div>` + (S.pause.when ? `<button class="btn gold" type="button" data-act="t-return">Start return visit</button>` : ""); }
     case "overnight": return head(`Day ${S.multi.day} done`, S.multi.staged && !S.multi.stagePaid ? "Waiting for the customer to check today's work and pay stage 1." : `Back tomorrow at 08:00 for day ${S.multi.day + 1}. The customer will get a new Basa Code in the morning.`, `<div class="daybar">${Array.from({ length: S.multi.days }, (_, i) => `<span class="${i < S.multi.day ? "done" : ""}"></span>`).join("")}</div>`) + (S.multi.staged ? `<div class="card"><table class="split"><tr><td>Parts (released)</td><td>${usd(m.parts)}</td></tr><tr><td>Stage 1 labour after 15% fee</td><td>${S.multi.stagePaid ? usd(m.labour / 2 * (1 - P.commission / 100)) : "on the way"}</td></tr></table></div>` : "") + `<button class="btn gold" type="button" data-act="t-nextday">Demo: skip to tomorrow, start day ${S.multi.day + 1}</button><p class="muted small">If you haven't checked in by 08:30, the team is alerted and the customer is told.</p>`;
     case "deferred": return head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first chance at the repair for 30 days.") + `<div class="card"><table class="split"><tr class="you"><td>You earned</td><td>${usd(m.calloutShare)}</td></tr></table></div>`;
+    case "scheduled": return head(`Booked: ${esc(S.sched)}`, "Call-out paid. We'll remind you and the customer beforehand.") + cust + `<button class="btn gold" type="button" data-act="t-sched-go">Demo: skip to the booking time</button>`;
+    case "cancelled": return head("Customer cancelled", t.was === "travelling" ? `You'd set off, so you keep the ${usd(m.calloutShare)} call-out share ${prov()}.` : "You hadn't set off, so there's no call-out for this one.");
     case "variation": return head("Waiting for the customer's OK", "Don't start the extra work until they approve.", `<div class="wait"><span class="spin"></span>${esc(S.variation.note)}</div>`) + `<div class="card"><table class="split"><tr><td>Approved labour</td><td>${usd(m.labour)}</td></tr><tr><td>Extra labour asked</td><td>${usd(S.variation.labour)}</td></tr><tr><td>Extra parts asked</td><td>${usd(S.variation.parts)}</td></tr></table></div>`;
     case "reassigning": return `<div class="card" style="text-align:center;padding:24px 16px"><h3>Job cancelled</h3><p class="muted small">It's going to another pro. The cancellation is recorded on your Trust Score.</p></div>`;
     case "claim": return head("Warranty claim", "The customer says the fault is back. We're booking a time with them.");
@@ -592,16 +617,20 @@ function startMap(id) {
 function customerSays(text) {
   if (!text.trim()) return;
   me(text); log("wa", `Message from customer +263 77 •••• 120: "${text}"`);
+  if (FINISHED.includes(S.step) && !/^(help|agent|human|person)\b/i.test(text.trim())) { newJob(); return typing(700, greet); }
   if (S.step === "start") return typing(700, greet);
   if (S.step === "describe") { S.desc = text.trim(); return typing(700, askPhoto); }
+  if (S.step === "landmark") { S.landmark = text.trim().slice(0, 80); log("wa", `Landmark for the pro: "${S.landmark}".`); return typing(600, confirmBooking); }
   if (S.step === "family") { S.family = { name: (text.replace(/\+?\d[\d\s-]{6,}\d/, "").replace(/[,:-]+\s*$/, "").trim() || "your family").slice(0, 40) }; log("server", `Booking for family: updates also go to ${S.family.name} at the house.`); return typing(600, () => { bot(`Thanks. ${esc(S.family.name)} will know exactly who to let in.<br><br>What do they need help with?`, { list: true, buttons: SERVICES.map((s) => ({ html: `${esc(s.name)}<small>Repairs, installs and servicing</small>`, act: "svc:" + s.id })) }); S.step = "service"; }); }
   const t = text.trim(), pro = S.pro?.name ? first(S.pro.name) : "your pro";
   if (/^(help|agent|human|person|operator|complain|complaint|problem|emergency)\b|talk to (a|someone)|speak to/i.test(t)) {
     S.human = true; S.humanReplied = false; log("server", `Customer asked for a person. You (the founder) get a WhatsApp alert with the job history.`);
-    typing(600, () => bot(`Passing you to a person now. Your job stays as it is.<br>Feel unsafe? Call <b>995</b> first.`));
+    typing(600, () => bot(`Passing you to a person now. Your job stays as it is.<br>Feel unsafe? Call emergency services first: <b>112</b> (Econet) or <b>114</b> (NetOne).`));
     later(teamReply, 3200);
     return;
   }
+  if (/^share live status/i.test(t) && S.t.stage === "travelling") { log("server", "Customer asked for a link to share the live status."); return typing(500, () => bot(`Share this link with family: <b>basasebasa.co.zw/t/${esc(S.job)}</b><br>It shows ${esc(first(S.pro.name))}'s photo, Trust Score and arrival time. It never shows your Basa Code or phone numbers.`)); }
+  if (/change or cancel|^cancel|reschedule|change the time/i.test(t) && MANAGEABLE.includes(S.t.stage) && !S.payPending) return typing(500, manageBooking);
   if (S.payPending) return typing(500, () => bot(`Your payment of ${usd(S.payPending.amount)} (ref ${S.payPending.ref}) is still being confirmed by EcoCash. Please don't pay again. We'll message you the moment it's through.`));
   if (S.human) { log("server", "Message added to the team's chat with this customer."); return typing(600, () => bot(`<span class="from">Dex · Basa seBasa team</span>Thanks, I'm on it. I'll update you here.`, { buttons: [{ label: "Sorted, thanks", act: "human:done" }] })); }
   const lastIn = S.chat.map((m) => m.from).lastIndexOf("in"), live = lastIn >= 0 && S.chat[lastIn].buttons && !S.chat[lastIn].used;
@@ -616,7 +645,7 @@ function customerSays(text) {
   if (/cash/i.test(t)) return typing(500, () => bot("Please don't pay in cash. All payments go to Basa seBasa on EcoCash, so your money is protected and covered by our warranty. If a pro asks for cash, type HELP."));
   if (live) return typing(500, () => bot("Please tap one of the options above so I can help you faster. Type <b>HELP</b> any time to talk to a person."));
   if (["wait", "onway", "work"].includes(S.step)) { log("app", `Customer message forwarded to ${S.pro?.name || "the pro"}: "${t}"`); return typing(500, () => bot(`Got it. I've passed your message to ${esc(pro)}. Type <b>HELP</b> if you need the Basa seBasa team.`)); }
-  if (S.step === "done") return typing(600, greet);
+
   if (S.step === "deferred" && /resume/i.test(t)) return typing(400, () => bot("Tap <b>Resume the repair</b> above and we'll ask your pro first."));
   typing(500, () => bot("Thanks for your message. Type <b>HELP</b> to talk to a person on the Basa seBasa team."));
 }
@@ -644,11 +673,15 @@ function askLocation() {
   bot("Now share your location so we can find the closest verified pro.", { buttons: [{ label: "Share my location", act: "location" }] });
   S.step = "location";
 }
+function askLandmark() {
+  bot("Any landmark or gate details to help the pro find you? e.g. <i>blue gate opposite the shops</i>", { buttons: [{ label: "Skip", act: "lm:skip" }] });
+  S.step = "landmark";
+}
 function confirmBooking() {
   const s = svc();
   log("server", `Location received: ${S.suburb}. Inside the launch area. Ready to match.`);
   log("rule", "Price guide ranges are samples, not agreed prices.");
-  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br><b>Price guide:</b> similar ${esc(s.name.toLowerCase())} repairs usually come to <b>$${PRICE_GUIDE[S.svc][0]}–$${PRICE_GUIDE[S.svc][1]}</b> in total, including the call-out and parts. Your exact quote comes first, and nothing starts until you approve it.<br><br>Shall we find you a pro?`, { buttons: [{ label: "Find me a pro", act: "find" }, { label: "Cancel", act: "cancel" }] });
+  bot(`<b>${esc(s.name)} repair in ${esc(S.suburb)}</b><br>"${esc(S.desc)}"<br><br>Call-out: <b>$${P.callout}</b> covers the inspection and travel up to ${P.freeKm} km (<b>${usd(P.callout * (1 + P.rate / 100))}</b> with EcoCash charges). Extra travel beyond ${P.freeKm} km is shown before you pay. You'll get a full quote before any work starts.<br><br><b>Price guide:</b> similar ${esc(s.name.toLowerCase())} repairs usually come to <b>$${PRICE_GUIDE[S.svc][0]}–$${PRICE_GUIDE[S.svc][1]}</b> in total, including the call-out and parts. Your exact quote comes first, and nothing starts until you approve it.<br><br>When do you need someone?`, { buttons: [{ label: "As soon as possible", act: "find" }, { label: "Tomorrow, 08:00", act: "findlater" }, { label: "Cancel", act: "cancel" }] });
   S.step = "confirm";
 }
 function showMatches() {
@@ -657,7 +690,8 @@ function showMatches() {
   S.findAt = Date.now();
   log("server", `Job ${S.job} created. Matched ${list.length} pros by distance and Trust Score.`);
   log("trust", `Only pros with every check passed can be matched: ID, trade certificate, references, in-person practical test and safety must-pass. Unverified pros are never shown.`);
-  bot("Pros near you, all checked in person. Tap one:", { list: true, buttons: list.map((p, i) => ({ html: `${esc(p.name)}${i === 0 ? " · best match" : ""}<small>✓ Checked in person · Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>`, act: "pro:" + i })) });
+  if (S.preferred) { const k = list.findIndex((p) => p.name === S.preferred); if (k > 0) list.unshift(list.splice(k, 1)[0]); }
+  bot(`Pros near you, all checked in person${S.sched ? ` (for ${esc(S.sched.toLowerCase())})` : ""}. Tap one:`, { list: true, buttons: list.map((p, i) => ({ html: `${esc(p.name)}${i === 0 ? " · best match" : ""}<small>✓ Checked in person · Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>`, act: "pro:" + i, html: `${esc(p.name)}${S.preferred === p.name ? " · your previous pro" : i === 0 ? " · best match" : ""}<small>✓ Checked in person · Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ~${p.eta} min away</small>` })) });
   S.step = "choose";
 }
 function offerTo(i) {
@@ -683,7 +717,7 @@ function accepted() {
   S.t = { stage: "await_callout" }; S.step = "pay1";
 }
 // ---------- private chat between customer and pro (relayed by Basa seBasa, no contact details) ----------
-const chatOpen = () => !!S.code && !["idle", "offer", "declined", "paid", "deferred", "reassigning", "escalated"].includes(S.t.stage);
+const chatOpen = () => !!S.code && !["idle", "offer", "declined", "paid", "deferred", "reassigning", "escalated", "cancelled"].includes(S.t.stage);
 function scrub(text) {
   let t = String(text), hit = false;
   const rules = [/\+?\d[\d\s().-]{7,}\d/g, /[\w.+-]+@[\w-]+\.[\w.]+/g, /\b(?:wa\.me|whatsapp\.com|t\.me|facebook\.com|instagram\.com)\/\S+/gi];
@@ -708,6 +742,38 @@ function proSays(text) {
   render();
 }
 function teamReply() { if (!S.human || S.humanReplied) return; S.humanReplied = true; log("server", "Founder replied from Dubai (simulated)."); bot(`<span class="from">Dex · Basa seBasa team</span>Hi, I'm here. How can I help?`, { buttons: [{ label: "Sorted, thanks", act: "human:done" }] }); render(); }
+const MANAGEABLE = ["await_callout", "ready", "scheduled", "travelling"];
+function manageBooking() { bot("What would you like to do?", { buttons: [{ label: "Change the time", act: "mb:resched" }, { label: "Cancel the booking", act: "mb:cancel" }, { label: "Keep it as it is", act: "mb:keep" }] }); }
+function customerCancel() {
+  const st = S.t.stage, m = money(), first1 = esc(first(S.pro.name));
+  let msg;
+  if (!S.callPaid) { msg = "Cancelled. Nothing was paid, so there's nothing to refund."; log("server", "Customer cancelled before paying the call-out."); }
+  else if (st === "travelling") { S.money2.released = r2(m.calloutShare); msg = `Cancelled. ${first1} was already on his way, so the call-out covers his trip and isn't refunded ${prov()}.`; log("rule", "Cancelling after the pro sets off: call-out kept and paid to the pro. Not yet agreed."); }
+  else { S.money2.refund = S.money2.paid; msg = `Cancelled. ${first1} hadn't set off, so your call-out of ${usd(S.money2.paid)} will be refunded ${prov()}. Our team confirms how and when.`; log("rule", "Cancelling before the pro sets off: call-out refunded. Refund method and timing undecided."); }
+  log("app", `Told ${S.pro.name}: the customer cancelled ${S.job}.`);
+  S.t = { stage: "cancelled", was: st }; S.step = "cancelled"; S.code = "";
+  bot(msg + "<br>Message us any time to book again.");
+}
+function thankYou() {
+  bot(`Thank you. Warranty on this job: ${P.warrantyDays} days ${prov()}.<br>If anything goes wrong, tell us here.`, { buttons: [{ label: "Report a problem with this job", act: "claim" }, { label: `Book ${first(S.pro.name)} again`, act: "rebook" }] });
+  S.step = "done";
+}
+function archiveJob() {
+  if (!S.svc) return;
+  const m = money(); S.pastJobs = S.pastJobs || [];
+  S.pastJobs.unshift({ id: S.job, svc: svc().name, suburb: S.suburb || "-", pro: S.pro && S.t.stage !== "idle" ? S.pro.name : "-", status: stageLabel(), work: workStatus(), paid: S.money2.paid, released: S.money2.released, payoutDue: S.t.stage === "paid" && S.paidAt && !S.payoutDone ? S.paidAt + 24 * 36e5 : null, payoutAmt: m.payout, refund: S.money2.refund || 0, at: Date.now() });
+  S.pastJobs = S.pastJobs.slice(0, 8);
+}
+function newJob(again) {
+  const prevPro = S.pro, prevSvc = S.svc;
+  archiveJob();
+  const keep = { chat: S.chat, log: S.log, thread: [], ops: S.ops, sid: S.sid, show: S.show, family: S.family, pastJobs: S.pastJobs };
+  S = { ...fresh(), ...keep };
+  S.chat.push({ from: "sys", html: `New booking · ${S.job}`, at: clock() });
+  if (again && prevPro) { S.preferred = prevPro.name; S.svc = prevSvc; }
+  log("server", `New booking ${S.job} opened${again && prevPro ? ` (customer asked for ${prevPro.name} again)` : ""}.`);
+}
+const FINISHED = ["done", "noshow", "cancelled"];
 function deferJob() {
   log("wa", "Customer chose to repair later."); log("agreed", `Diagnosis valid for 30 days; ${S.pro.name} gets 24 hours' first refusal when the customer resumes.`);
   S.money2.released = r2(money().calloutShare); log("server", `${S.pro.name}'s call-out share (${usd(money().calloutShare)}) is due within ${P.payoutHours} hours.`);
@@ -733,7 +799,12 @@ function proCard() {
   return `<div class="procard"><span class="face">${esc(initials)}</span><b>${esc(p.name)} · ${esc(svc().name)}</b><small>Trust ${p.trust} · ★${p.rating} · ${p.jobs} jobs · ${p.km} km away</small></div><div class="checks"><span>✓ ID</span><span>✓ Trade certificate</span><span>✓ Police clearance</span><span>✓ Met in person</span><span>✓ Safety test passed</span></div>`;
 }
 function paid(which, rr) {
-  const m = money(), amount = { 1: m.pay1, 2: m.finalPay, parts: m.partsPay, stage: m.stagePay }[which], r = rr || ref();
+  const m = money(), amount = { 1: m.pay1, 2: m.finalPay, parts: m.partsPay, stage: m.stagePay, tip: S.tipAmt }[which], r = rr || ref();
+  if (which === "tip") {
+    S.money2.paid = r2(S.money2.paid + amount); S.money2.released = r2(S.money2.released + amount); S.tip = amount; S.lastPay = { ref: r, amount };
+    log("pay", `Tip of ${usd(amount)} confirmed, ref ${r}.`); log("rule", "Tips: 100% to the pro; who pays the EcoCash charge on tips is undecided.");
+    log("app", `${S.pro.name} received a ${usd(amount)} tip.`); bot(`Tip of <b>${usd(amount)}</b> sent to ${esc(first(S.pro.name))}. Thank you!`); thankYou(); return;
+  }
   S.lastPay = { ref: r, amount };
   if (which === 1) { S.callPaid = true; S.travelFrozen = m.travel; } S.money2.paid = r2(S.money2.paid + amount);
   if (which === "stage") S.money2.released = r2(S.money2.released + m.labour / 2 * (1 - P.commission / 100));
@@ -754,6 +825,7 @@ function paid(which, rr) {
   }
   log("pay", `EcoCash payment confirmed: ${usd(amount)} from 077 •••• 120, reference ${r}.`);
   if (which === 1) {
+    if (S.sched) { log("app", `Told ${S.pro.name}: call-out paid. Booked for ${S.sched}.`); bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}.<br>You're booked for <b>${esc(S.sched)}</b> with ${esc(first(S.pro.name))}. We'll remind you, and send the Basa Code when he sets off.`); S.t = { stage: "scheduled" }; S.step = "wait"; return; }
     log("app", `Told ${S.pro.name}: call-out paid, cleared to travel.`);
     bot(`Payment received: <b>${usd(amount)}</b>, ref ${r}. ${esc(first(S.pro.name))} is getting ready.`);
     if (S.family) log("wa", `Same update sent to ${S.family.name} at the house.`);
@@ -770,7 +842,7 @@ function paid(which, rr) {
 
 // ---------- technician actions ----------
 // each action only works in the stage it belongs to, so double taps and stale buttons do nothing
-const ACT_STAGES = { "t-accept": ["offer"], "t-decline": ["offer"], "t-trip": ["ready"], "t-arrive": ["travelling"], "t-verify": ["verify"], "t-quote": ["quote"], "t-complete": ["working"], "t-eod": ["working"], "t-pause": ["working"], "t-variation": ["working"], "t-partsreceipt": ["working"], "t-nextday": ["overnight"], "t-return": ["paused"], "t-wait": ["verify"], "t-unwait": ["verify"], "t-noshow": ["verify"], "t-cancel": ["ready", "travelling"], "t-cancel-yes": ["ready", "travelling"], "t-cancel-no": ["ready", "travelling"], "t-recheck": ["await_payment", "overnight"], "t-claim-start": ["claimbooked"], "t-claim-ours": ["inspect"], "t-claim-other": ["inspect"], "t-claim-none": ["inspect"] };
+const ACT_STAGES = { "t-sched-go": ["scheduled"], "t-accept": ["offer"], "t-decline": ["offer"], "t-trip": ["ready"], "t-arrive": ["travelling"], "t-verify": ["verify"], "t-quote": ["quote"], "t-complete": ["working"], "t-eod": ["working"], "t-pause": ["working"], "t-variation": ["working"], "t-partsreceipt": ["working"], "t-nextday": ["overnight"], "t-return": ["paused"], "t-wait": ["verify"], "t-unwait": ["verify"], "t-noshow": ["verify"], "t-cancel": ["ready", "travelling"], "t-cancel-yes": ["ready", "travelling"], "t-cancel-no": ["ready", "travelling"], "t-recheck": ["await_payment", "overnight"], "t-claim-start": ["claimbooked"], "t-claim-ours": ["inspect"], "t-claim-other": ["inspect"], "t-claim-none": ["inspect"] };
 function techAct(act) {
   const t = S.t, m = money();
   if (ACT_STAGES[act] && !ACT_STAGES[act].includes(t.stage)) return;
@@ -780,7 +852,13 @@ function techAct(act) {
   if (act === "t-return" && !(S.pause && S.pause.when)) return;
   if (act === "t-recheck" && !(S.issue && S.issueKind)) return;
   if (S.typing && act !== "receipt") return;
+  if (/^t-rate-\d$/.test(act)) { if (t.stage !== "paid") return; const n = Number(act.slice(7)); if (S.proRating === n) return; S.proRating = n; log("app", `${S.pro.name} rated the customer ${n}/5.`); log("trust", "Two-way rating recorded: customers with repeated low ratings are reviewed."); render(); return; }
+  if (act === "t-sos") { if (!SOS_STAGES.includes(t.stage) || S.sos) return; t.sosConfirm = true; render(); return; }
+  if (act === "t-sos-no") { delete t.sosConfirm; render(); return; }
+  if (act === "t-sos-yes") { if (S.sos) return; delete t.sosConfirm; S.sos = { at: clock() }; log("trust", `SOS from ${S.pro.name} on ${S.job}: location and job details sent to the team. Founder calling now.`); log("app", "SOS alert received."); render(); return; }
+  if (act === "t-sos-safe") { if (!S.sos) return; S.sos = null; log("trust", `${S.pro.name} confirmed they're safe. SOS closed and logged.`); render(); return; }
   switch (act) {
+    case "t-sched-go": log("server", `Reminder sent to the customer and ${S.pro.name}: job ${S.job} at ${S.sched}.`); bot(`Reminder: ${esc(first(S.pro.name))} arrives at <b>${esc((S.sched || "").replace(/^(Today|Tomorrow) /, ""))}</b> today.`); S.t = { stage: "ready" }; S.step = "wait"; render(); break;
     case "t-cancel": t.confirmCancel = true; render(); break;
     case "t-cancel-no": delete t.confirmCancel; render(); break;
     case "t-cancel-yes": reassign("cancelled"); break;
@@ -981,7 +1059,7 @@ function opsTick() {
   if (!live.length || Math.random() < .12) {
     if (o.jobs.length < 12) { const id = "BSB-" + o.nextId++, sv = ["Plumbing", "Electrical", "Fridge & aircon", "Solar & inverters"][o.nextId % 4], sub = SUBURBS[o.nextId % SUBURBS.length], pro = ["Nyasha P.", "Kudzai C.", "Ruvimbo K.", "Tinashe K."][o.nextId % 4];
       o.jobs.unshift({ id, svc: sv, suburb: sub, pro, steps: [["Offered to the pro: 60 s to accept", "app", `${pro} accepted.`], ["Waiting for the call-out payment", "pay", "EcoCash confirmed the call-out: $9.18.", { pay: 9.18 }], ["Call-out paid: pro getting ready", "app", `${pro} is on the way.`], ["Pro on the way", "app", "Basa Code confirmed at the gate."], ["Pro diagnosing", "app", "Quote sent to the customer."]], at: Date.now(), i: 0, paid: 0, released: 0 });
-      o.feed.unshift({ ts: Date.now(), job: id, who: "wa", text: `New booking: ${sv.toLowerCase()} in ${sub}. Matched ${pro}.` }); }
+      o.feed.unshift({ ts: Date.now(), job: id, who: "wa", text: `New booking: ${sv.toLowerCase()} in ${sub}. Matched ${pro}.` }); o.changed = true; }
     return;
   }
   const j = live[Math.floor(Math.random() * live.length)], st = j.steps[j.i];
@@ -996,6 +1074,7 @@ function opsTick() {
   if (nxt && nxt[3] && nxt[3].approval) j.approval = true;
   if (fx.close) { j.done = true; if (!fx.noPay) { j.payoutDue = Date.now() + 24 * 36e5; j.payoutAmt = fx.payout; } j.closedLabel = fx.noPay ? "Warranty claim closed" : "Paid: payout due"; }
   if (fx.deferred) { j.done = true; j.closedLabel = "Saved for later (30 days)"; }
+  o.changed = true;
   if (text) o.feed.unshift({ ts: Date.now(), job: j.id, who, text });
   o.feed = o.feed.slice(0, 80);
 }
@@ -1021,6 +1100,8 @@ function demoAlerts() {
   if (t === "escalated") a.push(["Dispute escalated", "Review photos and reports from both visits", true]);
   if (S.claim) a.push(["Warranty claim", S.claim.when ? `Return visit ${S.claim.when}` : "Booking a return visit", false]);
   if (S.money2.overpaid) a.push([`Overpaid ${usd(S.money2.overpaid)}`, "Refund review (policy undecided)", true]);
+  if (S.sos) a.push([`SOS from ${S.pro.name}`, `Sent ${S.sos.at}. Call the pro now`, true]);
+  if (S.money2.refund) a.push([`Refund owed: ${usd(S.money2.refund)}`, "Customer cancelled before the pro set off (provisional rule)", true]);
   if (t === "offer") a.push(["Waiting for the pro to accept", `${S.pro.name} has 60 seconds`, false]);
   if (t === "verify" && S.t.waitFrom) a.push(["Customer not answering at the gate", "15-minute wait running", false]);
   return a;
@@ -1028,6 +1109,7 @@ function demoAlerts() {
 function opsData() {
   const o = S.ops, rows = [];
   if (S.svc) rows.push({ demo: true, id: S.job, svc: svc().name, suburb: S.suburb || "-", pro: S.pro && S.t.stage !== "idle" ? S.pro.name : "Matching…", status: stageLabel(), work: workStatus(), paid: S.money2.paid, released: S.money2.released, alerts: demoAlerts(), next: next()[1], at: S.log[0]?.ts || Date.now(), done: ["paid", "noshow"].includes(S.t.stage) && !S.claim, payoutDue: S.t.stage === "paid" && S.paidAt && !S.payoutDone && !S.claim ? S.paidAt + 24 * 36e5 : null, payoutAmt: money().payout });
+  (S.pastJobs || []).forEach((j) => rows.push({ demo: false, past: true, id: j.id, svc: j.svc, suburb: j.suburb, pro: j.pro, status: j.status, work: j.work, paid: j.paid, released: j.released, alerts: j.refund && !j.refunded ? [[`Refund owed: ${usd(j.refund)}`, "Customer cancelled (provisional rule)", true]] : [], next: "", at: j.at, done: true, payoutDue: j.payoutDue && !j.paidOut ? j.payoutDue : null, payoutAmt: j.payoutAmt }));
   if (showSamples) o.jobs.forEach((j) => rows.push({ demo: false, id: j.id, svc: j.svc, suburb: j.suburb, pro: j.pro, status: jobLabel(j), work: sampleWork(j), paid: j.paid, released: j.released, alerts: j.alert ? [OPS_ALERT[j.alert]] : j.approval ? [["Quote waiting for the customer", "Nothing starts until they approve", false]] : [], next: j.done ? "" : "Waiting on the sample job", at: j.at, done: !!j.done, payoutDue: j.payoutDue && !j.paidOut ? j.payoutDue : null, payoutAmt: j.payoutAmt, sample: j }));
   return rows;
 }
@@ -1048,14 +1130,14 @@ function renderOps() {
   const sb = $("#ops-samples"); sb.textContent = `Sample jobs: ${showSamples ? "on" : "off"}`; sb.setAttribute("aria-pressed", String(showSamples)); $("#ops-pause").hidden = !showSamples;
   $("#kpis").innerHTML = [["Live jobs", live.length], ["Need attention", attention.length, attention.some((x) => x.a[2])], ["EcoCash pending", pend, pend > 0], ["Held by Basa", usd(held)], ["Payouts due", dues.length, dues.some((r) => r.payoutDue < Date.now())], ["Pros online", `${online.length} / ${allPros.length}`]].map(([l, v, al]) => `<div class="kpi ${al ? "alert" : ""}"><small>${l}</small><b>${v}</b></div>`).join("");
   $("#att-count").textContent = attention.length ? `${attention.length} open` : "all clear";
-  $("#alerts").innerHTML = attention.length ? attention.sort((x, y) => y.a[2] - x.a[2]).map(({ r, a }) => `<div class="alert-row ${a[2] ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${esc(a[0])}</b><small>${esc(a[1])} · ${esc(r.svc)}, ${esc(r.suburb)}</small></span>${r.demo ? `<a class="mini" href="#demo">Open in demo</a>` : `<span class="pill">sample</span>`}</div>`).join("") : `<p class="muted small">${rows.length ? "Nothing needs you right now." : "No jobs yet. Start a booking in the live demo (Play or Next step) and it appears here."}</p>`;
+  $("#alerts").innerHTML = attention.length ? attention.sort((x, y) => y.a[2] - x.a[2]).map(({ r, a }) => `<div class="alert-row ${a[2] ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${esc(a[0])}</b><small>${esc(a[1])} · ${esc(r.svc)}, ${esc(r.suburb)}</small></span>${r.demo ? `<a class="mini" href="#demo">Open in demo</a>` : r.past ? `<span class="pill">earlier job</span>` : `<span class="pill">sample</span>`}</div>`).join("") : `<p class="muted small">${rows.length ? "Nothing needs you right now." : "No jobs yet. Start a booking in the live demo (Play or Next step) and it appears here."}</p>`;
   const F = { all: ["All", () => true], attention: ["Needs attention", (r) => r.alerts.length], field: ["In the field", (r) => !r.done && /on the way|gate|diagnosing|Work|day/i.test(r.status)], money: ["Money moving", (r) => r.payoutDue || r.alerts.some((a) => /EcoCash|Overpaid/.test(a[0])) || /payment/i.test(r.status)], closed: ["Closed", (r) => r.done] };
   $("#filters").innerHTML = Object.entries(F).map(([k, [l]]) => `<button type="button" data-ofilter="${k}" aria-pressed="${o.filter === k}">${l} (${rows.filter(F[k][1]).length})</button>`).join("");
   const shown = rows.filter(F[o.filter][1]).sort((a, b) => b.demo - a.demo || (b.alerts.length - a.alerts.length) || b.at - a.at);
   $("#jobs").innerHTML = `<tr><th>Job</th><th>Status</th><th>Work</th><th>Pro</th><th class="num">Paid</th><th class="num">To pro</th><th>Updated</th></tr>` + (shown.length ? shown.map((r) => `<tr class="${r.demo ? "demo" : ""}"><td><b>${esc(r.id)}</b>${r.demo ? ` <span class="pill gold">demo job</span>` : ""}<br><small class="muted">${esc(r.svc)} · ${esc(r.suburb)}</small></td><td><span class="pill ${r.alerts.some((a) => a[2]) ? "warn" : r.done ? "good" : ""}">${esc(r.status)}</span>${r.demo && r.next ? `<br><small class="muted">Next: ${esc(r.next)}</small>` : ""}</td><td>${esc(r.work)}</td><td>${esc(r.pro)}</td><td class="num">${usd(r.paid)}</td><td class="num">${usd(r.released)}</td><td><small class="muted">${ago(r.at)}</small></td></tr>`).join("") : `<tr><td colspan="7" class="muted">No jobs in this view.</td></tr>`);
   $("#payouts").innerHTML = dues.length ? dues.sort((a, b) => a.payoutDue - b.payoutDue).map((r) => `<div class="alert-row ${r.payoutDue < Date.now() + 2 * 36e5 ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${usd(r.payoutAmt)} to ${esc(r.pro)}</b><small>${dueIn(r.payoutDue)} · customer paid ${usd(r.paid)}</small></span><button class="mini gold" type="button" data-payout="${esc(r.id)}">Mark paid out</button></div>`).join("") : `<p class="muted small">No payouts due.</p>`;
   const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "EcoCash (sim)", trust: "Trust", rule: "Provisional", agreed: "Agreed rule", design: "Demo design" };
-  const feed = S.log.map((l) => ({ ...l, job: S.job, ts: l.ts || 0 })).concat(showSamples ? o.feed : []).sort((a, b) => b.ts - a.ts).slice(0, 60);
+  const feed = S.log.map((l) => ({ ...l, job: l.job || S.job, ts: l.ts || 0 })).concat(showSamples ? o.feed : []).sort((a, b) => b.ts - a.ts).slice(0, 60);
   $("#feed").innerHTML = feed.length ? "" : `<p class="muted small">Activity appears here as soon as a booking starts.</p>`;
   if (feed.length) $("#feed").innerHTML = feed.map((l) => `<div class="log-row"><span class="mono muted">${new Date(l.ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><span class="mono">${esc(l.job)}</span><span class="tag ${l.who}">${tagName[l.who] || l.who}</span><span>${esc(l.text)}</span></div>`).join("");
   $("#prolist").innerHTML = allPros.slice(0, 14).map((p) => { const job = live.find((r) => r.pro === p); return `<div><span class="dotst ${job ? "job" : online.includes(p) ? "on" : ""}"></span><span>${esc(p)}</span><small class="muted">${job ? `On ${esc(job.id)}` : online.includes(p) ? "Online" : "Offline"}</small></div>`; }).join("");
@@ -1067,6 +1149,8 @@ function markPaidOut(id) {
     if (S.t.stage !== "paid" || S.payoutDone) return;
     S.payoutDone = { ref: r, at: Date.now() }; log("pay", `Payout sent: ${usd(money().payout)} to ${S.pro.name}'s EcoCash, ref ${r} (simulated). Recorded by ops.`); log("agreed", `Payouts are sent manually within ${P.payoutHours} hours of the customer paying.`); toast("Payout recorded."); render(); return;
   }
+  const pj = (S.pastJobs || []).find((x) => x.id === id);
+  if (pj) { if (pj.paidOut) return; pj.paidOut = true; log("pay", `Payout sent for ${pj.id}: ${usd(pj.payoutAmt)} to ${pj.pro}, ref ${r} (simulated).`); toast("Payout recorded."); render(); return; }
   const j = S.ops.jobs.find((x) => x.id === id); if (!j || j.paidOut) return;
   j.paidOut = true; j.released = r2(j.released + (j.payoutAmt || 0)); S.ops.feed.unshift({ ts: Date.now(), job: j.id, who: "pay", text: `Payout sent: ${usd(j.payoutAmt)} to ${j.pro}, ref ${r} (simulated).` }); toast("Payout recorded."); render();
 }
@@ -1077,13 +1161,14 @@ function route() {
   render();
 }
 window.addEventListener("hashchange", () => { route(); window.scrollTo(0, 0); });
-setInterval(() => { if (!S.ops) S.ops = opsSeed(); if (Date.now() - S.ops.lastTick > 7000) { S.ops.lastTick = Date.now(); opsTick(); render(); } else if (!$("#ops").hidden) renderOps(); }, 1000);
+setInterval(() => { if (!S.ops) S.ops = opsSeed(); if (Date.now() - S.ops.lastTick > 7000) { S.ops.lastTick = Date.now(); S.ops.changed = false; opsTick(); if (S.ops.changed) { S.ops.changed = false; render(); return; } } if (!$("#ops").hidden) renderOps(); }, 1000);
 
 // ---------- guided demo: scenarios, Next step, Play ----------
 const SCENARIOS = {
   standard: { svc: "hvac", where: "Avondale", intro: "A fridge repair in Avondale, from first message to receipt." },
   family: { svc: "elec", where: "Mabelreign", intro: "Tinashe, working in Dubai, books an electrician for his mother at home in Mabelreign." },
   zesa: { svc: "hvac", where: "Mount Pleasant", intro: "Recovery: ZESA goes off before the repaired fridge can be tested." },
+  later: { svc: "solar", where: "Borrowdale", intro: "A solar job booked for tomorrow morning, then moved to the afternoon by the customer." },
   extra: { svc: "hvac", where: "Hatfield", intro: "Recovery: the pro finds more work mid-job and needs the customer's OK." },
   cancel: { svc: "elec", where: "Greendale", intro: "Recovery: the electrician cancels after the call-out is paid." },
   payment: { svc: "appl", where: "Eastlea", intro: "Recovery: EcoCash is slow to confirm, then confirms twice." },
@@ -1126,7 +1211,13 @@ function autoStep() {
   if (st === "voicecheck") return tapChat((a) => a === "voice:ok");
   if (st === "photo") { sendSamplePhoto(); return true; }
   if (st === "location") return tapChat((a) => a === "location" || a === "sub:" + conf.where);
-  if (st === "confirm") return tapChat((a) => a === "find");
+  if (st === "landmark") { if (["standard", "family", "later"].includes(sc)) { customerSays(sc === "family" ? "Blue gate opposite the church" : "White gate next to the Spar"); return true; } return tapChat((a) => a === "lm:skip"); }
+  if (st === "confirm") return tapChat((a) => a === (sc === "later" ? "findlater" : "find"));
+  if (st === "tip") return tapChat((a) => a === (sc === "standard" ? "tip:2" : "tip:0"));
+  if (t === "scheduled") {
+    if (sc === "later" && !f.moved) { if (!f.manage) { f.manage = true; customerSays("Change or cancel"); return true; } if (tapChat((a) => a === "mb:resched")) return true; f.moved = true; return tapChat((a) => a === "sched:Tomorrow 14:00"); }
+    techAct("t-sched-go"); return true;
+  }
   if (st === "choose") return tapChat((a) => a === "pro:0");
   if (t === "offer") { techAct("t-accept"); return true; }
   if (st === "pay1") return tapChat((a) => a === "pay1");
@@ -1258,6 +1349,20 @@ document.addEventListener("click", (e) => {
     if (act.startsWith("claimslot:")) { S.claim.when = act.slice(10); S.t = { stage: "claimbooked" }; S.step = "wait"; log("server", `Warranty return visit booked: ${S.claim.when}.`); log("app", `${S.pro.name}: warranty visit for ${S.job}, ${S.claim.when}.`); typing(500, () => bot(`Booked for <b>${esc(S.claim.when)}</b>. You'll get a new Basa Code before ${esc(first(S.pro.name))} arrives.`)); return; }
     if (act === "claim:ok" || act === "claim:quote") { log("server", act === "claim:ok" ? "Customer accepted the finding. Claim closed." : "Customer asked for a quote: opened as a new booking."); S.claim = null; S.tested = true; S.t = { stage: "paid" }; S.step = "done"; typing(500, () => bot(act === "claim:ok" ? "Thanks. Your claim is closed. Message us any time." : "We'll open it as a new job and send the quote here.")); return; }
     if (act === "claim:dispute") { log("trust", "Customer disputes the finding. Escalated to the founder with photos and reports from both visits."); log("rule", "How disputes are decided, and any refund, is undecided."); S.t = { stage: "escalated" }; S.step = "escalated"; typing(500, () => bot("Thanks for telling us. Our team will review the photos and reports from both visits and call you.")); return; }
+    if (act === "mb:keep") { typing(400, () => bot("OK, nothing has changed.")); return; }
+    if (act === "mb:cancel") { if (!MANAGEABLE.includes(S.t.stage)) return; typing(500, customerCancel); return; }
+    if (act === "mb:resched") { typing(500, () => bot("When suits you better?", { buttons: [{ label: "Today, 17:00", act: "sched:Today 17:00" }, { label: "Tomorrow, 14:00", act: "sched:Tomorrow 14:00" }] })); return; }
+    if (act.startsWith("sched:")) {
+      if (!MANAGEABLE.includes(S.t.stage)) return;
+      const when = act.slice(6), wasTravelling = S.t.stage === "travelling"; S.sched = when; S.track = false;
+      log("wa", `Customer moved the booking to ${when}.`); log("app", `${S.pro.name} told: ${S.job} moved to ${when}.${wasTravelling ? " Trip stopped." : ""}`);
+      if (S.callPaid) { S.t = { stage: "scheduled" }; S.step = "wait"; S.code = S.code || ""; }
+      typing(500, () => bot(`Done. ${esc(first(S.pro.name))} will come <b>${esc(when)}</b>.${S.callPaid ? " Your call-out stays paid." : ""}${wasTravelling ? ` He'd already set off, so this counts as a late change ${prov()}.` : ""}`));
+      if (wasTravelling) log("rule", "Charge for moving a booking after the pro has set off is undecided.");
+      return;
+    }
+    if (act.startsWith("tip:")) { const n = Number(act.slice(4)); if (!n) { log("wa", "Customer chose not to tip."); typing(400, thankYou); return; } S.tipAmt = n; S.pay = { which: "tip", amount: n }; S.chat.pop(); log("pay", `Paynow: EcoCash request for a ${usd(n)} tip.`); render(); return; }
+    if (act === "rebook") { const name = S.pro ? first(S.pro.name) : "your pro"; newJob(true); typing(600, () => { bot(`Booking ${esc(name)} again for ${esc(svc().name.toLowerCase())}. What's the problem this time?`); S.step = "describe"; }); return; }
     if (act === "human:done") { S.human = false; S.humanReplied = false; log("server", "Chat handed back to the assistant."); typing(400, () => bot("Glad we could help. You're back with the Basa seBasa assistant.")); return; }
     if (act === "resume-repair") { log("wa", "Customer resumed the saved repair."); log("agreed", `${S.pro.name} gets 24 hours' first refusal on the resumed job.`); log("app", `${S.pro.name} accepted the resumed job.`); S.t = { stage: "quote_sent" }; const mm = money(); typing(600, () => { bot(`${esc(first(S.pro.name))} can finish it. Your saved quote:<br>${esc(S.quote.diag)}<br><b>Pay after the work: ${usd(mm.pay2)}</b>`, { buttons: [{ label: "Approve and start", act: "approve" }] }); S.step = "quote"; }); return; }
     if (act === "eod:ok") { log("wa", "Customer confirmed the end-of-day summary."); typing(400, () => bot("Thanks. Sleep well. We'll message you in the morning.")); S.step = "wait"; return; }
@@ -1275,8 +1380,10 @@ document.addEventListener("click", (e) => {
       return; }
     if (act.startsWith("svc:")) { S.svc = act.slice(4); log("wa", `Customer chose: ${svc().name}.`); typing(600, () => { bot(`Got it: <b>${esc(svc().name)}</b>. Please describe the problem in a few words.`); S.step = "describe"; }); return; }
     if (act === "skip-photo") { log("wa", "Customer skipped the photo."); typing(500, askLocation); return; }
-    if (act.startsWith("sub:")) { S.suburb = act.slice(4); S.chat.pop(); S.chat.push({ from: "out", at: clock(), html: `<div class="loc"><div class="minimap"><span class="pin"></span></div><b>Location</b><span>${esc(S.suburb)}, Harare</span></div>` }); log("wa", `Location pin received from customer (${S.suburb}).`); typing(700, confirmBooking); return; }
+    if (act.startsWith("sub:")) { S.suburb = act.slice(4); S.chat.pop(); S.chat.push({ from: "out", at: clock(), html: `<div class="loc"><div class="minimap"><span class="pin"></span></div><b>Location</b><span>${esc(S.suburb)}, Harare</span></div>` }); log("wa", `Location pin received from customer (${S.suburb}).`); typing(700, askLandmark); return; }
     if (act === "find") { typing(1100, showMatches); return; }
+    if (act === "findlater") { S.sched = "Tomorrow 08:00"; log("wa", "Customer booked for tomorrow 08:00."); typing(1100, showMatches); return; }
+    if (act === "lm:skip") { typing(500, confirmBooking); return; }
     if (act === "cancel") { log("server", "Customer cancelled before booking."); typing(500, () => { bot("No problem. Message us anytime."); S.step = "done"; }); return; }
     if (act.startsWith("pro:")) { const i2 = Number(act.slice(4)); offerTo(i2); S.step = "offered"; typing(500, () => bot(`Asking <b>${esc(S.pro.name)}</b> now. Verified pros have 60 seconds to accept.`)); toast("The job just appeared on the technician's phone."); return; }
     if (S.pay || S.payPending) { S.chat.pop(); if (S.payPending) typing(400, () => bot(`Your payment of ${usd(S.payPending.amount)} is still being confirmed. Please don't pay again.`)); render(); return; }
@@ -1286,11 +1393,12 @@ document.addEventListener("click", (e) => {
     if (act === "approve") { log("wa", "Customer approved the quote."); log("app", `Told ${S.pro.name}: quote approved, start work.`); S.t = { stage: "working", startedAt: Date.now() }; typing(500, () => bot(`Approved. ${esc(first(S.pro.name))} is starting now.`)); S.step = "work"; return; }
     if (act === "later") { deferJob(); return; }
     if (false) { log("server", `Diagnosis saved for 30 days. ${S.pro.name} gets first refusal when the customer resumes.`); S.money2.released = r2(money().calloutShare); log("server", `${S.pro.name}'s call-out share (${usd(money().calloutShare)}) is due within ${P.payoutHours} hours.`); S.t = { stage: "deferred" }; typing(500, () => { bot(`No problem. Your quote is saved for <b>30 days</b> and ${esc(first(S.pro.name))} gets first chance to finish it. You've only paid the call-out.`, { buttons: [{ label: "Resume the repair", act: "resume-repair" }] }); S.step = "deferred"; }); return; }
-    if (act.startsWith("rate:")) { S.rating = Number(act.slice(5)); log("wa", `Customer rated ${S.pro.name} ${S.rating} out of 5.`); log("app", `Rating shown on ${S.pro.name}'s app; Trust Score updates tonight.`); typing(500, () => { bot(`Thank you. Warranty on this job: ${P.warrantyDays} days ${prov()}.<br>If anything goes wrong, tell us here.`, { buttons: [{ label: "Report a problem with this job", act: "claim" }] }); S.step = "done"; }); return; }
+    if (act.startsWith("rate:")) { S.rating = Number(act.slice(5)); log("wa", `Customer rated ${S.pro.name} ${S.rating} out of 5.`); log("app", `Rating shown on ${S.pro.name}'s app; Trust Score updates tonight.`); typing(500, () => { if (S.rating >= 4) { bot(`Thanks! Want to add a tip for ${esc(first(S.pro.name))}? All of it goes to him ${prov()}.`, { buttons: [{ label: "$1", act: "tip:1" }, { label: "$2", act: "tip:2" }, { label: "No thanks", act: "tip:0" }] }); S.step = "tip"; } else thankYou(); }); return; }
     render(); return;
   }
   const act = b.dataset.act; if (!act) return;
   if (act === "reset") { resetDemo(); return; }
+  if (act === "pin-cancel" && S.pay && S.pay.which === "tip") { S.pay = null; log("pay", "Customer cancelled the tip."); thankYou(); render(); return; }
   if (act === "pin-cancel") { log("pay", "Customer cancelled the EcoCash prompt."); const w = S.pay.which, mm = money(), amt = { 1: mm.pay1, 2: mm.finalPay, parts: mm.partsPay, stage: mm.stagePay }[w]; S.pay = null; bot("Payment not completed. Tap Pay when you're ready.", { buttons: [{ label: `Pay ${usd(amt)} with EcoCash`, act: { 1: "pay1", 2: "pay2", parts: "payparts", stage: "paystage" }[w] }] }); render(); return; }
   if (act === "track") { S.track = true; log("server", "Customer opened the live tracking page."); render(); return; }
   if (act === "track-close") { S.track = false; render(); return; }
