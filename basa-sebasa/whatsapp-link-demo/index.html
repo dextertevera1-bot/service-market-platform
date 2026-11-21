@@ -249,6 +249,7 @@ table.jobs tr.demo td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
 .status { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 8px 10px; font-size: 13.5px; }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: #2FA463; flex: none; }
 .pro-body { flex: 1; overflow-y: auto; padding: 12px; display: grid; gap: 10px; align-content: start; }
+.card.home .split td { color: #D9D2C2; } .card.home .split tr.you td { color: #F0AE00; }
 .ptabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(255,255,255,.07); border-radius: 12px; padding: 4px; }
 .ptabs button { border: 0; background: transparent; color: #B9B2A2; font-weight: 700; padding: 8px; border-radius: 9px; cursor: pointer; font-size: 14px; display: inline-flex; justify-content: center; gap: 6px; align-items: center; }
 .ptabs button[aria-pressed="true"] { background: #F0AE00; color: #14120D; }
@@ -547,14 +548,14 @@ function renderLog() {
 }
 function renderPro() {
   const p = S.pro || { name: "Tendai M.", trust: 94, home: "Avondale" }, t = S.t;
-  $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · ✓ Checked in person</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" ? "Online · waiting for jobs" : ["paid", "deferred", "noshow"].includes(t.stage) ? "Online · job finished" : esc(S.job) + " · " + esc(stageLabel())}</div>`;
-  const tabs = `<div class="ptabs" role="group" aria-label="Pro app sections"><button type="button" data-ptab="job" aria-pressed="${S.proTab === "job"}">Job</button><button type="button" data-ptab="chat" aria-pressed="${S.proTab === "chat"}">Chat with customer${S.proUnread ? `<span class="n">${S.proUnread}</span>` : ""}</button></div>`;
+  $("#pro-head").innerHTML = `<div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(svc()?.name || "Fridge & aircon")} · ${esc(p.home)} · ✓ Checked in person</small></span><span class="trust"><b>${p.trust}</b><small>Trust</small></span></div><div class="status"><span class="dot"></span>${t.stage === "idle" || (S.proHome && END_STAGES.includes(t.stage)) ? "Online · waiting for jobs" : ["paid", "deferred", "noshow"].includes(t.stage) ? "Online · job finished" : esc(S.job) + " · " + esc(stageLabel())}</div>`;
+  const tabs = `<div class="ptabs" role="group" aria-label="Pro app sections"><button type="button" data-ptab="job" aria-pressed="${S.proTab === "job"}">${t.stage === "idle" || (S.proHome && END_STAGES.includes(t.stage)) ? "🏠 Home" : "Job"}</button><button type="button" data-ptab="chat" aria-pressed="${S.proTab === "chat"}">Chat with customer${S.proUnread ? `<span class="n">${S.proUnread}</span>` : ""}</button></div>`;
   $("#pro-head").insertAdjacentHTML("beforeend", tabs);
   if (SOS_STAGES.includes(t.stage) && !S.sos && !t.sosConfirm) $("#pro-head .status").insertAdjacentHTML("beforeend", `<button class="sos" type="button" data-act="t-sos" style="margin-left:auto">SOS</button>`);
   // keep what the technician has typed, ticked or opened when the screen re-renders
   const prev = {}; document.querySelectorAll("#pro input, #pro select, #pro textarea, #pro details").forEach((el) => { if (el.id) prev[el.id] = el.tagName === "DETAILS" ? { open: el.open } : el.type === "checkbox" ? { checked: el.checked } : { value: el.value }; });
   const focusId = document.activeElement && document.activeElement.closest && document.activeElement.closest("#pro") ? document.activeElement.id : null;
-  const pkey = t.stage + "|" + S.proTab + "|" + S.job, ptop = $("#pro").scrollTop, th0 = $("#pthread"), thAtBottom = !th0 || th0.scrollHeight - th0.scrollTop - th0.clientHeight < 60, thTop = th0 ? th0.scrollTop : 0;
+  const pkey = t.stage + "|" + S.proTab + "|" + S.job + "|" + !!S.proHome, ptop = $("#pro").scrollTop, th0 = $("#pthread"), thAtBottom = !th0 || th0.scrollHeight - th0.scrollTop - th0.clientHeight < 60, thTop = th0 ? th0.scrollTop : 0;
   $("#pro").classList.toggle("is-chat", S.proTab === "chat");
   $("#pro").innerHTML = S.proTab === "chat" ? proChat() : safetyStrip() + sosBox() + checkCard() + proView();
   Object.entries(prev).forEach(([id, v]) => { const el = document.getElementById(id); if (!el || !el.closest("#pro")) return; if ("open" in v) el.open = v.open; else if ("checked" in v) el.checked = v.checked; else el.value = v.value; });
@@ -632,7 +633,29 @@ function proChat() {
     <div class="pthread" id="pthread">${S.thread.length ? S.thread.map((m) => m.from === "sys" ? `<div class="pmsg sys">${esc(m.text)}</div>` : `<div class="pmsg ${m.from}">${m.from === "customer" ? `<span class="who2">${esc(name)}</span>` : ""}${esc(m.text)}<time>${m.at}${m.from === "pro" ? " ✓✓" : ""}</time></div>`).join("") : `<p class="muted small" style="text-align:center;margin:auto">${open ? "No messages yet. Ask for directions or tell the customer when you're close." : "No active job."}</p>`}</div>
     ${open ? `<div class="pquick">${quick.map((q) => `<button type="button" data-pquick="${esc(q)}">${esc(q)}</button>`).join("")}</div><form class="pcompose" id="pcompose"><input id="pmsg" type="text" autocomplete="off" placeholder="Message the customer" aria-label="Message the customer"><button type="submit" aria-label="Send">➤</button></form>` : ""}</div>`;
 }
+// Jobs that are over for the pro: the app returns to the home screen.
+const END_STAGES = ["paid", "cancelled", "noshow", "deferred", "declined"];
+function goHomeSoon() { later(() => { if (END_STAGES.includes(S.t.stage) && !S.proHome) { S.proHome = true; S.proTab = "job"; log("app", `Job ${S.job} finished: the pro app went back to the home screen.`); render(); } }, 2500); }
+function proHomeView() {
+  const t = S.t, m = money(), me = (S.pro || {}).name || "Tendai M.";
+  const done = (S.pastJobs || []).filter((j) => j.pro === me && /Paid and closed/.test(j.status));
+  const cur = S.svc && t.stage === "paid" ? [{ id: S.job, svc: svc().name, suburb: S.suburb, payoutAmt: m.payout + (S.tip || 0), cur: true }] : [];
+  const jobs = [...cur, ...done], earned = jobs.reduce((a, j) => a + (j.payoutAmt || 0), 0);
+  const last = S.svc && END_STAGES.includes(t.stage) ? { id: S.job, svc: svc().name, suburb: S.suburb, what: t.stage === "paid" ? (S.payoutDone ? `✓ ${usd(m.payout)} paid to your EcoCash, ref ${esc(S.payoutDone.ref)}` : `${usd(m.payout)} on its way to your EcoCash within ${P.payoutHours} hours`) + (S.tip ? ` · + ${usd(S.tip)} tip` : "") : t.stage === "noshow" ? `Customer not home · you keep the ${usd(m.calloutShare)} call-out share` : t.stage === "cancelled" ? "Customer cancelled" : t.stage === "deferred" ? `Repair saved for later · you earned ${usd(m.calloutShare)}` : "You declined this job", rated: t.stage === "paid" && S.rating ? "★".repeat(S.rating) : "" } : null;
+  return `<div class="card dark home"><span class="eyebrow" style="color:#F0AE00">Home</span><h2 style="color:#F5F1E6">Hi ${esc(me.split(" ")[0])}, you're online</h2><p class="muted">Day jobs only (07:00–18:00). You choose which jobs to accept.</p><table class="split"><tr><td>Jobs completed today</td><td>${jobs.length}</td></tr><tr class="you"><td>Earned today</td><td>${usd(earned)}</td></tr></table></div>`
+    + (last ? `<div class="card"><span class="eyebrow">Last job</span><b>${esc(last.id)} · ${esc(last.svc)} · ${esc(last.suburb || "")}</b><span class="muted small">${last.what}${last.rated ? ` · the customer rated you ${last.rated}` : ""}</span>${t.stage === "paid" ? `<span class="small" style="font-weight:700">${S.proRating ? "✓ You rated the customer" : "Rate the customer (only Basa seBasa sees this)"}</span><div class="rate-row">${[1, 2, 3, 4, 5].map((n) => `<button type="button" data-act="t-rate-${n}" aria-pressed="${S.proRating === n}">${"★".repeat(n)}</button>`).join("")}</div>` : ""}<button class="btn quiet" type="button" data-act="t-viewjob">View last job</button></div>` : "")
+    + `<div class="card" style="text-align:center;justify-items:center;padding:24px 16px"><div class="spin" style="width:30px;height:30px"></div><h3>Waiting for jobs</h3><p class="muted small">When a customer books on WhatsApp, the job appears here instantly.</p></div>`;
+}
+function homeBtn() {
+  if (!END_STAGES.includes(S.t.stage)) return "";
+  if (S.t.stage === "paid" && onDuty() && !S.safety.left) return `<button class="btn gold" type="button" data-act="t-checkout">🏠 Check out and go home</button>`;
+  return `<button class="btn gold" type="button" data-act="t-home">🏠 Back to home</button>`;
+}
 function proView() {
+  if (S.t.stage === "idle" || (S.proHome && END_STAGES.includes(S.t.stage))) return proHomeView();
+  return proJobView() + homeBtn();
+}
+function proJobView() {
   const t = S.t, m = money(), f = S.chat.length ? "Customer" : "", s = svc();
   const head = (title, sub, extra = "") => `<div class="card dark"><span class="mono muted">${esc(S.job)} · ${esc(s?.name || "")} repair</span><h2 style="color:#F5F1E6">${esc(title)}</h2>${sub ? `<p class="muted">${sub}</p>` : ""}${extra}</div>`;
   const cust = `<div class="card"><span class="eyebrow">Customer</span><b>${S.family ? esc(S.family.name) + " (at the house)" : "Mrs C. Ndlovu"} · ★4.8</b><span class="muted small">${esc(S.suburb)}, Harare · ${S.pro?.km ?? ""} km · number hidden, message through Basa</span>${S.landmark ? `<span class="small"><b>Landmark:</b> ${esc(S.landmark)}</span>` : ""}${S.family ? `<span class="muted small">Booked from abroad by family. ${esc(S.family.name)} will open the gate.</span>` : ""}<p class="small">${esc(S.desc)}</p></div>`;
@@ -932,12 +955,14 @@ function techAct(act) {
     if (pin !== PIN_OK && pin !== PIN_DURESS) { const e = $("#ck-err"); e.textContent = "That PIN isn't right. Try again."; e.hidden = false; return; }
     const was = S.safety.checkPrompt; S.safety.checkPrompt = null; S.safety.checkins++;
     if (was !== "longstop") { S.safety.firstDone = true; S.safety.checkDue = null; }
-    if (pin === PIN_DURESS) { raiseSafety("duress", was === "finish" ? "pro used the duress PIN when checking out" : "pro checked in with the duress PIN"); toast(was === "finish" ? "Checked out ✓" : "Checked in ✓"); render(); return; }
-    if (was === "finish") { S.safety.left = clock(); S.safety.uneasy = null; log("app", `${S.pro.name} checked out with their safety PIN. Location sharing stopped.`); log("agreed", "Final safety check-in when the job is finished."); toast("Checked out ✓"); render(); return; }
+    if (pin === PIN_DURESS) { raiseSafety("duress", was === "finish" ? "pro used the duress PIN when checking out" : "pro checked in with the duress PIN"); toast(was === "finish" ? "Checked out ✓" : "Checked in ✓"); if (was === "finish") goHomeSoon(); render(); return; }
+    if (was === "finish") { S.safety.left = clock(); S.safety.uneasy = null; log("app", `${S.pro.name} checked out with their safety PIN. Location sharing stopped.`); log("agreed", "Final safety check-in when the job is finished."); toast("Checked out ✓. Back to home"); goHomeSoon(); render(); return; }
     log("app", `${S.pro.name} checked in OK${was === "longstop" ? " after the long stop" : ""}.`);
     (S.safety.alerts || []).filter((a) => !a.closed && ["missed", "longstop"].includes(a.kind)).forEach((a) => { a.closed = true; log("trust", `Safety alert closed: ${S.pro.name} checked in with the right PIN.`); });
     toast("Checked in ✓"); render(); return;
   }
+  if (act === "t-home") { if (!END_STAGES.includes(t.stage) || (t.stage === "paid" && onDuty() && !S.safety.left)) return; S.proHome = true; S.proTab = "job"; log("app", `${S.pro ? S.pro.name : "Pro"} closed ${S.job} and went back to the home screen.`); render(); return; }
+  if (act === "t-viewjob") { S.proHome = false; render(); return; }
   if (act === "t-checkout") { if (t.stage !== "paid" || S.safety.left || S.safety.checkPrompt) return; S.safety.checkPrompt = "finish"; render(); return; }
   if (act === "t-sos") { if (!SOS_STAGES.includes(t.stage) || S.sos) return; t.sosConfirm = true; render(); return; }
   if (act === "t-sos-no") { delete t.sosConfirm; render(); return; }
