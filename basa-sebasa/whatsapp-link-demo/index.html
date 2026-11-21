@@ -320,8 +320,8 @@ form.pcompose button { border: 0; width: 40px; height: 40px; border-radius: 50%;
     <div class="phone"><div class="pro-head" id="pro-head"></div><div class="pro-body" id="pro"></div></div></section>
 </div>
 <main class="ops" id="ops" hidden aria-label="Operations dashboard">
-  <div class="ops-head"><div><h2>Operations dashboard</h2><p class="muted small">Everything happening on the platform right now. The highlighted job is the one in the live demo; the others are <span class="sim">simulated sample jobs</span> that move on their own.</p></div>
-    <div style="display:flex;gap:10px;align-items:center"><span class="live" id="live"><i></i>Live</span><button class="mini" type="button" id="ops-pause">Pause updates</button></div></div>
+  <div class="ops-head"><div><h2>Operations dashboard</h2><p class="muted small" id="ops-sub"></p></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="live" id="live"><i></i>Live</span><button class="mini" type="button" id="ops-samples" aria-pressed="false">Sample jobs: off</button><button class="mini" type="button" id="ops-pause" hidden>Pause samples</button></div></div>
   <div class="kpis" id="kpis"></div>
   <div class="ops-grid">
     <div style="display:grid;gap:14px;min-width:0">
@@ -949,6 +949,9 @@ function techAct(act) {
 }
 
 // ---------- operations dashboard ----------
+// Sample jobs are off by default so testing shows only your own demo job. The choice is remembered in this browser.
+let showSamples = false;
+try { showSamples = localStorage.getItem("basa-ops-samples") === "on"; } catch (e) {}
 // Sample jobs are fictional and move on their own so the dashboard looks like a working day. The demo job is the real state above.
 function opsSeed() {
   const now = Date.now(), m = 6e4;
@@ -973,7 +976,7 @@ function opsSeed() {
 }
 const OPS_ALERT = { paused: ["Paused, untested", "Return visit or backup test needed", false], payment: ["EcoCash not confirmed yet", "Don't release the pro; check the reference if it drags on", true], claim: ["Warranty claim", "Return visit to inspect", false] };
 function opsTick() {
-  const o = S.ops; if (!o || o.paused) return;
+  const o = S.ops; if (!o || o.paused || !showSamples) return;
   const live = o.jobs.filter((j) => !j.done);
   if (!live.length || Math.random() < .12) {
     if (o.jobs.length < 12) { const id = "BSB-" + o.nextId++, sv = ["Plumbing", "Electrical", "Fridge & aircon", "Solar & inverters"][o.nextId % 4], sub = SUBURBS[o.nextId % SUBURBS.length], pro = ["Nyasha P.", "Kudzai C.", "Ruvimbo K.", "Tinashe K."][o.nextId % 4];
@@ -1025,7 +1028,7 @@ function demoAlerts() {
 function opsData() {
   const o = S.ops, rows = [];
   if (S.svc) rows.push({ demo: true, id: S.job, svc: svc().name, suburb: S.suburb || "-", pro: S.pro && S.t.stage !== "idle" ? S.pro.name : "Matching…", status: stageLabel(), work: workStatus(), paid: S.money2.paid, released: S.money2.released, alerts: demoAlerts(), next: next()[1], at: S.log[0]?.ts || Date.now(), done: ["paid", "noshow"].includes(S.t.stage) && !S.claim, payoutDue: S.t.stage === "paid" && S.paidAt && !S.payoutDone && !S.claim ? S.paidAt + 24 * 36e5 : null, payoutAmt: money().payout });
-  o.jobs.forEach((j) => rows.push({ demo: false, id: j.id, svc: j.svc, suburb: j.suburb, pro: j.pro, status: jobLabel(j), work: sampleWork(j), paid: j.paid, released: j.released, alerts: j.alert ? [OPS_ALERT[j.alert]] : j.approval ? [["Quote waiting for the customer", "Nothing starts until they approve", false]] : [], next: j.done ? "" : "Waiting on the sample job", at: j.at, done: !!j.done, payoutDue: j.payoutDue && !j.paidOut ? j.payoutDue : null, payoutAmt: j.payoutAmt, sample: j }));
+  if (showSamples) o.jobs.forEach((j) => rows.push({ demo: false, id: j.id, svc: j.svc, suburb: j.suburb, pro: j.pro, status: jobLabel(j), work: sampleWork(j), paid: j.paid, released: j.released, alerts: j.alert ? [OPS_ALERT[j.alert]] : j.approval ? [["Quote waiting for the customer", "Nothing starts until they approve", false]] : [], next: j.done ? "" : "Waiting on the sample job", at: j.at, done: !!j.done, payoutDue: j.payoutDue && !j.paidOut ? j.payoutDue : null, payoutAmt: j.payoutAmt, sample: j }));
   return rows;
 }
 const ago = (ts) => { const s = Math.max(0, Math.round((Date.now() - ts) / 1000)); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : `${Math.floor(s / 3600)} h ago`; };
@@ -1039,21 +1042,24 @@ function renderOps() {
   const held = r2(rows.reduce((t, r) => t + (!r.done ? Math.max(0, r.paid - r.released) : r.payoutDue ? r.payoutAmt : 0), 0));
   const dues = rows.filter((r) => r.payoutDue);
   const busy = new Set(live.map((r) => r.pro));
-  const allPros = [...new Set(Object.values(PROS).flat().map((p) => p[0]).concat(o.jobs.map((j) => j.pro)))];
+  const allPros = [...new Set(Object.values(PROS).flat().map((p) => p[0]).concat(showSamples ? o.jobs.map((j) => j.pro) : []))];
   const online = allPros.filter((p, i) => busy.has(p) || i % 3 !== 2);
+  $("#ops-sub").innerHTML = showSamples ? `Your demo job is highlighted. The other jobs are <span class="sim">simulated samples</span> that move on their own, to show a busy day.` : `Showing only your test job from the live demo. Turn on sample jobs to see what a busy day looks like.`;
+  const sb = $("#ops-samples"); sb.textContent = `Sample jobs: ${showSamples ? "on" : "off"}`; sb.setAttribute("aria-pressed", String(showSamples)); $("#ops-pause").hidden = !showSamples;
   $("#kpis").innerHTML = [["Live jobs", live.length], ["Need attention", attention.length, attention.some((x) => x.a[2])], ["EcoCash pending", pend, pend > 0], ["Held by Basa", usd(held)], ["Payouts due", dues.length, dues.some((r) => r.payoutDue < Date.now())], ["Pros online", `${online.length} / ${allPros.length}`]].map(([l, v, al]) => `<div class="kpi ${al ? "alert" : ""}"><small>${l}</small><b>${v}</b></div>`).join("");
   $("#att-count").textContent = attention.length ? `${attention.length} open` : "all clear";
-  $("#alerts").innerHTML = attention.length ? attention.sort((x, y) => y.a[2] - x.a[2]).map(({ r, a }) => `<div class="alert-row ${a[2] ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${esc(a[0])}</b><small>${esc(a[1])} · ${esc(r.svc)}, ${esc(r.suburb)}</small></span>${r.demo ? `<a class="mini" href="#demo">Open in demo</a>` : `<span class="pill">sample</span>`}</div>`).join("") : `<p class="muted small">Nothing needs you right now.</p>`;
+  $("#alerts").innerHTML = attention.length ? attention.sort((x, y) => y.a[2] - x.a[2]).map(({ r, a }) => `<div class="alert-row ${a[2] ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${esc(a[0])}</b><small>${esc(a[1])} · ${esc(r.svc)}, ${esc(r.suburb)}</small></span>${r.demo ? `<a class="mini" href="#demo">Open in demo</a>` : `<span class="pill">sample</span>`}</div>`).join("") : `<p class="muted small">${rows.length ? "Nothing needs you right now." : "No jobs yet. Start a booking in the live demo (Play or Next step) and it appears here."}</p>`;
   const F = { all: ["All", () => true], attention: ["Needs attention", (r) => r.alerts.length], field: ["In the field", (r) => !r.done && /on the way|gate|diagnosing|Work|day/i.test(r.status)], money: ["Money moving", (r) => r.payoutDue || r.alerts.some((a) => /EcoCash|Overpaid/.test(a[0])) || /payment/i.test(r.status)], closed: ["Closed", (r) => r.done] };
   $("#filters").innerHTML = Object.entries(F).map(([k, [l]]) => `<button type="button" data-ofilter="${k}" aria-pressed="${o.filter === k}">${l} (${rows.filter(F[k][1]).length})</button>`).join("");
   const shown = rows.filter(F[o.filter][1]).sort((a, b) => b.demo - a.demo || (b.alerts.length - a.alerts.length) || b.at - a.at);
   $("#jobs").innerHTML = `<tr><th>Job</th><th>Status</th><th>Work</th><th>Pro</th><th class="num">Paid</th><th class="num">To pro</th><th>Updated</th></tr>` + (shown.length ? shown.map((r) => `<tr class="${r.demo ? "demo" : ""}"><td><b>${esc(r.id)}</b>${r.demo ? ` <span class="pill gold">demo job</span>` : ""}<br><small class="muted">${esc(r.svc)} · ${esc(r.suburb)}</small></td><td><span class="pill ${r.alerts.some((a) => a[2]) ? "warn" : r.done ? "good" : ""}">${esc(r.status)}</span>${r.demo && r.next ? `<br><small class="muted">Next: ${esc(r.next)}</small>` : ""}</td><td>${esc(r.work)}</td><td>${esc(r.pro)}</td><td class="num">${usd(r.paid)}</td><td class="num">${usd(r.released)}</td><td><small class="muted">${ago(r.at)}</small></td></tr>`).join("") : `<tr><td colspan="7" class="muted">No jobs in this view.</td></tr>`);
   $("#payouts").innerHTML = dues.length ? dues.sort((a, b) => a.payoutDue - b.payoutDue).map((r) => `<div class="alert-row ${r.payoutDue < Date.now() + 2 * 36e5 ? "high" : ""}"><span class="mono">${esc(r.id)}</span><span><b>${usd(r.payoutAmt)} to ${esc(r.pro)}</b><small>${dueIn(r.payoutDue)} · customer paid ${usd(r.paid)}</small></span><button class="mini gold" type="button" data-payout="${esc(r.id)}">Mark paid out</button></div>`).join("") : `<p class="muted small">No payouts due.</p>`;
   const tagName = { wa: "WhatsApp", server: "Server", app: "Pro app", pay: "EcoCash (sim)", trust: "Trust", rule: "Provisional", agreed: "Agreed rule", design: "Demo design" };
-  const feed = S.log.map((l) => ({ ...l, job: S.job, ts: l.ts || 0 })).concat(o.feed).sort((a, b) => b.ts - a.ts).slice(0, 60);
-  $("#feed").innerHTML = feed.map((l) => `<div class="log-row"><span class="mono muted">${new Date(l.ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><span class="mono">${esc(l.job)}</span><span class="tag ${l.who}">${tagName[l.who] || l.who}</span><span>${esc(l.text)}</span></div>`).join("");
+  const feed = S.log.map((l) => ({ ...l, job: S.job, ts: l.ts || 0 })).concat(showSamples ? o.feed : []).sort((a, b) => b.ts - a.ts).slice(0, 60);
+  $("#feed").innerHTML = feed.length ? "" : `<p class="muted small">Activity appears here as soon as a booking starts.</p>`;
+  if (feed.length) $("#feed").innerHTML = feed.map((l) => `<div class="log-row"><span class="mono muted">${new Date(l.ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><span class="mono">${esc(l.job)}</span><span class="tag ${l.who}">${tagName[l.who] || l.who}</span><span>${esc(l.text)}</span></div>`).join("");
   $("#prolist").innerHTML = allPros.slice(0, 14).map((p) => { const job = live.find((r) => r.pro === p); return `<div><span class="dotst ${job ? "job" : online.includes(p) ? "on" : ""}"></span><span>${esc(p)}</span><small class="muted">${job ? `On ${esc(job.id)}` : online.includes(p) ? "Online" : "Offline"}</small></div>`; }).join("");
-  const lv = $("#live"); lv.classList.toggle("off", o.paused); lv.lastChild.textContent = o.paused ? "Paused" : "Live"; $("#ops-pause").textContent = o.paused ? "Resume updates" : "Pause updates";
+  const paused = showSamples && o.paused, lv = $("#live"); lv.classList.toggle("off", paused); lv.lastChild.textContent = paused ? "Samples paused" : "Live"; $("#ops-pause").textContent = o.paused ? "Resume samples" : "Pause samples";
 }
 function markPaidOut(id) {
   const r = "PO" + String(Math.floor(100000 + Math.random() * 900000));
@@ -1230,6 +1236,7 @@ document.addEventListener("click", (e) => {
   if (b.dataset.payout) { markPaidOut(b.dataset.payout); return; }
   if (b.dataset.ofilter) { S.ops.filter = b.dataset.ofilter; render(); return; }
   if (b.id === "ops-pause") { S.ops.paused = !S.ops.paused; render(); return; }
+  if (b.id === "ops-samples") { showSamples = !showSamples; try { localStorage.setItem("basa-ops-samples", showSamples ? "on" : "off"); } catch (e) {} if (showSamples) S.ops.lastTick = Date.now(); render(); return; }
   if (b.dataset.sim) { if (S.playing) stopPlay(); simulate(b.dataset.sim); return; }
   if (b.dataset.chip) { if (b.dataset.chip.startsWith("🎤")) voiceNote(); else customerSays(b.dataset.chip); return; }
   if (b.dataset.chat) {
