@@ -130,7 +130,7 @@ function render() {
   const dueSoon = D.payouts.filter((p) => p.due_at - Date.now() < 6 * 3600e3).length;
   app.innerHTML = `<header><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa · Ops desk</b>
     <span class="mode ${D.mode.whatsapp === "simulated" ? "sim" : ""}">WHATSAPP: ${D.mode.whatsapp.toUpperCase()}</span><span class="mode ${D.mode.payments === "sim" ? "sim" : ""}">PAYMENTS: ${D.mode.payments.toUpperCase()}</span>
-    <span class="sp"><span>${esc(user)}</span>${"Notification" in window && Notification.permission === "default" ? `<button data-do="notify">Turn on alerts</button>` : ""}<button data-do="logout">Log out</button></span></header>
+    <span class="sp"><span class="mode" title="Version of the ops desk">ONBOARDING DESK · v${esc(window.__build || "")}</span><span>${esc(user)}</span>${"Notification" in window && Notification.permission === "default" ? `<button data-do="notify">Turn on alerts</button>` : ""}<button data-do="logout">Log out</button></span></header>
   <main>${err ? `<p class="err">${esc(err)}</p>` : ""}
    <div class="kpis"><div class="kpi ${urgent ? "hot" : ""}"><b>${urgent}</b><small>Safety alerts</small></div><div class="kpi"><b>${live.length}</b><small>Live jobs</small></div>
      <div class="kpi"><b>${D.pros.filter((p) => p.status === "verified" && p.online).length} / ${D.pros.filter((p) => p.status === "verified").length}</b><small>Pros online / verified</small></div>

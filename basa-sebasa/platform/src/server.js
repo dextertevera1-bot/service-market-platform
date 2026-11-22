@@ -57,7 +57,7 @@ async function serveStatic(res, path) {
   if (!extname(p)) p += "/index.html";
   const file = join(PUBLIC, p);
   if (!file.startsWith(PUBLIC) || !existsSync(file)) return send(res, 404, "Not found");
-  const headers = { "Content-Type": TYPES[extname(file)] || "application/octet-stream", "Cache-Control": extname(file) === ".html" ? "no-cache" : "public, max-age=3600" };
+  const headers = { "Content-Type": TYPES[extname(file)] || "application/octet-stream", "Cache-Control": extname(file) === ".html" || p.endsWith("sw.js") ? "no-store, must-revalidate" : "public, max-age=3600" };
   if (p.endsWith("sw.js")) headers["Service-Worker-Allowed"] = "/pro/";
   res.writeHead(200, headers); res.end(await readFile(file));
 }
