@@ -24,16 +24,48 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function makePro(name, phone, suburb, pin, duress) {
   const r = await api("/api/join", { name, phone, trade: "hvac", suburb, ecocash: phone, emName: "Rudo", emPhone: "0782223333", pin, duress, idFront: PNG, selfie: PNG, consent: true, experience: "8 years" });
   assert.equal(r.status, 200, JSON.stringify(r.body));
-  const ov = await api("/api/ops/overview", null, opsToken);
-  const p = ov.body.pros.find((x) => x.name === name);
-  assert.equal(p.status, "applied");
-  assert.equal((await api(`/api/ops/pro/${p.id}/approve`, { trust: name.startsWith("Tendai") ? 94 : 80 }, opsToken)).status, 200);
+  // The pro can log in straight away to follow their onboarding.
   const l = await api("/api/pro/login", { phone });
   assert.ok(l.body.devCode, "dev code returned in simulation");
-  const v = await api("/api/pro/verify", { phone, code: l.body.devCode });
-  assert.ok(v.body.token);
-  await api("/api/pro/online", { on: true }, v.body.token);
-  return v.body.token;
+  const token = (await api("/api/pro/verify", { phone, code: l.body.devCode })).body.token;
+  assert.ok(token);
+  let st = (await api("/api/pro/state", null, token)).body;
+  assert.deepEqual(st.onboarding.steps.slice(0, 4).map((x) => x.state), ["done", "done", "done", "now"]);
+  assert.equal((await api("/api/pro/online", { on: true }, token)).status, 403, "can't go online during onboarding");
+  const ov = await api("/api/ops/overview", null, opsToken);
+  const id = ov.body.pros.find((x) => x.name === name).id;
+  const step = (b) => api(`/api/ops/pro/${id}/step`, b, opsToken);
+  assert.equal((await api(`/api/ops/pro/${id}/approve`, {}, opsToken)).status, 409, "can't approve before the steps");
+  assert.equal((await step({ step: "refs", ref: "r1", result: "positive" })).status, 409, "documents first");
+  // Documents: ask for more, the pro sends it in the app, then accept.
+  await step({ step: "docs", result: "more", note: "a clearer photo of the back of your ID" });
+  st = (await api("/api/pro/state", null, token)).body;
+  assert.match(st.onboarding.docsNote, /clearer photo/);
+  await api("/api/pro/onboarding/docs", { idBack: PNG }, token);
+  await step({ step: "docs", result: "accepted" });
+  await step({ step: "refs", ref: "r1", result: "positive" });
+  await step({ step: "refs", ref: "r2", result: "positive" });
+  await step({ step: "slot", when: "Thu 3 Dec, 10:00", where: "Basa test site, Avondale" });
+  await api("/api/pro/onboarding/confirm-slot", {}, token);
+  assert.equal((await api("/api/pro/onboarding/ack", { id: "code" }, token)).status, 409, "induction opens after the in-person check");
+  await step({ step: "inperson", score: 8, safety: true, idMatched: true, photo: true });
+  // Induction in the app: every rule, both PINs practised, agreement signed.
+  st = (await api("/api/pro/state", null, token)).body;
+  for (const i of st.onboarding.induction) await api("/api/pro/onboarding/ack", { id: i.id }, token);
+  assert.equal((await api("/api/pro/onboarding/practice", { pin: "0001" }, token)).status, 409);
+  await api("/api/pro/onboarding/practice", { pin }, token);
+  await api("/api/pro/onboarding/practice", { pin: duress }, token);
+  assert.equal((await api("/api/pro/onboarding/sign", { name: "Someone Else", agree: true }, token)).status, 409);
+  await api("/api/pro/onboarding/sign", { name, agree: true }, token);
+  const ov2 = (await api("/api/ops/overview", null, opsToken)).body;
+  assert.equal(ov2.pros.find((x) => x.id === id).onboarding.ready, true);
+  assert.equal(ov2.alerts.filter((a) => a.kind === "duress").length, 0, "practising the duress PIN raises no alert");
+  assert.equal((await api(`/api/ops/pro/${id}/approve`, {}, opsToken)).status, 200);
+  st = (await api("/api/pro/state", null, token)).body;
+  assert.equal(st.onboarding, null); assert.equal(st.level, "Bronze"); assert.equal(st.probation.left, 5);
+  assert.equal(st.pro.trust, 86); // 50 + ID 10 + references 10 + test 8/10 x2
+  await api("/api/pro/online", { on: true }, token);
+  return token;
 }
 
 before(async () => { server = await startServer({ port: 0, dbPath: ":memory:" }); base = `http://localhost:${server.address().port}`; });
@@ -155,9 +187,14 @@ test("a whole job, end to end", async () => {
   assert.equal(s.home.jobsToday, 1);
   assert.equal(s.home.earnedToday, 60);
   assert.equal(s.home.last.rating, 5);
+  assert.equal(s.probation.left, 4, "first probation job counted");
+  ov = (await api("/api/ops/overview", null, opsToken)).body;
+  assert.ok(ov.probationCalls.some((c) => c.id === id), "probation quality call listed");
+  await api(`/api/ops/job/${id}/probation-call`, { note: "Customer happy" }, opsToken);
 
   // Ops pays the pro.
   ov = (await api("/api/ops/overview", null, opsToken)).body;
+  assert.ok(!ov.probationCalls.some((c) => c.id === id));
   const po = ov.payouts.find((p) => p.job_id === id);
   assert.equal((await api(`/api/ops/payout/${po.id}/paid`, {}, opsToken)).status, 400, "needs a reference");
   assert.equal((await api(`/api/ops/payout/${po.id}/paid`, { ref: "PP123456" }, opsToken)).status, 200);
@@ -166,6 +203,18 @@ test("a whole job, end to end", async () => {
   await say({ text: "hi" });
   out = await inbox();
   assert.ok(out.some((p) => p.interactive?.type === "list"));
+});
+
+test("a failed in-person check ends the application", async () => {
+  await api("/api/join", { name: "Lloyd Moyo", phone: "0773555111", trade: "appl", suburb: "Highfield", ecocash: "0773555111", emName: "Ann", emPhone: "0783555111", pin: "3691", duress: "7412", idFront: PNG, selfie: PNG, consent: true });
+  const id = (await api("/api/ops/overview", null, opsToken)).body.pros.find((x) => x.name === "Lloyd Moyo").id;
+  const step = (b) => api(`/api/ops/pro/${id}/step`, b, opsToken);
+  await step({ step: "docs", result: "accepted" }); await step({ step: "refs", ref: "r1", result: "positive" }); await step({ step: "refs", ref: "r2", result: "positive" });
+  await step({ step: "slot", when: "Fri", where: "Office" });
+  const r = await step({ step: "inperson", score: 9, safety: false });
+  assert.equal(r.body.rejected, true, "unsafe working fails whatever the score");
+  const l = await api("/api/pro/login", { phone: "0773555111" });
+  assert.equal(l.status, 403); assert.match(l.body.error, /reapply after 3 months/);
 });
 
 test("customer can cancel before the pro sets off, and nothing is charged", async () => {

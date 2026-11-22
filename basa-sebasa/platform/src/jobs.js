@@ -9,6 +9,7 @@ import { requestPayment, setPaidHandler } from "./payments.js";
 import { scrub } from "./scrub.js";
 import { raiseAlert, checkPin, closeAlert, URGENT } from "./safety.js";
 import { config } from "./config.js";
+import { probationJobDone } from "./onboarding.js";
 
 export const ACTIVE = ["searching", "offered", "await_callout", "ready", "travelling", "arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
 export const ONSITE = ["arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
@@ -121,6 +122,7 @@ setPaidHandler(async (p) => {
     const m = jobMoney(job);
     run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, m.payout, Date.now() + RULES.payoutHours * 3600e3);
     pro.jobs_done += 1; savePro(pro);
+    if (pro.data?.probation?.left > 0) { job.data.probation = true; saveJob(job); probationJobDone(pro.id, job.id); }
     logEvent(job.id, "pay", `Payout of ${usd(m.payout)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
     await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nCall-out: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
@@ -234,6 +236,7 @@ export async function customerRate(job, n) {
   const pro = getPro(job.pro_id); pro.rating_sum += n; pro.rating_n += 1;
   if (n >= 4) pro.trust = Math.min(100, pro.trust + 1); if (n <= 2) pro.trust = Math.max(0, pro.trust - 3);
   savePro(pro);
+  if (job.data.probation) probationJobDone(pro.id, job.id, n);
   logEvent(job.id, "wa", `Customer rated ${pro.name} ${n}★.`);
   await wa.text(job.customer, n >= 4 ? `Thank you! ⭐ We've passed that on to ${first(pro.name)}.` : `Thank you for being honest. Our Harare admin will follow up with you.`);
 }

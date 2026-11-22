@@ -86,7 +86,7 @@ document.getElementById("f").addEventListener("submit", async (e) => {
     const r = await fetch("/api/join", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || "Something went wrong. Please try again.");
-    f.innerHTML = `<fieldset><p class="ok">✓ Application sent</p><p>Thanks! We'll check your documents within 48 hours, call your referees, then book your in-person check. We'll message you on WhatsApp.</p></fieldset>`;
+    f.innerHTML = `<fieldset><p class="ok">✓ Application sent</p><p>Thanks! Your next steps are in the Pro app: log in with this WhatsApp number to follow your application, step by step.</p><a href="/pro/" style="display:block;text-align:center;background:var(--yellow);color:var(--navy);font-weight:800;border-radius:12px;padding:14px;text-decoration:none">Open the Pro app</a></fieldset>`;
   } catch (x) { msg.textContent = x.message; go.disabled = false; go.textContent = "Send my application"; }
 });
 </script>

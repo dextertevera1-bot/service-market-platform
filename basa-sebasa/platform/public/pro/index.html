@@ -126,11 +126,12 @@ function geo() {
 
 function header() {
   const p = S.pro, j = S.job, onJob = !!j && !home;
-  const status = S.offer ? "New job offer" : j ? `${j.id} · ${j.label}` : p.online ? "Online · waiting for jobs" : "Offline";
-  const right = j && j.safety.tracking && !j.safety.needsCheckout ? `<button class="sos" data-a="sos">SOS</button>` : !j && !S.offer ? `<button class="toggle ${p.online ? "" : "off"}" data-a="online">${p.online ? "Go offline" : "Go online"}</button>` : "";
+  const ob = S.onboarding, done = ob ? ob.steps.filter((x) => x.state === "done").length : 0;
+  const status = ob ? `Application: ${done} of ${ob.steps.length} steps done` : S.offer ? "New job offer" : j ? `${j.id} · ${j.label}` : p.online ? "Online · waiting for jobs" : "Offline";
+  const right = ob ? "" : j && j.safety.tracking && !j.safety.needsCheckout ? `<button class="sos" data-a="sos">SOS</button>` : !j && !S.offer ? `<button class="toggle ${p.online ? "" : "off"}" data-a="online">${p.online ? "Go offline" : "Go online"}</button>` : "";
   return `<header class="top"><div class="brand"><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa</b><span class="pill">PRO</span></div>
-    <div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span><span class="trust"><b>${p.trust}</b><small>TRUST</small></span></div>
-    <div class="status"><span class="dot ${p.online || j ? "on" : ""}"></span><span>${esc(status)}</span>${right}</div>
+    <div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span>${ob ? `<span class="trust"><small>APPLICANT</small></span>` : `<span class="trust"><b>${p.trust}</b><small>TRUST${S.level ? " · " + esc(S.level.toUpperCase()) : ""}</small></span>`}</div>
+    <div class="status"><span class="dot ${p.online || j || ob ? "on" : ""}"></span><span>${esc(status)}</span>${right}</div>
     ${j && !home ? `<div class="tabs"><button data-tab="job" aria-pressed="${tab === "job"}">Job</button><button data-tab="chat" aria-pressed="${tab === "chat"}">Chat with customer${j.unread ? `<span class="n">${j.unread}</span>` : ""}</button></div>` : ""}</header>`;
 }
 
@@ -138,6 +139,8 @@ function homeView() {
   const h = S.home, p = S.pro;
   return `<div class="card hero"><span class="eyebrow">Home</span><h2>Hi ${esc(p.name.split(" ")[0])}, ${p.online ? "you're online" : "you're offline"}</h2><p class="muted" style="margin:0">Day jobs only (07:00–18:00). You choose which jobs to accept.</p>
       <table class="split"><tr><td>Jobs completed today</td><td>${h.jobsToday}</td></tr><tr class="you"><td>Earned today</td><td>${usd(h.earnedToday)}</td></tr></table></div>`
+    + (S.probation && !S.probation.result ? `<div class="card"><span class="eyebrow">Probation</span><b>${5 - S.probation.left} of 5 probation jobs done</b><div class="bar"><i style="width:${(5 - S.probation.left) * 20}%"></i></div><span class="muted small">We call each customer to check quality. Keep an average of 4.5★ or more to become a full pro.</span></div>`
+      : S.probation?.result === "passed" ? `<div class="card"><span class="eyebrow">Full pro</span><span class="small">✓ Probation passed with an average of ${S.probation.avg}★.</span></div>` : "")
     + (h.last ? `<div class="card"><span class="eyebrow">Last job</span><b>${esc(h.last.id)} · ${esc(h.last.service)} · ${esc(h.last.suburb)}</b><span class="muted small">${esc(h.last.label)}${h.last.payout ? ` · ${usd(h.last.payout.amount)} ${h.last.payout.paid ? `paid to your EcoCash, ref ${esc(h.last.payout.ref)}` : `on its way to your EcoCash within ${S.rules.payoutHours} hours`}` : ""}${h.last.rating ? ` · rated ${"★".repeat(h.last.rating)}` : ""}</span></div>` : "")
     + (p.online ? `<div class="card center"><div class="spin" style="width:30px;height:30px"></div><h3>Waiting for jobs</h3><p class="muted small" style="margin:0">When a customer books on WhatsApp, the job appears here and your phone buzzes.</p></div>`
       : `<div class="card center"><h3>You're offline</h3><p class="muted small" style="margin:0">Go online to receive jobs near you.</p><button class="btn gold" data-a="online">Go online</button></div>`);
@@ -200,6 +203,29 @@ function chatView(j) {
     <form class="compose" id="compose"><input id="msg" placeholder="Message the customer" autocomplete="off" aria-label="Message"><button aria-label="Send">➤</button></form></div>`;
 }
 
+const OB_ICON = { done: "✓", now: "●", action: "!", failed: "✗", todo: "○" };
+const OB_WORD = { done: "Done", now: "In progress", action: "Your turn", failed: "Not passed", todo: "Later" };
+function onboardingView() {
+  const ob = S.onboarding, done = ob.steps.filter((x) => x.state === "done").length, indStep = ob.steps.find((x) => x.key === "induction");
+  let out = `<div class="card hero"><span class="eyebrow">Your application</span><h2>${done === ob.steps.length - 1 ? "Almost there" : `Step ${Math.min(done + 1, ob.steps.length)} of ${ob.steps.length}`}</h2><div class="bar" style="background:rgba(255,255,255,.2)"><i style="width:${done / ob.steps.length * 100}%"></i></div><p class="muted" style="margin:0">We'll message you on WhatsApp at every step. You can check here any time.</p></div>`;
+  if (ob.docsNote) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>We need one more thing</h3><p style="margin:0">${esc(ob.docsNote)}</p>
+    <div class="field"><label for="dkind">Which photo is it?</label><select id="dkind" style="border:1.5px solid var(--line);border-radius:10px;padding:10px;background:var(--card)"><option value="idFront">ID, front</option><option value="idBack">ID, back</option><option value="selfie">Selfie holding your ID</option><option value="certificate">Trade certificate</option></select></div>
+    <div class="field"><input type="file" id="dfile" accept="image/*"></div><button class="btn gold" data-a="sendocs">Send photo</button></div>`;
+  if (ob.slot && !ob.slot.confirmed) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>In-person check booked</h3><table class="split"><tr><td>When</td><td>${esc(ob.slot.when)}</td></tr><tr><td>Where</td><td>${esc(ob.slot.where)}</td></tr></table><p class="muted small" style="margin:0">Bring your original ID and your own tools. You'll do a short practical test for your trade.</p><button class="btn gold" data-a="slotok">I'll be there</button></div>`;
+  if (indStep.state === "action") {
+    const allAck = ob.induction.every((i) => i.done), pr = ob.practice || {};
+    out += `<div class="card"><span class="eyebrow">Induction · 1 of 3</span><h3>How Basa seBasa works</h3><p class="muted small" style="margin:0">Tick each rule once you understand it.</p>${ob.induction.map((i) => `<label class="tick"><input type="checkbox" data-ack="${i.id}" ${i.done ? "checked disabled" : ""}> ${esc(i.text)}</label>`).join("")}</div>`;
+    if (allAck) out += `<div class="card"><span class="eyebrow">Induction · 2 of 3</span><h3>Practise your two PINs</h3><p class="muted small" style="margin:0">This is practice only: nothing is sent. Enter your safety PIN, then your duress PIN. Notice the screen looks exactly the same for both. That's what keeps you safe.</p>
+      <div class="field"><input id="ppin" class="code" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="PIN"></div><div id="pinerr" class="err"></div>
+      <p class="small" style="margin:0">${pr.safe ? "✓ Safety PIN works" : "○ Safety PIN"} · ${pr.duress ? "✓ Duress PIN works" : "○ Duress PIN"}</p><button class="btn gold" data-a="practice">Check in (practice)</button></div>`;
+    if (allAck && pr.safe && pr.duress) out += `<div class="card"><span class="eyebrow">Induction · 3 of 3</span><h3>Service Provider Agreement</h3><ul style="margin:0;padding-left:18px;display:grid;gap:4px;font-size:14.5px">${ob.agreement.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+      <div class="field"><label for="signame">Type your full name to sign</label><input id="signame" autocomplete="name" placeholder="${esc(S.pro.name)}"></div><label class="tick"><input type="checkbox" id="signok"> I have read and agree to the Service Provider Agreement</label><div id="signerr" class="err"></div><button class="btn gold" data-a="sign">Sign agreement</button></div>`;
+  }
+  if (ob.steps.find((x) => x.key === "approved").state === "now") out += `<div class="card offer center"><h3>✓ All your steps are done</h3><p class="muted small" style="margin:0">The team will approve you today. You'll get a WhatsApp message, then you can go online.</p></div>`;
+  out += `<div class="card"><span class="eyebrow">All steps</span>${ob.steps.map((x, i) => `<div style="display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:start;padding:6px 0;border-bottom:1px dashed var(--line)"><b style="font-size:18px;color:${x.state === "done" ? "var(--good)" : x.state === "failed" ? "var(--bad)" : x.state === "todo" ? "var(--muted)" : "var(--yellow)"}">${OB_ICON[x.state]}</b><span><b>${i + 1}. ${esc(x.title)}</b><br><span class="muted small">${esc(x.who)}${x.target ? " · " + esc(x.target) : ""}${x.detail && x.state !== "todo" ? "<br>" + esc(x.detail) : ""}</span></span><span class="small ${x.state === "done" ? "ok" : ""}">${OB_WORD[x.state]}</span></div>`).join("")}</div>`;
+  return out;
+}
+
 function loginView() {
   return `<div class="login"><img src="/assets/icon-192.png" alt="Basa seBasa"><h2 style="text-align:center">Basa seBasa Pro</h2>
     ${login.step === "phone" ? `<div class="field"><label for="phone">Your WhatsApp number</label><input id="phone" inputmode="tel" placeholder="077 123 4567" value="${esc(login.phone || "")}"></div><button class="btn gold" data-a="sendcode">Send me a code</button><p class="muted small center">Not registered yet? <a href="/join/">Apply to join</a></p>`
@@ -217,7 +243,7 @@ function render() {
     const j = S.job;
     if (j && j.stage !== prevStage) { if (!j.safety.needsCheckout) home = false; prevStage = j.stage; }
     if (!j) { tab = "job"; prevStage = null; }
-    const main = S.offer ? offerView() : j && !home ? (tab === "chat" ? chatView(j) : jobView(j)) : homeView();
+    const main = S.onboarding ? onboardingView() : S.offer ? offerView() : j && !home ? (tab === "chat" ? chatView(j) : jobView(j)) : homeView();
     app.innerHTML = header() + `<main>${main}</main>`;
   }
   Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
@@ -248,10 +274,23 @@ document.addEventListener("click", async (e) => {
       try { await act(`${J}/${a}`, { pin: $("#pin").value }, a === "checkout" ? "Checked out ✓. Back to home" : "Checked in ✓"); pinFor = null; if (a === "checkout") { home = true; tab = "job"; } render(); }
       catch (err) { const el = $("#pinerr"); if (el) el.textContent = err.message; }
     }
+    else if (a === "slotok") await act("/api/pro/onboarding/confirm-slot", {}, "Confirmed. See you there.");
+    else if (a === "practice") { try { const r = await act("/api/pro/onboarding/practice", { pin: $("#ppin").value }, "Checked in ✓"); $("#ppin").value = ""; } catch (err) { const el = $("#pinerr"); if (el) el.textContent = err.message; } }
+    else if (a === "sign") { try { await act("/api/pro/onboarding/sign", { name: $("#signame").value, agree: $("#signok").checked }, "Agreement signed ✓"); } catch (err) { const el = $("#signerr"); if (el) el.textContent = err.message; } }
+    else if (a === "sendocs") { const f = $("#dfile").files[0]; if (!f) return toast("Choose a photo first."); const data = await shrink(f); await act("/api/pro/onboarding/docs", { [$("#dkind").value]: data }, "Sent. The team will check it."); }
     else if (a === "sos") { if (confirm("Send an SOS? Our Harare admin will call the police and you straight away.")) await act(`${J}/sos`, {}, "SOS sent. Help is being called."); }
     else if (a === "uneasy") await act(`${J}/uneasy`, {}, "Our Harare admin will call you in 2 minutes.");
   } catch (err) { if (a === "sendcode" || a === "verifycode") { const el = $("#loginerr"); if (el) el.textContent = err.message; } }
 });
+document.addEventListener("change", async (e) => {
+  const id = e.target.dataset?.ack; if (!id) return;
+  try { await act("/api/pro/onboarding/ack", { id }); } catch { e.target.checked = false; }
+});
+function shrink(file) {
+  return new Promise((resolve, reject) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", 0.82)); };
+    img.onerror = () => reject(new Error("That photo couldn't be read.")); img.src = url; });
+}
 document.addEventListener("submit", async (e) => {
   if (e.target.id !== "compose") return; e.preventDefault();
   const v = $("#msg").value.trim(); if (!v || !S?.job) return;

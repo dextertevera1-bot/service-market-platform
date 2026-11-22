@@ -15,6 +15,7 @@ import * as J from "./jobs.js";
 import { hashPin, weakPin, LADDERS, ALERT_NAME, stepAlert, closeAlert, openAlerts } from "./safety.js";
 import { RULES, serviceById, SERVICES, usd, money, r2 } from "./rules.js";
 import { SUBURBS, findSuburb } from "./places.js";
+import * as OB from "./onboarding.js";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml" };
@@ -52,6 +53,16 @@ async function serveStatic(res, path) {
   res.writeHead(200, headers); res.end(await readFile(file));
 }
 
+async function savePhotos(id, b) {
+  const dir = join(config.uploadDir, `pro-${id}`); await mkdir(dir, { recursive: true });
+  const files = {};
+  for (const k of ["idFront", "idBack", "selfie", "certificate"]) {
+    const v = String(b[k] || ""); const mm = v.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!mm) continue;
+    const name = `pro-${id}/${k}-${Date.now().toString(36)}.${mm[1] === "jpeg" ? "jpg" : mm[1]}`; await writeFile(join(config.uploadDir, name), Buffer.from(mm[2], "base64")); files[k] = name;
+  }
+  return files;
+}
+
 // ---------- what the Pro app shows ----------
 function proState(pro) {
   const offer = J.offerForPro(pro.id);
@@ -73,6 +84,8 @@ function proState(pro) {
       last: lastJob && { id: lastJob.id, service: serviceById(lastJob.service).name, suburb: lastJob.data.suburb, stage: lastJob.stage, label: J.STAGE_LABEL[lastJob.stage], rating: lastJob.data.rating || null,
         payout: lastPayout && { amount: lastPayout.amount, paid: !!lastPayout.paid_at, ref: lastPayout.ref } } },
     rules: { checkinMinutes: RULES.checkinMinutes, payoutHours: RULES.payoutHours, noShowWaitMinutes: RULES.noShowWaitMinutes },
+    onboarding: pro.status === "verified" ? null : OB.onboardingView(pro),
+    probation: pro.data?.probation || null, level: pro.data?.level || null,
     now: Date.now(),
   };
 }
@@ -102,10 +115,13 @@ function opsOverview() {
   const pending = all("SELECT * FROM payments WHERE status = 'pending' ORDER BY created_at");
   const payouts = all("SELECT p.*, pr.name, pr.ecocash FROM payouts p JOIN pros pr ON pr.id = p.pro_id WHERE p.paid_at IS NULL ORDER BY p.due_at");
   const pros = all("SELECT id, name, phone, trade, suburb, status, online, trust, jobs_done, rating_sum, rating_n, ecocash, em_name, em_phone, data, created_at FROM pros ORDER BY status, name")
-    .map((p) => ({ ...p, data: JSON.parse(p.data || "{}"), trade: serviceById(p.trade)?.name || p.trade }));
+    .map((p) => { const full = { ...p, data: JSON.parse(p.data || "{}") };
+      return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(full), ob: full.data.onboarding } : null }; });
+  const probationCalls = jobs.filter((j) => j.stage === "paid").map((j) => getJob(j.id)).filter((j) => j.data.probation && !j.data.probationCall)
+    .map((j) => ({ id: j.id, pro: j.data.pro?.name, customer: j.customer, rating: j.data.rating || null }));
   const events = all("SELECT * FROM events ORDER BY id DESC LIMIT 120");
   const refunds = jobs.filter((j) => j.stage === "cancelled" && j.paid > 0 && !one("SELECT id FROM payouts WHERE job_id = ?", j.id));
-  return { jobs, alerts, pending, payouts, pros, events, refunds, mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
+  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
 }
 
 // ---------- routes ----------
@@ -156,22 +172,19 @@ async function route(req, res) {
     const r = run("INSERT INTO pros (phone, name, trade, suburb, lat, lng, status, ecocash, pin_hash, duress_hash, em_name, em_phone, data, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       phone, String(b.name).trim().slice(0, 60), b.trade, sub, lat, lng, "applied", normPhone(b.ecocash), hashPin(b.pin), hashPin(b.duress), String(b.emName).slice(0, 60), normPhone(b.emPhone),
       JSON.stringify({ experience: String(b.experience || "").slice(0, 400), referees: String(b.referees || "").slice(0, 400), consentAt: now }), now, now);
-    const id = Number(r.lastInsertRowid), dir = join(config.uploadDir, `pro-${id}`); await mkdir(dir, { recursive: true });
-    const files = {};
-    for (const k of ["idFront", "idBack", "selfie", "certificate"]) {
-      const v = String(b[k] || ""); const mm = v.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!mm) continue;
-      const name = `pro-${id}/${k}.${mm[1] === "jpeg" ? "jpg" : mm[1]}`; await writeFile(join(config.uploadDir, name), Buffer.from(mm[2], "base64")); files[k] = name;
-    }
+    const id = Number(r.lastInsertRowid), files = await savePhotos(id, b);
     const p = getPro(id); p.data = { ...p.data, files, photo: files.selfie || null }; savePro(p);
     logEvent(null, "onboarding", `New pro application: ${p.name}, ${serviceById(p.trade).name}, ${sub}.`);
-    await wa.text(phone, `Thanks for applying to Basa seBasa, ${p.name.split(" ")[0]}! We'll check your documents within 48 hours and call your referees, then book your in-person check. We'll message you here.`);
+    await wa.text(phone, `Thanks for applying to Basa seBasa, ${p.name.split(" ")[0]}! Log in to the Pro app to follow every step of your application: ${config.baseUrl}/pro`);
     return send(res, 200, { ok: true });
   }
 
   // ----- Pro app -----
   if (path === "/api/pro/login" && method === "POST") {
     const phone = normPhone(json(await readBody(req)).phone), pro = getProByPhone(phone);
-    if (!pro || pro.status !== "verified") return send(res, 403, { error: pro ? "Your application is still being checked. We'll message you on WhatsApp." : "This number isn't registered. Apply at /join first." });
+    if (!pro) return send(res, 403, { error: "This number isn't registered yet. Apply to join first." });
+    if (pro.status === "rejected") return send(res, 403, { error: `Your application wasn't approved (${pro.data.rejectedReason || "see WhatsApp"}). You may reapply after 3 months.` });
+    if (pro.status === "suspended") return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
     const code = String(randomInt(100000, 1000000));
     run("INSERT INTO otps (phone, code, expires, tries) VALUES (?,?,?,0) ON CONFLICT(phone) DO UPDATE SET code = excluded.code, expires = excluded.expires, tries = 0", phone, code, Date.now() + 10 * 60e3);
     await wa.otp(phone, code);
@@ -182,13 +195,23 @@ async function route(req, res) {
     if (!o || o.expires < Date.now() || o.tries >= 5) return send(res, 400, { error: "That code has expired. Ask for a new one." });
     if (String(b.code).trim() !== o.code) { run("UPDATE otps SET tries = tries + 1 WHERE phone = ?", phone); return send(res, 400, { error: "That code isn't right." }); }
     run("DELETE FROM otps WHERE phone = ?", phone);
-    const pro = getProByPhone(phone); return send(res, 200, { token: newSession("pro", pro.id, 30) });
+    const pro = getProByPhone(phone); OB.markLoggedIn(pro); return send(res, 200, { token: newSession("pro", pro.id, 30) });
   }
   if (path.startsWith("/api/pro/")) {
     const s = session(req, "pro"); if (!s) return send(res, 401, { error: "Please log in again." });
-    const pro = getPro(Number(s.ref)); if (!pro || pro.status !== "verified") return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
-    const b = method === "POST" ? json(await readBody(req)) : {};
+    const pro = getPro(Number(s.ref)); if (!pro || !["verified", "applied"].includes(pro.status)) return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
+    const b = method === "POST" ? json(await readBody(req, path.endsWith("/docs") ? 12e6 : 1e6)) : {};
     if (path === "/api/pro/state") return send(res, 200, proState(pro));
+    if ((m = path.match(/^\/api\/pro\/onboarding\/(ack|practice|sign|confirm-slot|docs)$/))) {
+      let r;
+      if (m[1] === "ack") r = OB.ackInduction(pro, b.id);
+      else if (m[1] === "practice") r = OB.practisePin(pro, b.pin);
+      else if (m[1] === "sign") r = await OB.signAgreement(pro, b.name, b.agree);
+      else if (m[1] === "confirm-slot") r = OB.confirmSlot(pro);
+      else { const files = await savePhotos(pro.id, b); r = Object.keys(files).length ? OB.resubmitDocs(pro, files) : { error: "Add a photo first." }; }
+      return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) });
+    }
+    if (pro.status !== "verified") return send(res, 403, { error: "Finish your onboarding steps first." });
     if (path === "/api/pro/online") { pro.online = b.on ? 1 : 0; savePro(pro); logEvent(null, "app", `${pro.name} is ${b.on ? "online" : "offline"}.`); return send(res, 200, proState(pro)); }
     if ((m = path.match(/^\/api\/pro\/offer\/(BSB-\d+)\/(accept|decline)$/))) {
       const r = m[2] === "accept" ? await J.proAccept(pro, m[1]) : await J.proDecline(pro, m[1]);
@@ -236,13 +259,22 @@ async function route(req, res) {
       return send(res, 200, { ok: true });
     }
     if ((m = path.match(/^\/api\/ops\/alert\/(\d+)\/(step|close)$/))) { const r = m[2] === "step" ? stepAlert(Number(m[1]), by) : closeAlert(Number(m[1]), by, b.note); return send(res, r ? 200 : 409, r ? { ok: true } : { error: "Alert not open." }); }
-    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/(approve|reject|suspend|reinstate)$/))) {
+    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/(step|approve|reject)$/))) {
       const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
-      p.status = { approve: "verified", reject: "rejected", suspend: "suspended", reinstate: "verified" }[m[2]];
-      if (m[2] === "approve") { p.trust = Math.max(p.trust, Number(b.trust) || 70); p.data = { ...p.data, approvedBy: by, approvedAt: Date.now(), checks: b.checks || null }; }
+      const r = m[2] === "step" ? await OB.teamStep(p, b, by) : m[2] === "approve" ? await OB.approve(p, by) : await OB.reject(p, String(b.note || "not approved"), by);
+      return send(res, r.error ? 409 : 200, r);
+    }
+    if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)\/probation-call$/))) {
+      const j = getJob(m[1]); if (!j || !j.data.probation) return send(res, 404, { error: "No probation call for this job." });
+      j.data.probationCall = { at: Date.now(), by, note: String(b.note || "").slice(0, 300) }; saveJob(j);
+      logEvent(j.id, "onboarding", `Probation quality call logged by ${by}${b.note ? `: ${b.note}` : ""}.`);
+      return send(res, 200, { ok: true });
+    }
+    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/(suspend|reinstate)$/))) {
+      const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
+      p.status = m[2] === "suspend" ? "suspended" : "verified";
       if (p.status !== "verified") p.online = 0;
       savePro(p); logEvent(null, "onboarding", `${p.name}: ${m[2]} by ${by}${b.note ? ` (${b.note})` : ""}.`);
-      if (m[2] === "approve") await wa.text(p.phone, `Welcome to Basa seBasa, ${p.name.split(" ")[0]}! 🎉 You're verified. Open your Pro app to go online: ${config.baseUrl}/pro`);
       return send(res, 200, { ok: true });
     }
     if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)\/(cancel|reoffer)$/))) {
