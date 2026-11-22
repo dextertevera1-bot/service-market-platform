@@ -25,6 +25,7 @@ export const config = {
     verifyToken: env("WHATSAPP_VERIFY_TOKEN", "basa-verify"),
     appSecret: env("WHATSAPP_APP_SECRET"), // used to check webhook signatures
     apiVersion: env("WHATSAPP_API_VERSION", "v21.0"),
+    apiBase: env("WHATSAPP_API_BASE", "https://graph.facebook.com"), // changeable only for testing
     otpTemplate: env("WHATSAPP_OTP_TEMPLATE"), // approved authentication template name, for pro log-in codes
   },
 

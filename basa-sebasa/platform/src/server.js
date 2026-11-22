@@ -17,6 +17,11 @@ import { hashPin, weakPin, LADDERS, ALERT_NAME, stepAlert, closeAlert, openAlert
 import { RULES, serviceById, SERVICES, usd, money, r2 } from "./rules.js";
 import { SUBURBS, findSuburb } from "./places.js";
 import * as OB from "./onboarding.js";
+import { withLock } from "./lock.js";
+import { dispatch, outboxStats } from "./whatsapp.js";
+import { getDb, closeDb, backupTo, metaGet, dbPath as openDbPath } from "./db.js";
+import { tmpdir } from "node:os";
+import { timingSafeEqual } from "node:crypto";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
 // A fingerprint of this version of the code. Open pages compare it and reload themselves after an update,
@@ -30,6 +35,18 @@ const BUILD = (() => {
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml" };
 
 // ---------- helpers ----------
+// Simple in-memory rate limits (one server). Stops code-guessing, password-guessing and message spam.
+const hits = new Map();
+function limited(key, max, windowMs) {
+  const now = Date.now(), h = hits.get(key) || { n: 0, reset: now + windowMs };
+  if (now > h.reset) { h.n = 0; h.reset = now + windowMs; }
+  h.n++; hits.set(key, h);
+  if (hits.size > 50000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+  return h.n > max;
+}
+const ipOf = (req) => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+const tooMany = (res) => send(res, 429, { error: "Too many tries. Please wait a few minutes and try again." });
+const sameText = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
 const send = (res, code, body, headers = {}) => {
   const isJson = typeof body !== "string" && !Buffer.isBuffer(body);
   res.writeHead(code, { "Content-Type": isJson ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Basa-Build": BUILD, ...headers });
@@ -116,8 +133,12 @@ function proJobView(job) {
 
 // ---------- what the ops desk shows ----------
 function opsOverview() {
-  const jobs = all("SELECT * FROM jobs ORDER BY updated_at DESC LIMIT 60").map((r) => { const j = { ...r, data: JSON.parse(r.data) }; const m = J.jobMoney(j);
-    const paid = one("SELECT COALESCE(SUM(amount),0) s FROM payments WHERE job_id = ? AND status = 'paid'", j.id).s;
+  // Every live job (not just the latest few), plus the 30 most recent finished ones.
+  const ph = J.ACTIVE.map(() => "?").join(",");
+  const rows = [...all(`SELECT * FROM jobs WHERE stage IN (${ph}) ORDER BY updated_at DESC LIMIT 1000`, ...J.ACTIVE), ...all(`SELECT * FROM jobs WHERE stage NOT IN (${ph}) ORDER BY updated_at DESC LIMIT 30`, ...J.ACTIVE)];
+  const paidBy = rows.length ? Object.fromEntries(all(`SELECT job_id, SUM(amount) s FROM payments WHERE status = 'paid' AND job_id IN (${rows.map(() => "?").join(",")}) GROUP BY job_id`, ...rows.map((r) => r.id)).map((x) => [x.job_id, x.s])) : {};
+  const jobs = rows.map((r) => { const j = { ...r, data: JSON.parse(r.data) }; const m = J.jobMoney(j);
+    const paid = paidBy[j.id] || 0;
     return { id: j.id, stage: j.stage, label: J.STAGE_LABEL[j.stage], service: serviceById(j.service)?.name, suburb: j.data.suburb, when: j.data.when, pro: j.data.pro?.name || null,
       customer: j.customer, paid: r2(paid), payout: m.payout, tracking: !!j.data.safety?.tracking, loc: j.data.safety?.last || null, updated: j.updated_at, created: j.created_at }; });
   const alerts = openAlerts().map((a) => ({ ...a, name: ALERT_NAME[a.kind] || a.kind, ladder: LADDERS[a.kind] || [], pro: a.pro_id ? (() => { const p = getPro(a.pro_id); return p && { name: p.name, phone: p.phone, em_name: p.em_name, em_phone: p.em_phone }; })() : null,
@@ -127,20 +148,28 @@ function opsOverview() {
   const pros = all("SELECT id, name, phone, trade, suburb, status, online, trust, jobs_done, rating_sum, rating_n, ecocash, em_name, em_phone, data, created_at FROM pros ORDER BY status, name")
     .map((p) => { const full = { ...p, data: JSON.parse(p.data || "{}") };
       return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(full), ob: full.data.onboarding } : null }; });
-  const probationCalls = jobs.filter((j) => j.stage === "paid").map((j) => getJob(j.id)).filter((j) => j.data.probation && !j.data.probationCall)
+  const probationCalls = all("SELECT id FROM jobs WHERE stage = 'paid' AND json_extract(data,'$.probation') = 1 AND json_extract(data,'$.probationCall') IS NULL ORDER BY updated_at LIMIT 200").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, pro: j.data.pro?.name, customer: j.customer, rating: j.data.rating || null }));
   const events = all("SELECT * FROM events ORDER BY id DESC LIMIT 120");
-  const refunds = jobs.filter((j) => j.stage === "cancelled" && j.paid > 0 && !one("SELECT id FROM payouts WHERE job_id = ?", j.id));
-  const savedRepairs = all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY updated_at DESC").map((r) => getJob(r.id))
+  // Cancelled after paying, with no payout to a pro: money to review. Not limited to the recent list.
+  const refunds = all(`SELECT j.id, j.customer, SUM(p.amount) paid FROM jobs j JOIN payments p ON p.job_id = j.id AND p.status = 'paid'
+    WHERE j.stage = 'cancelled' AND json_extract(j.data,'$.refundDone') IS NULL AND NOT EXISTS (SELECT 1 FROM payouts o WHERE o.job_id = j.id) GROUP BY j.id ORDER BY j.updated_at DESC LIMIT 200`);
+  const savedRepairs = all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY json_extract(data,'$.deferredAt') LIMIT 100").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, service: serviceById(j.service).name, suburb: j.data.suburb, customer: j.customer, pro: j.data.pro?.name, toPay: J.jobMoney(j).pay2, until: J.savedUntil(j), reminders: j.data.reminders || [] }));
-  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
+  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, outbox: outboxStats(), mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
 }
 
 // ---------- routes ----------
 async function route(req, res) {
   const url = new URL(req.url, "http://x"), path = url.pathname, method = req.method;
 
-  if (path === "/health") return send(res, 200, { ok: true, build: BUILD, whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode });
+  if (path === "/health") {
+    // Used by the host to restart the server if it stops working properly.
+    let dbOk = false; try { one("SELECT 1 x"); dbOk = true; } catch {}
+    const lastSweep = Number(metaGet("lastSweep") || 0), sweepAgo = lastSweep ? Math.round((Date.now() - lastSweep) / 1000) : null;
+    const ob = dbOk ? outboxStats() : null, healthy = dbOk && (sweepAgo === null || sweepAgo < 120);
+    return send(res, healthy ? 200 : 503, { ok: healthy, build: BUILD, whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode, db: dbOk, sweepAgoSec: sweepAgo, outbox: ob, uptimeSec: Math.round(process.uptime()) });
+  }
   if (path === "/") return send(res, 302, "", { Location: "/pro/" });
 
   // WhatsApp webhook
@@ -167,6 +196,7 @@ async function route(req, res) {
 
   // ----- pro applications (the join form) -----
   if (path === "/api/join" && method === "POST") {
+    if (limited("join:" + ipOf(req), 5, 3600e3)) return tooMany(res);
     const b = json(await readBody(req, 12e6));
     const phone = normPhone(b.phone), err = [];
     if (!b.name || String(b.name).trim().length < 3) err.push("Full name");
@@ -193,7 +223,9 @@ async function route(req, res) {
 
   // ----- Pro app -----
   if (path === "/api/pro/login" && method === "POST") {
-    const phone = normPhone(json(await readBody(req)).phone), pro = getProByPhone(phone);
+    const phone = normPhone(json(await readBody(req)).phone);
+    if (limited("otp:" + phone, 3, 15 * 60e3) || limited("otpip:" + ipOf(req), 20, 15 * 60e3)) return tooMany(res);
+    const pro = getProByPhone(phone);
     if (!pro) return send(res, 403, { error: "This number isn't registered yet. Apply to join first." });
     if (pro.status === "rejected") return send(res, 403, { error: `Your application wasn't approved (${pro.data.rejectedReason || "see WhatsApp"}). You may reapply after 3 months.` });
     if (pro.status === "suspended") return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
@@ -203,6 +235,7 @@ async function route(req, res) {
     return send(res, 200, { ok: true, ...(simulated.whatsapp ? { devCode: code } : {}) });
   }
   if (path === "/api/pro/verify" && method === "POST") {
+    if (limited("verify:" + ipOf(req), 30, 15 * 60e3)) return tooMany(res);
     const b = json(await readBody(req)), phone = normPhone(b.phone), o = one("SELECT * FROM otps WHERE phone = ?", phone);
     if (!o || o.expires < Date.now() || o.tries >= 5) return send(res, 400, { error: "That code has expired. Ask for a new one." });
     if (String(b.code).trim() !== o.code) { run("UPDATE otps SET tries = tries + 1 WHERE phone = ?", phone); return send(res, 400, { error: "That code isn't right." }); }
@@ -226,24 +259,27 @@ async function route(req, res) {
     if (pro.status !== "verified") return send(res, 403, { error: "Finish your onboarding steps first." });
     if (path === "/api/pro/online") { pro.online = b.on ? 1 : 0; savePro(pro); logEvent(null, "app", `${pro.name} is ${b.on ? "online" : "offline"}.`); return send(res, 200, proState(pro)); }
     if ((m = path.match(/^\/api\/pro\/offer\/(BSB-\d+)\/(accept|decline)$/))) {
-      const r = m[2] === "accept" ? await J.proAccept(pro, m[1]) : await J.proDecline(pro, m[1]);
+      const r = await withLock("job:" + m[1], () => m[2] === "accept" ? J.proAccept(pro, m[1]) : J.proDecline(pro, m[1]));
       return send(res, r.error ? 409 : 200, r.error ? r : proState(getPro(pro.id)));
     }
     if ((m = path.match(/^\/api\/pro\/job\/(BSB-\d+)\/([a-z]+)$/))) {
       const [, id, act] = m; let r;
-      if (act === "trip") r = await J.proTrip(pro, id);
-      else if (act === "arrive") r = await J.proArrive(pro, id);
-      else if (act === "verify") r = await J.proVerify(pro, id, b.code);
-      else if (act === "noshow") r = await J.proNoShow(pro, id);
-      else if (act === "quote") r = await J.proQuote(pro, id, b);
-      else if (act === "complete") r = await J.proComplete(pro, id, Array.isArray(b.checks) ? b.checks.map(String).slice(0, 6) : []);
-      else if (act === "checkin") r = await J.proCheckin(pro, id, b.pin, "checkin");
-      else if (act === "checkout") r = await J.proCheckin(pro, id, b.pin, "checkout");
-      else if (act === "sos" || act === "uneasy") r = J.proSafetyAlert(pro, id, act);
-      else if (act === "location") r = J.proLocation(pro, id, b.lat, b.lng);
-      else if (act === "message") { const job = getJob(id); if (!job || job.pro_id !== pro.id || !String(b.text || "").trim()) r = { error: "Can't send." }; else { const sc = await J.relay(job, "pro", String(b.text).slice(0, 1000)); r = { ok: true, scrubbed: sc.scrubbed }; } }
-      else if (act === "read") { const job = getJob(id); if (job && job.pro_id === pro.id) { job.data.proUnread = 0; saveJob(job); } r = { ok: true }; }
-      else return send(res, 404, { error: "Unknown action" });
+      if (act === "sos" || act === "uneasy") { r = J.proSafetyAlert(pro, id, act); return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) }); } // never waits
+      if ((act === "checkin" || act === "checkout") && limited("pin:" + pro.id, 8, 10 * 60e3)) return tooMany(res);
+      if (!["trip", "arrive", "verify", "noshow", "quote", "complete", "checkin", "checkout", "location", "message", "read"].includes(act)) return send(res, 404, { error: "Unknown action" });
+      r = await withLock("job:" + id, async () => {
+      if (act === "trip") return J.proTrip(pro, id);
+      if (act === "arrive") return J.proArrive(pro, id);
+      if (act === "verify") return J.proVerify(pro, id, b.code);
+      if (act === "noshow") return J.proNoShow(pro, id);
+      if (act === "quote") return J.proQuote(pro, id, b);
+      if (act === "complete") return J.proComplete(pro, id, Array.isArray(b.checks) ? b.checks.map(String).slice(0, 6) : []);
+      if (act === "checkin") return J.proCheckin(pro, id, b.pin, "checkin");
+      if (act === "checkout") return J.proCheckin(pro, id, b.pin, "checkout");
+      if (act === "location") return J.proLocation(pro, id, b.lat, b.lng);
+      if (act === "message") { const job = getJob(id); if (!job || job.pro_id !== pro.id || !String(b.text || "").trim()) return { error: "Can't send." }; const sc = await J.relay(job, "pro", String(b.text).slice(0, 1000)); return { ok: true, scrubbed: sc.scrubbed }; }
+      const job = getJob(id); if (job && job.pro_id === pro.id) { job.data.proUnread = 0; saveJob(job); } return { ok: true };
+      });
       return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) });
     }
     return send(res, 404, { error: "Not found" });
@@ -251,8 +287,9 @@ async function route(req, res) {
 
   // ----- ops desk -----
   if (path === "/api/ops/login" && method === "POST") {
+    if (limited("opslogin:" + ipOf(req), 10, 15 * 60e3)) return tooMany(res);
     const b = json(await readBody(req)), pw = config.adminUsers[b.user];
-    if (!pw || pw !== b.password) return send(res, 401, { error: "Wrong name or password." });
+    if (!pw || !sameText(pw, b.password || "")) return send(res, 401, { error: "Wrong name or password." });
     return send(res, 200, { token: newSession("ops", b.user, 0.5), user: b.user });
   }
   if (path.startsWith("/api/ops/")) {
@@ -290,10 +327,37 @@ async function route(req, res) {
       return send(res, 200, { ok: true });
     }
     if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)\/(cancel|reoffer)$/))) {
-      const j = getJob(m[1]); if (!j) return send(res, 404, { error: "No such job" });
-      if (m[2] === "cancel") { j.stage = "cancelled"; j.data.offer = null; j.data.cancelledBy = by; saveJob(j); logEvent(j.id, "server", `Cancelled by ${by}${b.note ? `: ${b.note}` : ""}.`); await wa.text(j.customer, `Your booking ${j.id} has been cancelled by Basa seBasa. ${b.note || "Our Harare admin will be in touch."}`); }
+      const id = m[1], act = m[2];
+      const out = await withLock("job:" + id, async () => {
+      const j = getJob(id); if (!j) return { error: "No such job" };
+      if (J.CLOSED.includes(j.stage)) return { error: "This job is already closed." };
+      if (act === "cancel") { j.stage = "cancelled"; j.data.offer = null; j.data.cancelledBy = by; saveJob(j); logEvent(j.id, "server", `Cancelled by ${by}${b.note ? `: ${b.note}` : ""}.`); await wa.text(j.customer, `Your booking ${j.id} has been cancelled by Basa seBasa. ${b.note || "Our Harare admin will be in touch."}`); }
       else { if (j.pro_id) j.data.declined.push(j.pro_id); j.pro_id = null; j.data.offer = null; j.stage = "searching"; j.data.searchingSince = null; saveJob(j); logEvent(j.id, "server", `Re-offered to another pro by ${by}.`); await J.offerNext(getJob(j.id)); }
-      return send(res, 200, { ok: true });
+      return { ok: true };
+      });
+      return send(res, out.error ? 409 : 200, out);
+    }
+    if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)\/refunded$/))) {
+      const out = await withLock("job:" + m[1], async () => { const j = getJob(m[1]); if (!j || j.stage !== "cancelled") return { error: "Not a cancelled job." };
+        if (!String(b.ref || "").trim()) return { error: "Enter the EcoCash refund reference." };
+        j.data.refundDone = { at: Date.now(), by, ref: String(b.ref).slice(0, 40) }; saveJob(j); logEvent(j.id, "pay", `Refund sent to the customer, ref ${b.ref}, by ${by}.`);
+        await wa.text(j.customer, `Basa seBasa: your refund for ${j.id} has been sent to your EcoCash, ref ${b.ref}.`); return { ok: true }; });
+      return send(res, out.error ? 409 : 200, out);
+    }
+    // A full copy of the database to download and keep somewhere safe.
+    if (path === "/api/ops/backup") {
+      const f = join(tmpdir(), `basa-backup-${Date.now()}.db`); backupTo(f);
+      logEvent(null, "server", `Database backup downloaded by ${by}.`);
+      res.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="basa-sebasa-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.db"`, "Cache-Control": "no-store" });
+      res.end(await readFile(f)); await import("node:fs/promises").then((fs) => fs.rm(f, { force: true })); return;
+    }
+    // Payouts due, as a spreadsheet for paying many pros at once (EcoCash bulk payment or by hand).
+    if (path === "/api/ops/payouts.csv") {
+      const rows = all("SELECT p.id, p.job_id, p.amount, p.due_at, pr.name, pr.ecocash FROM payouts p JOIN pros pr ON pr.id = p.pro_id WHERE p.paid_at IS NULL ORDER BY p.due_at");
+      const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const csv = ["Payout ID,Pro,EcoCash number,Amount (USD),Job,Due by"].concat(rows.map((r) => [r.id, q(r.name), "+" + r.ecocash, r.amount.toFixed(2), r.job_id, new Date(r.due_at).toISOString().slice(0, 16).replace("T", " ")].join(","))).join("\r\n");
+      res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="payouts-due-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "no-store" });
+      return res.end("\ufeff" + csv);
     }
     if ((m = path.match(/^\/api\/ops\/file\/(\d+)\/(idFront|idBack|selfie|certificate)$/))) {
       const p = getPro(Number(m[1])); const f = p?.data?.files?.[m[2]] && join(config.uploadDir, p.data.files[m[2]]);
@@ -331,9 +395,12 @@ export function startServer({ port = config.port, dbPath = config.dbPath } = {})
   if (!isDev && !simulated.whatsapp && !config.whatsapp.appSecret) throw new Error("Set WHATSAPP_APP_SECRET so webhook messages can be verified.");
   if (!isDev && config.payments.mode === "sim" && process.env.ALLOW_TEST_MODE !== "1") throw new Error("PAYMENT_MODE=sim isn't allowed in production. Use manual or paynow (or set ALLOW_TEST_MODE=1 on a test server).");
   openDb(dbPath);
-  const server = createServer((req, res) => route(req, res).catch((e) => { logEvent(null, "error", `${req.method} ${req.url}: ${e.message}`); if (!res.headersSent) send(res, 500, { error: "Something went wrong. Please try again." }); }));
-  const timer = setInterval(() => { J.sweep().catch((e) => logEvent(null, "error", `Sweep: ${e.message}`)); pollPending().catch(() => {}); }, 15e3);
-  server.on("close", () => clearInterval(timer));
+  const server = createServer((req, res) => route(req, res).catch((e) => { console.error(req.method, req.url, e); logEvent(null, "error", `${req.method} ${req.url}: ${e.message}`); if (!res.headersSent) send(res, 500, { error: "Something went wrong. Please try again." }); }));
+  let sweeping = false; // never two sweeps at once if one runs long
+  const timer = setInterval(() => { if (sweeping) return; sweeping = true; J.sweep().catch((e) => { console.error("sweep", e); logEvent(null, "error", `Sweep: ${e.message}`); }).finally(() => { sweeping = false; }); pollPending().catch(() => {}); }, 15e3);
+  const sender = setInterval(() => dispatch().catch((e) => console.error("dispatch", e)), 2000);
+  server.on("close", () => { clearInterval(timer); clearInterval(sender); });
+  server.requestTimeout = 30000; server.headersTimeout = 15000; server.keepAliveTimeout = 65000;
   return new Promise((resolve) => server.listen(port, () => resolve(server)));
 }
 
@@ -341,5 +408,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const server = await startServer();
   const a = server.address();
   console.log(`Basa seBasa platform on http://localhost:${a.port}  ·  WhatsApp: ${simulated.whatsapp ? "SIMULATED (/sim)" : "live"}  ·  Payments: ${config.payments.mode}${isDev ? "  ·  development" : ""}`);
+  // On a deploy or restart: stop taking new requests, let current ones finish, save the database cleanly.
+  const stop = (sig) => { console.log(`${sig}: shutting down`); server.close(() => { closeDb(); process.exit(0); }); setTimeout(() => { closeDb(); process.exit(0); }, 10000).unref(); };
+  process.on("SIGTERM", () => stop("SIGTERM")); process.on("SIGINT", () => stop("SIGINT"));
+  process.on("unhandledRejection", (e) => { console.error("unhandled", e); try { logEvent(null, "error", `Unhandled: ${e?.message || e}`); } catch {} });
 
 }

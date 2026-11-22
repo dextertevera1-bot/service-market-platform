@@ -58,3 +58,27 @@ public/join       pro application form
 public/sim        WhatsApp stand-in for testing (off once WhatsApp is live)
 test/             end-to-end test
 ```
+
+## Reliability and scale (review of 22 Nov 2026)
+
+Design choice: **one server, one SQLite file**. Simple to run and back up, and fast enough well past launch (see numbers below). The code keeps it safe:
+
+- **No lost updates.** Every change to a job goes through a per-job lock (`src/lock.js`); each customer's messages are handled one at a time. Double taps change a job once (tested).
+- **All-or-nothing money writes.** Closing a paid job, creating the payout and updating the pro happen in one database transaction.
+- **WhatsApp outbox.** Messages are queued in the database and sent by a background dispatcher: retries with back-off (5 s → 80 s, 6 tries), per-person order kept, permanent rejections marked failed and shown on the ops desk. A slow WhatsApp API never blocks an action.
+- **Restarts are safe.** Clean shutdown on deploy (SIGTERM), timers are rebuilt from the database, a simulated payment interrupted by a restart is finished on the next sweep.
+- **Backups.** A copy of the database every day in `/data/backups` (last 7 kept), plus a **Backup** button on the ops desk to download one. Download one weekly and keep it off the server.
+- **Health check.** `/health` checks the database, the background sweep and the WhatsApp queue; the host restarts the server if it fails.
+- **Rate limits.** Log-in codes (3 per number per 15 min), ops passwords (10 per 15 min), applications, PIN tries.
+- **Payouts list.** Ops desk → Payouts due → Download list (CSV), for paying many pros at once.
+
+Measured with 1,000 pros and 20,000 past jobs (one small server):
+
+| | Before | After |
+|---|---|---|
+| Pro app refresh | 15.6 ms | 1.2–1.4 ms |
+| Ops desk refresh | 164 ms | 61 ms |
+| Background sweep | 57 ms | 10 ms |
+| 1 second of polling from 1,000 pros (333 requests at once) | 5.0 s (falls behind) | 0.43–0.46 s |
+
+When to change the design: beyond roughly 3,000 pros online at once, or if two servers are ever needed, move to Postgres and push updates to the Pro app instead of polling. Until then, a bigger single server is the cheaper answer.

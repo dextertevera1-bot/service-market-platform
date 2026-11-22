@@ -1,7 +1,11 @@
 // The job lifecycle: matching, payments, the visit, the quote, completion, payout, safety.
 // Customer messages go out on WhatsApp; the pro sees everything in the Pro app.
 import { randomInt } from "node:crypto";
-import { one, all, run, getJob, saveJob, insertJob, getPro, savePro, logEvent } from "./db.js";
+import { one, all, run, getJob, saveJob, insertJob, getPro, savePro, logEvent, tx, metaGet, metaSet, backupTo, dbPath } from "./db.js";
+import { withLock } from "./lock.js";
+import { markPaid } from "./payments.js";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
+import { dirname, join as pjoin } from "node:path";
 import { wa } from "./whatsapp.js";
 import { RULES, money, usd, r2, serviceById } from "./rules.js";
 import { roadKm, SUBURBS } from "./places.js";
@@ -153,7 +157,7 @@ export async function proDecline(pro, jobId, reason = "declined") {
 }
 
 // ---------- payments arriving ----------
-setPaidHandler(async (p) => {
+setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
   const job = getJob(p.job_id); if (!job) return;
   const pro = job.pro_id ? getPro(job.pro_id) : null;
   if (p.kind === "callout" && job.stage === "await_callout") {
@@ -161,20 +165,25 @@ setPaidHandler(async (p) => {
     await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you.\n\n${first(pro.name)} is getting ready and will let you know when they set off. You'll get your *Basa Code* then.`);
   }
   if (p.kind === "final" && job.stage === "await_final") {
-    job.stage = "paid"; job.data.paidAt = Date.now(); saveJob(job);
     const m = jobMoney(job);
     // A saved repair: the pro who diagnosed it already got the call-out share at the first visit.
     // Another pro finishing it gets the call-out share too, paid by Basa (provisional, to confirm).
     const amount = job.data.resumed && job.pro_id === job.data.firstPro ? r2(m.payout - m.calloutShare) : m.payout;
-    if (job.data.resumed && job.pro_id !== job.data.firstPro) logEvent(job.id, "rule", `Provisional: Basa covers the ${usd(m.calloutShare)} call-out share for ${pro.name}, who finished a repair another pro diagnosed.`);
-    run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, amount, Date.now() + RULES.payoutHours * 3600e3);
-    pro.jobs_done += 1; savePro(pro);
-    if (pro.data?.probation?.left > 0) { job.data.probation = true; saveJob(job); probationJobDone(pro.id, job.id); }
-    logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
+    // Job closed, payout owed and pro's record updated together, or not at all.
+    tx(() => {
+      job.stage = "paid"; job.data.paidAt = Date.now();
+      if (pro.data?.probation?.left > 0) job.data.probation = true;
+      saveJob(job);
+      if (job.data.resumed && job.pro_id !== job.data.firstPro) logEvent(job.id, "rule", `Provisional: Basa covers the ${usd(m.calloutShare)} call-out share for ${pro.name}, who finished a repair another pro diagnosed.`);
+      run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, amount, Date.now() + RULES.payoutHours * 3600e3);
+      pro.jobs_done += 1; savePro(pro);
+      if (job.data.probation) probationJobDone(pro.id, job.id);
+      logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
+    });
     await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nCall-out: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
   }
-});
+}));
 
 // ---------- the visit ----------
 const proOwns = (pro, job) => job && job.pro_id === pro.id;
@@ -364,32 +373,55 @@ export function proLocation(pro, jobId, lat, lng) {
 
 // ---------- timers (run every 15 s) ----------
 export async function sweep() {
-  const now = Date.now();
-  for (const r of all("SELECT id FROM jobs WHERE stage = 'offered'")) {
-    const job = getJob(r.id); if (job.data.offer && job.data.offer.expires < now) await proDecline(getPro(job.data.offer.pro), job.id, "expired");
-  }
-  for (const r of all("SELECT id FROM jobs WHERE stage = 'searching'")) { const job = getJob(r.id); await offerNext(job); }
-  for (const r of all(`SELECT id FROM jobs WHERE stage IN (${ONSITE.map(() => "?").join(",")})`, ...ONSITE)) {
+  const now = Date.now(), lock = (id, fn) => withLock("job:" + id, fn);
+  for (const r of all("SELECT id FROM jobs WHERE stage = 'offered' AND json_extract(data,'$.offer.expires') < ?", now)) await lock(r.id, async () => {
+    const job = getJob(r.id); if (job.stage === "offered" && job.data.offer && job.data.offer.expires < Date.now()) await proDecline(getPro(job.data.offer.pro), job.id, "expired");
+  });
+  for (const r of all("SELECT id FROM jobs WHERE stage = 'searching'")) await lock(r.id, async () => { const job = getJob(r.id); if (job.stage === "searching") await offerNext(job); });
+  for (const r of all(`SELECT id FROM jobs WHERE stage IN (${ONSITE.map(() => "?").join(",")}) AND json_extract(data,'$.safety.checkDue') < ? AND json_extract(data,'$.safety.missedRaised') IS NULL`, ...ONSITE, now - RULES.checkinGraceMinutes * 60e3)) await lock(r.id, async () => {
     const job = getJob(r.id), sf = job.data.safety || {};
-    if (sf.checkDue && !sf.firstDone && now > sf.checkDue + RULES.checkinGraceMinutes * 60e3 && !sf.missedRaised) {
-      sf.missedRaised = true; job.data.safety = sf; saveJob(job);
-      const pro = getPro(job.pro_id);
-      raiseAlert(job.id, pro.id, "missed", `${RULES.checkinMinutes}-minute check-in is ${RULES.checkinGraceMinutes} minutes overdue`);
-      await wa.text(pro.phone, `Basa seBasa safety check: please open your Pro app and check in with your PIN now.`);
-    }
-  }
-  for (const r of all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL")) {
-    const job = getJob(r.id), days = (now - job.data.deferredAt) / 864e5, rm = job.data.reminders || [];
-    if (now >= savedUntil(job)) { job.data.expired = now; saveJob(job); logEvent(job.id, "server", "Saved diagnosis expired after 30 days."); continue; }
+    if (!ONSITE.includes(job.stage) || !sf.checkDue || sf.firstDone || sf.missedRaised) return;
+    sf.missedRaised = true; job.data.safety = sf; saveJob(job);
+    const pro = getPro(job.pro_id);
+    raiseAlert(job.id, pro.id, "missed", `${RULES.checkinMinutes}-minute check-in is ${RULES.checkinGraceMinutes} minutes overdue`);
+    await wa.text(pro.phone, `Basa seBasa safety check: please open your Pro app and check in with your PIN now.`);
+  });
+  for (const r of all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL AND json_extract(data,'$.deferredAt') < ?", now - 7 * 864e5)) await lock(r.id, async () => {
+    const job = getJob(r.id); if (job.stage !== "deferred" || job.data.expired) return;
+    const days = (Date.now() - job.data.deferredAt) / 864e5, rm = job.data.reminders || [];
+    if (Date.now() >= savedUntil(job)) { job.data.expired = Date.now(); saveJob(job); logEvent(job.id, "server", "Saved diagnosis expired after 30 days."); return; }
     for (const d of [7, 25]) if (days >= d && !rm.includes(d)) {
       rm.push(d); job.data.reminders = rm; saveJob(job);
       // Outside WhatsApp's 24-hour window this must be an approved template (see README).
       await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${usd(jobMoney(job).pay2)} as quoted, no new call-out, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
       logEvent(job.id, "wa", `Saved-repair reminder sent (day ${d}).`);
     }
-  }
+  });
   if (config.payments.mode === "manual") {
     for (const p of all("SELECT * FROM payments WHERE status = 'pending' AND created_at < ?", now - 20 * 60e3)) raiseAlert(p.job_id, null, "payment", `${p.kind} ${usd(p.amount)}, ref ${p.ref}`);
+  }
+  // Simulated payments confirm on a timer; if the server restarted in between, finish them here.
+  if (config.payments.mode === "sim") for (const p of all("SELECT id FROM payments WHERE status = 'pending' AND provider = 'sim' AND created_at < ?", now - config.payments.simDelayMs - 5000)) markPaid(p.id, `SIM${String(now).slice(-6)}`, "sim");
+  housekeeping(now);
+  metaSet("lastSweep", now);
+}
+
+// Old rows nobody needs, and a daily copy of the database (last 7 kept).
+function housekeeping(now) {
+  if (now - Number(metaGet("lastHousekeeping") || 0) < 3600e3) return;
+  metaSet("lastHousekeeping", now);
+  run("DELETE FROM seen WHERE at < ?", now - 7 * 864e5);
+  run("DELETE FROM sessions WHERE expires < ?", now);
+  run("DELETE FROM otps WHERE expires < ?", now - 864e5);
+  run("DELETE FROM outbox WHERE status IN ('sent','sim') AND at < ?", now - 30 * 864e5);
+  if (dbPath() !== ":memory:" && now - Number(metaGet("lastBackup") || 0) > 864e5) {
+    try {
+      const dir = pjoin(dirname(dbPath()), "backups"); mkdirSync(dir, { recursive: true });
+      const f = pjoin(dir, `basa-${new Date(now).toISOString().slice(0, 10)}.db`); rmSync(f, { force: true });
+      backupTo(f); metaSet("lastBackup", now);
+      readdirSync(dir).filter((x) => x.endsWith(".db")).sort().slice(0, -7).forEach((x) => rmSync(pjoin(dir, x), { force: true }));
+      logEvent(null, "server", `Daily database backup saved (${f.split("/").pop()}).`);
+    } catch (e) { logEvent(null, "error", `Daily backup failed: ${e.message}`); }
   }
 }
 

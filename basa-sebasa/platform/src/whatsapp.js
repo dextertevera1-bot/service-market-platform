@@ -2,27 +2,57 @@
 // In simulation mode (no WHATSAPP_TOKEN) every message is stored in the outbox and shown on /sim.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { config, simulated } from "./config.js";
-import { run } from "./db.js";
+import { run, all, one } from "./db.js";
 
 const clip = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + "…" : String(s));
 
+// Messages are written to the outbox first and sent by a background dispatcher, so:
+// a slow or failing WhatsApp API never holds up a customer or pro action, failed sends are retried
+// with back-off, and each recipient's messages always arrive in order.
 async function send(to, payload) {
   const body = { messaging_product: "whatsapp", recipient_type: "individual", to, ...payload };
-  if (simulated.whatsapp) {
-    run("INSERT INTO outbox (to_phone, payload, status, at) VALUES (?,?,?,?)", to, JSON.stringify(body), "sim", Date.now());
-    return { ok: true, sim: true };
-  }
-  const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${config.whatsapp.phoneNumberId}/messages`;
-  try {
-    const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const json = await res.json().catch(() => ({}));
-    run("INSERT INTO outbox (to_phone, payload, status, error, at) VALUES (?,?,?,?,?)", to, JSON.stringify(body), res.ok ? "sent" : "failed", res.ok ? null : JSON.stringify(json.error || json), Date.now());
-    return { ok: res.ok, json };
-  } catch (e) {
-    run("INSERT INTO outbox (to_phone, payload, status, error, at) VALUES (?,?,?,?,?)", to, JSON.stringify(body), "failed", String(e), Date.now());
-    return { ok: false, error: String(e) };
-  }
+  run("INSERT INTO outbox (to_phone, payload, status, attempts, next_at, at) VALUES (?,?,?,?,?,?)", to, JSON.stringify(body), simulated.whatsapp ? "sim" : "queued", 0, 0, Date.now());
+  if (!simulated.whatsapp) setImmediate(dispatch);
+  return { ok: true, queued: true };
 }
+
+const MAX_ATTEMPTS = 6; // about 5 s, 10 s, 20 s, 40 s, 80 s apart
+let dispatching = false;
+export async function dispatch() {
+  if (dispatching || simulated.whatsapp) return; dispatching = true;
+  try {
+    for (;;) {
+      const rows = all(`SELECT * FROM outbox WHERE status = 'queued' AND next_at <= ? AND to_phone NOT IN
+        (SELECT to_phone FROM outbox WHERE status = 'queued' AND next_at > ?) ORDER BY id LIMIT 20`, Date.now(), Date.now());
+      if (!rows.length) break;
+      const blocked = new Set();
+      for (const r of rows) {
+        if (blocked.has(r.to_phone)) continue; // keep each person's messages in order
+        const res = await post(JSON.parse(r.payload));
+        if (res.ok) run("UPDATE outbox SET status = 'sent', error = NULL, attempts = attempts + 1 WHERE id = ?", r.id);
+        else {
+          blocked.add(r.to_phone);
+          const n = r.attempts + 1, permanent = res.status >= 400 && res.status < 500 && res.status !== 429;
+          if (n >= MAX_ATTEMPTS || permanent) run("UPDATE outbox SET status = 'failed', error = ?, attempts = ? WHERE id = ?", res.error, n, r.id);
+          else run("UPDATE outbox SET error = ?, attempts = ?, next_at = ? WHERE id = ?", res.error, n, Date.now() + 5000 * 2 ** (n - 1), r.id);
+        }
+      }
+    }
+  } finally { dispatching = false; }
+}
+async function post(body) {
+  const url = `${config.whatsapp.apiBase}/${config.whatsapp.apiVersion}/${config.whatsapp.phoneNumberId}/messages`;
+  try {
+    const res = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${config.whatsapp.token}`, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    const json = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, error: res.ok ? null : JSON.stringify(json.error || json).slice(0, 500) };
+  } catch (e) { return { ok: false, status: 0, error: String(e).slice(0, 500) }; }
+}
+export const outboxStats = () => ({
+  queued: one("SELECT COUNT(*) n FROM outbox WHERE status = 'queued'").n,
+  failed24h: one("SELECT COUNT(*) n FROM outbox WHERE status = 'failed' AND at > ?", Date.now() - 864e5).n,
+  oldestQueuedSec: Math.round((Date.now() - (one("SELECT MIN(at) t FROM outbox WHERE status = 'queued'").t || Date.now())) / 1000),
+});
 
 export const wa = {
   text: (to, text) => send(to, { type: "text", text: { body: clip(text, 4096), preview_url: false } }),

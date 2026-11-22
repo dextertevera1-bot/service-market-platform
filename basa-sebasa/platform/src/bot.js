@@ -5,6 +5,7 @@ import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js"
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
 import { activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
+import { withLock } from "./lock.js";
 
 function getConvo(phone) {
   const c = one("SELECT * FROM convos WHERE phone = ?", phone);
@@ -17,7 +18,9 @@ function setConvo(phone, state, draft = {}) {
 const GREETING = `Mhoro! 👋 Welcome to *Basa seBasa*: verified home-service pros in Harare.\nEvery pro is ID-checked and tested in person. You pay with EcoCash, and nothing starts until you approve the quote.`;
 const lower = (s) => String(s || "").trim().toLowerCase();
 
-export async function handleInbound(msg) {
+// Each customer's messages are handled one at a time, in order (fast double taps can't race each other).
+export function handleInbound(msg) { return withLock("phone:" + msg.from, () => handleOne(msg)); }
+async function handleOne(msg) {
   // WhatsApp can deliver the same message twice; handle each one once.
   if (msg.id) { if (one("SELECT wamid FROM seen WHERE wamid = ?", msg.id)) return; run("INSERT INTO seen (wamid, at) VALUES (?,?)", msg.id, Date.now()); }
   const phone = msg.from;
@@ -28,12 +31,12 @@ export async function handleInbound(msg) {
   // Rating after a finished job.
   if (reply.startsWith("rate:")) {
     const j = one("SELECT id FROM jobs WHERE customer = ? AND stage = 'paid' AND json_extract(data,'$.rating') IS NULL ORDER BY updated_at DESC", phone);
-    if (j) await customerRate(getJob(j.id), Number(reply.slice(5)));
+    if (j) await withLock("job:" + j.id, () => customerRate(getJob(j.id), Number(reply.slice(5))));
     return;
   }
 
   const job = activeJobForCustomer(phone);
-  if (job) return onActiveJob(job, msg, text, reply, c);
+  if (job) return withLock("job:" + job.id, () => { const fresh = getJob(job.id); return onActiveJob(fresh, msg, text, reply, c); });
 
   // A saved repair (diagnosed, customer chose "Not now"), valid for 30 days.
   const saved = savedRepairFor(phone);
@@ -46,7 +49,7 @@ export async function handleInbound(msg) {
   if (reply.startsWith("rwhen:") && c.state === "resume_when" && saved && saved.id === d.job) {
     const when = { now: "As soon as possible", am: "Tomorrow 08:00", pm: "Tomorrow 14:00" }[reply.slice(6)] || "As soon as possible";
     setConvo(phone, "booked", {});
-    const r = await customerResume(saved, when);
+    const r = await withLock("job:" + saved.id, () => customerResume(getJob(saved.id), when));
     if (r.error) return wa.text(phone, "Sorry, that saved repair has expired. Type *hi* to book a new visit.");
     return;
   }

@@ -4,8 +4,10 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { config } from "./config.js";
 
-let db;
+let db, openPath = null;
+export const dbPath = () => openPath;
 export function openDb(path = config.dbPath) {
+  openPath = path;
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   db = new DatabaseSync(path);
   db.exec(`
@@ -37,10 +39,46 @@ export function openDb(path = config.dbPath) {
     CREATE TABLE IF NOT EXISTS otps (phone TEXT PRIMARY KEY, code TEXT, expires INTEGER, tries INTEGER DEFAULT 0);
     CREATE TABLE IF NOT EXISTS outbox (id INTEGER PRIMARY KEY, to_phone TEXT, payload TEXT, status TEXT, error TEXT, at INTEGER);
     CREATE TABLE IF NOT EXISTS seen (wamid TEXT PRIMARY KEY, at INTEGER);
+    CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
   `);
+  // Columns added after launch (safe to run every start).
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  if (!cols("outbox").includes("attempts")) db.exec("ALTER TABLE outbox ADD COLUMN attempts INTEGER DEFAULT 0; ALTER TABLE outbox ADD COLUMN next_at INTEGER DEFAULT 0;");
+  // Indexes for the hot paths (Pro app polls every 3 s, ops desk every 5 s, sweep every 15 s).
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS jobs_pro_stage ON jobs(pro_id, stage, updated_at);
+    CREATE INDEX IF NOT EXISTS jobs_updated ON jobs(updated_at);
+    CREATE INDEX IF NOT EXISTS jobs_offer_pro ON jobs(json_extract(data,'$.offer.pro')) WHERE stage = 'offered';
+    CREATE INDEX IF NOT EXISTS payments_job ON payments(job_id, kind, status);
+    CREATE INDEX IF NOT EXISTS payments_status ON payments(status, created_at);
+    CREATE INDEX IF NOT EXISTS payouts_job ON payouts(job_id);
+    CREATE INDEX IF NOT EXISTS payouts_pro_due ON payouts(pro_id, due_at);
+    CREATE INDEX IF NOT EXISTS payouts_open ON payouts(paid_at, due_at);
+    CREATE INDEX IF NOT EXISTS alerts_open ON alerts(closed, kind);
+    CREATE INDEX IF NOT EXISTS events_job ON events(job_id, id);
+    CREATE INDEX IF NOT EXISTS messages_job ON messages(job_id);
+    CREATE INDEX IF NOT EXISTS outbox_queue ON outbox(status, next_at);
+    CREATE INDEX IF NOT EXISTS outbox_to ON outbox(to_phone, id);
+    CREATE INDEX IF NOT EXISTS pros_match ON pros(status, online, trade);
+  `);
+  db.exec("PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;");
   return db;
 }
 export const getDb = () => db;
+export function closeDb() { try { db.exec("PRAGMA wal_checkpoint(TRUNCATE)"); db.close(); } catch {} }
+
+// All-or-nothing: either every write in fn happens, or none (e.g. job paid + payout created + pro updated).
+let depth = 0;
+export function tx(fn) {
+  if (depth > 0) return fn();
+  depth++; db.exec("BEGIN IMMEDIATE");
+  try { const r = fn(); db.exec("COMMIT"); return r; } catch (e) { db.exec("ROLLBACK"); throw e; } finally { depth--; }
+}
+
+// A consistent copy of the whole database, safe to take while running.
+export function backupTo(path) { run("VACUUM INTO ?", path); return path; }
+export const metaGet = (k) => one("SELECT v FROM meta WHERE k = ?", k)?.v ?? null;
+export const metaSet = (k, v) => run("INSERT INTO meta (k, v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", k, String(v));
 
 export const one = (sql, ...a) => db.prepare(sql).get(...a);
 export const all = (sql, ...a) => db.prepare(sql).all(...a);
