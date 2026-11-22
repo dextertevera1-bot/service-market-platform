@@ -99,6 +99,8 @@ let token = store.get("basa-pro-token"), S = null, tab = "job", home = false, lo
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 3000); }
 async function api(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const build = r.headers.get("X-Basa-Build"); // reload once if the platform was updated while this page was open
+  if (build) { if (window.__build && window.__build !== build) { location.reload(); return new Promise(() => {}); } window.__build = build; }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) { token = null; store.set("basa-pro-token", null); render(); }
   if (!r.ok) throw new Error(j.error || "Something went wrong. Try again.");

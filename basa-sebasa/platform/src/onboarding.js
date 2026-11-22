@@ -49,7 +49,7 @@ export function steps(p) {
   const o = ob(p), files = p.data.files || {};
   const st = {};
   st.signup = o.loggedIn ? "done" : "now";
-  st.upload = o.docs.status === "more" ? "action" : files.idFront && files.selfie ? "done" : "action";
+  st.upload = files.idFront && files.selfie ? "done" : "action"; // a request for one more photo is shown on step 4, not as a step backwards
   st.auto = st.upload === "done" ? "done" : "todo";
   st.docs = o.docs.status === "accepted" ? "done" : o.docs.status === "more" ? "action" : "now";
   const refsDone = o.refs.r1 === "positive" && o.refs.r2 === "positive", refsBad = o.refs.r1 === "negative" || o.refs.r2 === "negative";
@@ -142,7 +142,9 @@ export async function teamStep(p, b, by) {
     }
     default: return { error: "Unknown step." };
   }
-  savePro(p); logEvent(null, "onboarding", `${p.name}: ${b.step} ${b.result || ""} by ${by}.`.replace(/\s+\./, "."));
+  const said = { docs: b.result === "accepted" ? "documents accepted" : `asked for more: ${o.docs.note}`, refs: `referee ${b.ref === "r1" ? 1 : 2} ${b.result}`,
+    slot: `in-person check booked for ${o.slot?.when} at ${o.slot?.where}`, inperson: `in-person check passed, ${o.inperson?.score}/10, worked safely` }[b.step];
+  savePro(p); logEvent(null, "onboarding", `${p.name}: ${said} (${by}).`);
   return { ok: true };
 }
 

@@ -52,6 +52,7 @@ a { color: var(--blue); } @media (prefers-color-scheme: dark) { a { color: var(-
 .login input { border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px; }
 .err { color: var(--bad); font-weight: 600; }
 dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); max-width: 720px; width: calc(100% - 32px); max-height: 85vh; }
+.nextstep { border-top: 1px dashed var(--line); padding-top: 8px; } .nextstep > * + * { margin-top: 6px; }
 .thumbs { display: flex; gap: 6px; } .thumbs a img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 </style>
 </head>
@@ -70,6 +71,8 @@ const URGENT = ["sos", "duress", "missed", "uneasy", "code"];
 
 async function api(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const build = r.headers.get("X-Basa-Build"); // reload once if the platform was updated while this page was open
+  if (build) { if (window.__build && window.__build !== build) { location.reload(); return new Promise(() => {}); } window.__build = build; }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401 && token) { token = null; store.set("basa-ops", null); render(); }
   if (!r.ok) throw new Error(j.error || "Failed");
@@ -113,7 +116,7 @@ function onboardingSection(apps) {
     return `<div class="alert calm"><div class="row"><b>${esc(p.name)}</b><span class="tag">${esc(p.trade)}</span><span>${esc(p.suburb)}</span><span class="muted">+${esc(p.phone)} · applied ${ago(p.created_at)} ago</span><button class="btn r" data-reject="${p.id}" style="margin-left:auto">Reject</button></div>
       <div class="row small">${o.steps.map((x, i) => `<span title="${esc(x.title)}" style="color:${x.state === "done" ? "var(--good)" : x.state === "failed" ? "var(--bad)" : x.state === "todo" ? "var(--muted)" : "var(--warn)"}">${STEP_ICON[x.state]} ${i + 1}. ${esc(x.title)}</span>`).join(" ")}</div>
       <div class="small">Experience: ${esc(p.data.experience || "-")} · Emergency contact: ${esc(p.em_name)} +${esc(p.em_phone)} · EcoCash +${esc(p.ecocash)} · safety and duress PINs set ✓</div>
-      ${next ? `<div style="display:grid;gap:6px;border-top:1px dashed var(--line);padding-top:8px">${next}</div>` : ""}</div>`; }).join("");
+      ${next ? `<div class="nextstep">${next}</div>` : ""}</div>`; }).join("");
   return `<section><h2>Onboarding <small>8 steps; the pro follows along in the Pro app</small></h2>${body || `<p class="empty">No applications in progress.</p>`}</section>`;
 }
 function render() {
@@ -192,6 +195,8 @@ document.addEventListener("click", async (e) => {
 document.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.target.id === "p" || e.target.id === "u")) $("[data-do=login]").click(); });
 setInterval(() => { if (!document.querySelector("dialog[open]")) refresh(); }, 5000);
 if (token) refresh(); else render();
+// Even on the log-in screen, notice an update and reload (keeps the newest screens in front of the team).
+setInterval(() => { if (!token) fetch("/health").then((r) => { const b = r.headers.get("X-Basa-Build"); if (b && window.__build && b !== window.__build) location.reload(); if (b) window.__build = b; }).catch(() => {}); }, 30000);
 </script>
 </body>
 </html>

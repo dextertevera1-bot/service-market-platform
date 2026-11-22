@@ -4,7 +4,8 @@ import { createServer } from "node:http";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, extname, normalize } from "node:path";
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes, randomInt, createHash } from "node:crypto";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { config, simulated, isDev } from "./config.js";
 import { openDb, one, all, run, getJob, getPro, getProByPhone, savePro, logEvent, saveJob } from "./db.js";
@@ -18,12 +19,20 @@ import { SUBURBS, findSuburb } from "./places.js";
 import * as OB from "./onboarding.js";
 
 const PUBLIC = fileURLToPath(new URL("../public/", import.meta.url));
+// A fingerprint of this version of the code. Open pages compare it and reload themselves after an update,
+// so nobody keeps working on an old screen.
+const BUILD = (() => {
+  const h = createHash("sha1"), walk = (d) => { for (const f of readdirSync(d).sort()) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (!/\.png$/.test(f)) h.update(f).update(readFileSync(p)); } };
+  walk(PUBLIC); walk(fileURLToPath(new URL("./", import.meta.url)));
+  h.update(process.env.BUILD_SALT || ""); // lets tests imitate an update
+  return h.digest("hex").slice(0, 10);
+})();
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml" };
 
 // ---------- helpers ----------
 const send = (res, code, body, headers = {}) => {
   const isJson = typeof body !== "string" && !Buffer.isBuffer(body);
-  res.writeHead(code, { "Content-Type": isJson ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", ...headers });
+  res.writeHead(code, { "Content-Type": isJson ? "application/json" : "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Basa-Build": BUILD, ...headers });
   res.end(isJson ? JSON.stringify(body) : body);
 };
 const readBody = (req, limit = 1e6) => new Promise((resolve, reject) => {
@@ -128,7 +137,7 @@ function opsOverview() {
 async function route(req, res) {
   const url = new URL(req.url, "http://x"), path = url.pathname, method = req.method;
 
-  if (path === "/health") return send(res, 200, { ok: true, whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode });
+  if (path === "/health") return send(res, 200, { ok: true, build: BUILD, whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode });
   if (path === "/") return send(res, 302, "", { Location: "/pro/" });
 
   // WhatsApp webhook
