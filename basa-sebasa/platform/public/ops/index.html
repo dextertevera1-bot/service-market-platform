@@ -77,7 +77,7 @@ async function api(path, body) {
 }
 function beep() { try { const a = new AudioContext(), o = a.createOscillator(), g = a.createGain(); o.frequency.value = 880; o.connect(g); g.connect(a.destination); g.gain.value = .15; o.start(); setTimeout(() => { o.stop(); a.close(); }, 400); } catch {} }
 async function refresh() {
-  if (!token) return render();
+  if (!token) return; // don't redraw the log-in form while someone is typing
   try { D = await api("/api/ops/overview"); err = ""; } catch (e) { err = e.message; }
   const fresh = (D?.alerts || []).filter((a) => URGENT.includes(a.kind) && !seenUrgent.has(a.id));
   if (fresh.length) { beep(); fresh.forEach((a) => seenUrgent.add(a.id)); if (document.hidden && "Notification" in window && Notification.permission === "granted") new Notification("Basa seBasa: " + fresh[0].name); }
@@ -98,7 +98,8 @@ function alertsView() {
 }
 function render() {
   const app = $("#app");
-  if (!token) { app.innerHTML = `<div class="login"><img src="/assets/icon-192.png" alt=""><h2 style="justify-content:center">Ops desk</h2><input id="u" placeholder="Name (e.g. harare)" autocomplete="username"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" data-do="login">Log in</button><div class="err">${esc(err)}</div></div>`; return; }
+  if (!token) { const u0 = $("#u")?.value || "", p0 = $("#p")?.value || "";
+    app.innerHTML = `<div class="login"><img src="/assets/icon-192.png" alt=""><h2 style="justify-content:center">Ops desk</h2><input id="u" placeholder="Name (e.g. harare)" autocomplete="username" autocapitalize="none" spellcheck="false"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" data-do="login">Log in</button><div class="err">${esc(err)}</div></div>`; $("#u").value = u0; $("#p").value = p0; return; }
   if (!D) { app.innerHTML = `<main><p>Loading…</p></main>`; return; }
   const keep = {}; app.querySelectorAll("input").forEach((el) => { if (el.id) keep[el.id] = el.value; }); const focus = document.activeElement?.id;
   const live = D.jobs.filter((j) => !["paid", "cancelled", "deferred", "noshow"].includes(j.stage));
@@ -158,11 +159,11 @@ document.addEventListener("click", async (e) => {
     else if (d.file) { e.preventDefault(); const [id, k] = d.file.split("/"); const r = await fetch(`/api/ops/file/${id}/${k}`, { headers: { Authorization: "Bearer " + token } }); if (r.ok) window.open(URL.createObjectURL(await r.blob()), "_blank"); }
     else if (d.reoffer) { await api(`/api/ops/job/${d.reoffer}/reoffer`, {}); $("#dlg").close(); await refresh(); }
     else if (d.cancel) { const note = prompt("Message to the customer:"); if (note != null) { await api(`/api/ops/job/${d.cancel}/cancel`, { note }); $("#dlg").close(); await refresh(); } }
-  } catch (x) { err = x.message; render(); alert(x.message); }
+  } catch (x) { err = x.message; render(); if (token) alert(x.message); }
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.target.id === "p" || e.target.id === "u")) $("[data-do=login]").click(); });
 setInterval(() => { if (!document.querySelector("dialog[open]")) refresh(); }, 5000);
-refresh();
+if (token) refresh(); else render();
 </script>
 </body>
 </html>
