@@ -3,7 +3,7 @@ import { one, run, all, getJob, logEvent } from "./db.js";
 import { wa } from "./whatsapp.js";
 import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js";
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
-import { activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL } from "./jobs.js";
+import { activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
 
 function getConvo(phone) {
@@ -34,6 +34,30 @@ export async function handleInbound(msg) {
 
   const job = activeJobForCustomer(phone);
   if (job) return onActiveJob(job, msg, text, reply, c);
+
+  // A saved repair (diagnosed, customer chose "Not now"), valid for 30 days.
+  const saved = savedRepairFor(phone);
+  if (reply.startsWith("resume:")) {
+    if (!saved || reply.slice(7) !== saved.id) { setConvo(phone, "idle"); return wa.text(phone, "Sorry, that saved repair has expired. Type *hi* to book a new visit."); }
+    setConvo(phone, "resume_when", { job: saved.id });
+    const opts = isDayTime() ? [{ id: "rwhen:now", title: "As soon as possible" }, { id: "rwhen:am", title: "Tomorrow, 08:00" }] : [{ id: "rwhen:am", title: "Tomorrow, 08:00" }, { id: "rwhen:pm", title: "Tomorrow, 14:00" }];
+    return wa.buttons(phone, `When should we come back to fix it? Day jobs only (07:00–18:00).`, opts);
+  }
+  if (reply.startsWith("rwhen:") && c.state === "resume_when" && saved && saved.id === d.job) {
+    const when = { now: "As soon as possible", am: "Tomorrow 08:00", pm: "Tomorrow 14:00" }[reply.slice(6)] || "As soon as possible";
+    setConvo(phone, "booked", {});
+    const r = await customerResume(saved, when);
+    if (r.error) return wa.text(phone, "Sorry, that saved repair has expired. Type *hi* to book a new visit.");
+    return;
+  }
+  if (reply === "saved:later") { setConvo(phone, "idle"); return wa.text(phone, `No problem. It stays saved until *${hDate(savedUntil(saved || { data: { deferredAt: Date.now() } }))}*.`); }
+  if (saved && reply !== "new" && c.state !== "saved_offer" && !["ask_service", "ask_desc", "ask_photo", "ask_location", "ask_landmark", "ask_when"].includes(c.state)) {
+    setConvo(phone, "saved_offer", {});
+    return wa.buttons(phone, `Welcome back! 👋 You have a saved repair: *${serviceById(saved.service).name}* (${saved.id}), diagnosed by ${String(saved.data.pro?.name || "your pro").split(" ")[0]}.
+${saved.data.quote.note ? `"${saved.data.quote.note}"
+` : ""}
+To pay after it's fixed and tested: *${usd(jobMoney(saved).pay2)}*. No new call-out. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
+  }
 
   if (["help", "agent", "person", "human"].includes(text)) {
     raiseAlert(null, null, "help", `customer ${phone} asked for a person`);
@@ -84,6 +108,7 @@ export async function handleInbound(msg) {
       return createJob(phone, d);
     }
     default: {
+      if (c.state === "saved_offer" && reply !== "new") { /* fall through to a fresh booking */ }
       setConvo(phone, "ask_service", {});
       await wa.text(phone, GREETING);
       return askService(phone);

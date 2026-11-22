@@ -82,10 +82,53 @@ export async function offerNext(job) {
   return c.p;
 }
 
+// Harare date, e.g. "Tue 22 Dec".
+export const hDate = (t) => new Date(t + 2 * 3600e3).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+export const savedUntil = (job) => job.data.deferredAt + RULES.diagnosisValidDays * 864e5;
+export function savedRepairFor(phone) {
+  const r = one("SELECT id FROM jobs WHERE customer = ? AND stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY updated_at DESC", phone);
+  const job = r && getJob(r.id); return job && Date.now() < savedUntil(job) ? job : null;
+}
+
+// The customer goes ahead with a saved repair: no new call-out, the quote they saw is the price,
+// and the pro who diagnosed it gets first refusal.
+export async function customerResume(job, when) {
+  if (job.stage !== "deferred" || job.data.expired || Date.now() > savedUntil(job)) return { error: "expired" };
+  const first0 = job.data.firstPro || job.pro_id, orig = getPro(first0);
+  job.data.firstPro = first0; job.data.resumed = { at: Date.now(), when }; job.data.when = when; job.data.declined = [];
+  job.data.quote.approvedAt = Date.now(); job.pro_id = null;
+  const busy = orig && currentJobForPro(orig.id);
+  if (orig && orig.status === "verified" && !busy) {
+    job.stage = "offered"; job.data.offer = { pro: orig.id, km: job.data.km, expires: Date.now() + RULES.firstRefusalHours * 3600e3, firstRefusal: true };
+    saveJob(job);
+    logEvent(job.id, "wa", `Customer is going ahead with the saved repair (${when}). ${orig.name} has first refusal for ${RULES.firstRefusalHours} h.`);
+    await wa.text(job.customer, `Great! We've asked *${first(orig.name)}* first, because they diagnosed it. We'll confirm here as soon as they accept.
+If they can't make it, we'll send another verified pro at the same price.`);
+    await wa.text(orig.phone, `Basa seBasa: the customer in ${job.data.suburb} wants to go ahead with the repair you diagnosed (${job.id}). You have first refusal for ${RULES.firstRefusalHours} hours. Open your Pro app: ${config.baseUrl}/pro`);
+  } else {
+    job.stage = "searching"; saveJob(job);
+    logEvent(job.id, "wa", `Customer is going ahead with the saved repair (${when}). The original pro isn't available, so offering other pros.`);
+    await wa.text(job.customer, `Great! We're finding a verified pro for your saved repair. The price stays as quoted.`);
+    await offerNext(getJob(job.id));
+  }
+  return { ok: true };
+}
+
 export async function proAccept(pro, jobId) {
   const job = getJob(jobId);
   if (!job || job.stage !== "offered" || job.data.offer?.pro !== pro.id) return { error: "This offer is no longer open." };
   const km = job.data.offer.km;
+  if (job.data.resumed) {
+    // Saved repair: the call-out was paid at the first visit, so the pro just gets ready.
+    job.pro_id = pro.id; job.stage = "ready";
+    job.data.pro = { id: pro.id, name: pro.name, trust: pro.trust, rating: pro.rating_n ? r2(pro.rating_sum / pro.rating_n) : null, jobs: pro.jobs_done, home: pro.suburb };
+    job.data.offer = null; job.data.searchingSince = null; job.data.safety = {}; job.data.codeTries = 0; saveJob(job);
+    logEvent(job.id, "app", `${pro.name} accepted the saved repair${pro.id === job.data.firstPro ? " (first refusal)" : ""}.`);
+    if (pro.id !== job.data.firstPro && pro.data?.photo) await wa.image(job.customer, `${config.baseUrl}/media/pro/${pro.id}`, `${pro.name}, your Basa pro`);
+    await wa.text(job.customer, `✅ *${pro.name}* accepted your saved repair (${job.data.when}).
+No call-out to pay: your first visit covers it. You'll get a new Basa Code when ${first(pro.name)} sets off.`);
+    return { ok: true };
+  }
   job.pro_id = pro.id; job.stage = "await_callout";
   job.data.km = km; job.data.travel = r2(Math.max(0, km - RULES.freeKm) * RULES.perKm); // frozen once accepted
   job.data.pro = { id: pro.id, name: pro.name, trust: pro.trust, rating: pro.rating_n ? r2(pro.rating_sum / pro.rating_n) : null, jobs: pro.jobs_done, home: pro.suburb };
@@ -120,10 +163,14 @@ setPaidHandler(async (p) => {
   if (p.kind === "final" && job.stage === "await_final") {
     job.stage = "paid"; job.data.paidAt = Date.now(); saveJob(job);
     const m = jobMoney(job);
-    run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, m.payout, Date.now() + RULES.payoutHours * 3600e3);
+    // A saved repair: the pro who diagnosed it already got the call-out share at the first visit.
+    // Another pro finishing it gets the call-out share too, paid by Basa (provisional, to confirm).
+    const amount = job.data.resumed && job.pro_id === job.data.firstPro ? r2(m.payout - m.calloutShare) : m.payout;
+    if (job.data.resumed && job.pro_id !== job.data.firstPro) logEvent(job.id, "rule", `Provisional: Basa covers the ${usd(m.calloutShare)} call-out share for ${pro.name}, who finished a repair another pro diagnosed.`);
+    run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, amount, Date.now() + RULES.payoutHours * 3600e3);
     pro.jobs_done += 1; savePro(pro);
     if (pro.data?.probation?.left > 0) { job.data.probation = true; saveJob(job); probationJobDone(pro.id, job.id); }
-    logEvent(job.id, "pay", `Payout of ${usd(m.payout)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
+    logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
     await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nCall-out: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
   }
@@ -147,7 +194,7 @@ export async function proArrive(pro, jobId) {
   const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "travelling") return { error: "Not on the way." };
   job.stage = "arrived"; job.data.arrivedAt = Date.now(); saveJob(job);
   logEvent(job.id, "app", `${pro.name} arrived at the gate.`);
-  await wa.text(job.customer, `📍 *${first(pro.name)} is at your gate.*\nCheck it's the right person (name and photo in this chat), then give him your Basa Code.`);
+  await wa.text(job.customer, `📍 *${first(pro.name)} is at your gate.*\nCheck it's the right person (name and photo in this chat), then give them your Basa Code.`);
   return { ok: true };
 }
 
@@ -159,11 +206,13 @@ export async function proVerify(pro, jobId, code) {
     if (job.data.codeTries >= 3) { raiseAlert(job.id, pro.id, "code"); await wa.text(job.customer, `The code ${first(pro.name)} entered didn't match three times. Our Harare admin will call you now. Please don't let anyone in until then.`); }
     return { error: "That code doesn't match. Ask the customer to read it from WhatsApp." };
   }
-  job.stage = "diagnosing"; job.data.codeOk = Date.now();
+  job.stage = job.data.resumed ? "working" : "diagnosing"; job.data.codeOk = Date.now();
   job.data.safety = { ...job.data.safety, visitAt: Date.now(), checkDue: Date.now() + RULES.checkinMinutes * 60e3, firstDone: false };
   saveJob(job);
   logEvent(job.id, "trust", `Basa Code confirmed at the gate. Safety check-in due in ${RULES.checkinMinutes} min.`);
-  await wa.text(job.customer, `✅ Basa Code confirmed. ${first(pro.name)} is checking the problem now. You'll get a full quote before any repair starts.`);
+  await wa.text(job.customer, job.data.resumed
+    ? `✅ Basa Code confirmed. ${first(pro.name)} is starting the repair you approved: labour ${usd(job.data.quote.labour)}, parts ${usd(job.data.quote.parts)}.`
+    : `✅ Basa Code confirmed. ${first(pro.name)} is checking the problem now. You'll get a full quote before any repair starts.`);
   return { ok: true };
 }
 
@@ -202,7 +251,9 @@ export async function customerQuote(job, approve) {
     const m = jobMoney(job);
     run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, m.calloutShare, Date.now() + RULES.payoutHours * 3600e3);
     logEvent(job.id, "wa", `Customer chose to repair later. Diagnosis valid ${RULES.diagnosisValidDays} days; ${pro.name} gets ${RULES.firstRefusalHours} h first refusal.`);
-    await wa.text(job.customer, `No problem. Your diagnosis is saved for ${RULES.diagnosisValidDays} days, so you won't pay another call-out to go ahead within that time. Just message us when you're ready.`);
+    await wa.buttons(job.customer, `No problem. Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.
+
+When you're ready, just message us here and tap *Go ahead with repair*. We'll send a reminder before it expires.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }]);
   }
 }
 
@@ -243,6 +294,13 @@ export async function customerRate(job, n) {
 
 export async function customerCancel(job) {
   if (!ACTIVE.includes(job.stage) || ONSITE.includes(job.stage)) return { error: "can't cancel now" };
+  if (job.data.resumed && ["offered", "searching", "ready", "travelling"].includes(job.stage)) {
+    if (job.stage === "travelling") return { error: "can't cancel now" };
+    job.stage = "deferred"; job.data.offer = null; job.pro_id = job.data.firstPro; job.data.resumed = null; saveJob(job);
+    logEvent(job.id, "wa", "Customer put the saved repair back on hold.");
+    await wa.text(job.customer, `Okay, your saved repair is back on hold until *${hDate(savedUntil(job))}*. Message us when you're ready.`);
+    return { ok: true };
+  }
   const was = job.stage, pro = job.pro_id ? getPro(job.pro_id) : null;
   job.stage = "cancelled"; job.data.cancelledFrom = was; job.data.offer = null; saveJob(job);
   const paid = one("SELECT * FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", job.id);
@@ -318,6 +376,16 @@ export async function sweep() {
       const pro = getPro(job.pro_id);
       raiseAlert(job.id, pro.id, "missed", `${RULES.checkinMinutes}-minute check-in is ${RULES.checkinGraceMinutes} minutes overdue`);
       await wa.text(pro.phone, `Basa seBasa safety check: please open your Pro app and check in with your PIN now.`);
+    }
+  }
+  for (const r of all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL")) {
+    const job = getJob(r.id), days = (now - job.data.deferredAt) / 864e5, rm = job.data.reminders || [];
+    if (now >= savedUntil(job)) { job.data.expired = now; saveJob(job); logEvent(job.id, "server", "Saved diagnosis expired after 30 days."); continue; }
+    for (const d of [7, 25]) if (days >= d && !rm.includes(d)) {
+      rm.push(d); job.data.reminders = rm; saveJob(job);
+      // Outside WhatsApp's 24-hour window this must be an approved template (see README).
+      await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${usd(jobMoney(job).pay2)} as quoted, no new call-out, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
+      logEvent(job.id, "wa", `Saved-repair reminder sent (day ${d}).`);
     }
   }
   if (config.payments.mode === "manual") {

@@ -86,7 +86,8 @@ function proState(pro) {
       rating: pro.rating_n ? r2(pro.rating_sum / pro.rating_n) : null, jobsDone: pro.jobs_done },
     offer: offer && {
       id: offer.id, service: serviceById(offer.service).name, suburb: offer.data.suburb, desc: offer.data.desc, when: offer.data.when, km: offer.data.offer.km,
-      expires: offer.data.offer.expires, earnings: money({ km: offer.data.offer.km }).calloutShare,
+      expires: offer.data.offer.expires, earnings: offer.data.resumed ? (() => { const m = J.jobMoney(offer); return offer.data.firstPro === pro.id ? r2(m.payout - m.calloutShare) : m.payout; })() : money({ km: offer.data.offer.km }).calloutShare,
+      saved: offer.data.resumed ? { labour: offer.data.quote.labour, parts: offer.data.quote.parts, note: offer.data.quote.note, yours: offer.data.firstPro === pro.id } : null,
     },
     job: job && proJobView(job),
     home: { jobsToday: today.length, earnedToday: r2(today.reduce((a, p) => a + p.amount, 0)),
@@ -130,7 +131,9 @@ function opsOverview() {
     .map((j) => ({ id: j.id, pro: j.data.pro?.name, customer: j.customer, rating: j.data.rating || null }));
   const events = all("SELECT * FROM events ORDER BY id DESC LIMIT 120");
   const refunds = jobs.filter((j) => j.stage === "cancelled" && j.paid > 0 && !one("SELECT id FROM payouts WHERE job_id = ?", j.id));
-  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
+  const savedRepairs = all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY updated_at DESC").map((r) => getJob(r.id))
+    .map((j) => ({ id: j.id, service: serviceById(j.service).name, suburb: j.data.suburb, customer: j.customer, pro: j.data.pro?.name, toPay: J.jobMoney(j).pay2, until: J.savedUntil(j), reminders: j.data.reminders || [] }));
+  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
 }
 
 // ---------- routes ----------

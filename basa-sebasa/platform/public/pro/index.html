@@ -150,6 +150,13 @@ function homeView() {
 
 function offerView() {
   const o = S.offer, left = Math.max(0, Math.ceil((o.expires - Date.now()) / 1000));
+  if (o.saved) { const h = Math.floor(left / 3600), mnt = Math.floor((left % 3600) / 60);
+    return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">${o.saved.yours ? "Your saved repair" : "Saved repair"}</span><b>${h ? h + " h " : ""}${mnt} min left</b></div>
+    <h3>${esc(o.service)} · ${esc(o.suburb)}</h3><p style="margin:0">${o.saved.yours ? "The customer wants to go ahead with the repair you diagnosed. You have first refusal." : "Another pro diagnosed this; the customer approved the quote."}</p>
+    ${o.saved.note ? `<p class="muted small" style="margin:0">"${esc(o.saved.note)}"</p>` : ""}
+    <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Labour / parts (approved)</td><td>${usd(o.saved.labour)} / ${usd(o.saved.parts)}</td></tr><tr class="you"><td>You get</td><td>${usd(o.earnings)}</td></tr></table>
+    <p class="muted small" style="margin:0">No call-out this time: it was paid at the first visit. Bring the parts.</p>
+    <div class="two"><button class="btn" data-a="decline">Decline</button><button class="btn gold" data-a="accept">Accept</button></div></div>`; }
   return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${Math.min(100, left / 60 * 100)}%"></i></div>
     <h3>${esc(o.service)} · ${esc(o.suburb)}</h3><p style="margin:0">"${esc(o.desc)}"</p>
     <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Distance</td><td>${o.km} km</td></tr><tr class="you"><td>Call-out you get</td><td>${usd(o.earnings)}</td></tr></table>
@@ -299,7 +306,7 @@ document.addEventListener("submit", async (e) => {
   try { const r = await act(`/api/pro/job/${S.job.id}/message`, { text: v }); $("#msg").value = ""; if (r?.scrubbed) toast("Contact details were removed from your message."); render(); } catch {}
 });
 // Tick the offer countdown every second without a full refresh.
-setInterval(() => { if (!S?.offer) return; const left = Math.max(0, Math.ceil((S.offer.expires - Date.now()) / 1000)); const c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = Math.min(100, left / 60 * 100) + "%"; if (left === 0) refresh(); }, 1000);
+setInterval(() => { if (!S?.offer || S.offer.saved) return; const left = Math.max(0, Math.ceil((S.offer.expires - Date.now()) / 1000)); const c = $("#count"), b = $("#bar"); if (c) c.textContent = left + "s"; if (b) b.style.width = Math.min(100, left / 60 * 100) + "%"; if (left === 0) refresh(); }, 1000);
 setInterval(() => { if (document.visibilityState === "visible" && !busy) refresh(); }, 3000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/pro/sw.js", { scope: "/pro/" }).catch(() => {});

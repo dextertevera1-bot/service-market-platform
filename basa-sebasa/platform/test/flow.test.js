@@ -8,7 +8,7 @@ const { startServer } = await import("../src/server.js");
 const { money } = await import("../src/rules.js");
 const { scrub } = await import("../src/scrub.js");
 
-let server, base, opsToken;
+let server, base, opsToken; const tokens = {};
 const CUST = "263771234567";
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const api = async (path, body, token) => {
@@ -94,6 +94,7 @@ test("a whole job, end to end", async () => {
 
   const kudzai = await makePro("Kudzai C.", "0772000001", "Avondale", "2468", "8642");
   const tendai = await makePro("Tendai M.", "0772000002", "Mabelreign", "1357", "9753");
+  tokens.kudzai = kudzai; tokens.tendai = tendai;
 
   // Customer books on WhatsApp.
   await say({ text: "Hi" });
@@ -215,6 +216,60 @@ test("a failed in-person check ends the application", async () => {
   assert.equal(r.body.rejected, true, "unsafe working fails whatever the score");
   const l = await api("/api/pro/login", { phone: "0773555111" });
   assert.equal(l.status, 403); assert.match(l.body.error, /reapply after 3 months/);
+});
+
+test("saved repair: not now, reminder, go ahead later with no new call-out, same pro first", async () => {
+  const { getJob, saveJob } = await import("../src/db.js");
+  const { sweep } = await import("../src/jobs.js");
+  const phone = "263775550001"; let after = 0;
+  const sayS = (p) => api("/sim/api/inbound", { from: phone, ...p });
+  const box = async () => { const r = (await api(`/sim/api/outbox?to=${phone}&after=${after}`)).body; if (r.length) after = r.at(-1).id; return r.map((m) => m.payload); };
+  await sayS({ text: "hi" }); await sayS({ reply: "svc:hvac" }); await sayS({ text: "Aircon not cold" }); await sayS({ reply: "skip" });
+  await sayS({ text: "Avondale" }); await sayS({ reply: "skip" }); await sayS({ reply: "when:am" });
+  let who = null, st;
+  for (const k of ["kudzai", "tendai"]) { st = (await api("/api/pro/state", null, tokens[k])).body; if (st.offer) { who = k; break; } }
+  assert.ok(who, "a pro got the offer");
+  const T = tokens[who], id = st.offer.id;
+  await api(`/api/pro/offer/${id}/accept`, {}, T); await wait(150);
+  await api(`/api/pro/job/${id}/trip`, {}, T);
+  let code = textOf((await box()).find((p) => /Basa Code is/.test(textOf(p)))).match(/\*(\d{4})\*/)[1];
+  await api(`/api/pro/job/${id}/arrive`, {}, T); await api(`/api/pro/job/${id}/verify`, { code }, T);
+  await api(`/api/pro/job/${id}/quote`, { labour: 20, parts: 20, note: "Compressor relay needs replacing" }, T);
+  await sayS({ reply: "quote:later" });
+  let out = await box();
+  assert.ok(out.some((p) => /saved until/.test(textOf(p)) && p.interactive?.action?.buttons?.[0]?.reply?.id === `resume:${id}`), "saved message with a Go ahead button");
+  await api(`/api/pro/job/${id}/checkout`, { pin: who === "tendai" ? "1357" : "2468" }, T);
+
+  // Day 8: the reminder goes out.
+  const j = getJob(id); j.data.deferredAt -= 8 * 864e5; saveJob(j);
+  await sweep();
+  out = await box();
+  assert.ok(out.some((p) => /still waiting/.test(textOf(p))), "day-7 reminder sent");
+  let ov = (await api("/api/ops/overview", null, opsToken)).body;
+  assert.ok(ov.savedRepairs.some((r) => r.id === id && r.reminders.includes(7)));
+
+  // Customer comes back: "hi" offers the saved repair.
+  await sayS({ text: "hi" });
+  out = await box();
+  assert.ok(out.some((p) => /You have a saved repair/.test(textOf(p))));
+  await sayS({ reply: `resume:${id}` }); await sayS({ reply: "rwhen:am" });
+  st = (await api("/api/pro/state", null, T)).body;
+  assert.ok(st.offer?.saved?.yours, "the pro who diagnosed it gets first refusal");
+  assert.ok(st.offer.expires - Date.now() > 23 * 3600e3, "24 hours to answer");
+  assert.equal(st.offer.earnings, 37); // 20 labour - 3 fee + 20 parts; call-out share already paid
+  await api(`/api/pro/offer/${id}/accept`, {}, T);
+  st = (await api("/api/pro/state", null, T)).body;
+  assert.equal(st.job.stage, "ready", "no new call-out to pay");
+  await api(`/api/pro/job/${id}/trip`, {}, T);
+  code = textOf((await box()).find((p) => /Basa Code is/.test(textOf(p)))).match(/\*(\d{4})\*/)[1];
+  await api(`/api/pro/job/${id}/arrive`, {}, T);
+  st = (await api(`/api/pro/job/${id}/verify`, { code }, T)).body.state;
+  assert.equal(st.job.stage, "working", "straight to the approved repair");
+  await api(`/api/pro/job/${id}/complete`, { checks: ["a", "b", "c"] }, T);
+  await sayS({ reply: "work:yes" }); await wait(150);
+  const detail = (await api(`/api/ops/job/${id}`, null, opsToken)).body;
+  assert.deepEqual(detail.payments.filter((p) => p.status === "paid").map((p) => p.kind).sort(), ["callout", "final"], "one call-out only");
+  assert.deepEqual(detail.payouts.map((p) => p.amount).sort((a, b) => a - b), [8, 37]);
 });
 
 test("customer can cancel before the pro sets off, and nothing is charged", async () => {
