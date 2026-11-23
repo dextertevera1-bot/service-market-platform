@@ -3,7 +3,7 @@
 import { randomInt } from "node:crypto";
 import { one, all, run, getJob, saveJob, insertJob, getPro, savePro, logEvent, tx, metaGet, metaSet, backupTo, dbPath } from "./db.js";
 import { withLock } from "./lock.js";
-import { markPaid } from "./payments.js";
+import { markPaid, setFailedHandler } from "./payments.js";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { dirname, join as pjoin } from "node:path";
 import { wa } from "./whatsapp.js";
@@ -184,6 +184,21 @@ setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
   }
 }));
+
+setFailedHandler((p) => withLock("job:" + p.job_id, async () => {
+  const job = getJob(p.job_id); if (!job || !["await_callout", "await_final"].includes(job.stage)) return;
+  await wa.buttons(job.customer, `Your EcoCash payment of *${usd(p.amount)}* didn't go through. Please check you have enough balance, then tap *Try again*. Nothing has been taken.`, [{ id: `pay:retry`, title: "Try again" }, { id: "help", title: "Talk to us" }]);
+}));
+
+// The customer tries a failed payment again (only the payment this job is waiting for).
+export async function customerRetryPayment(job) {
+  const kind = job.stage === "await_callout" ? "callout" : job.stage === "await_final" ? "final" : null;
+  if (!kind) return;
+  const m = jobMoney(job), amount = kind === "callout" ? m.pay1 : m.pay2;
+  const pay = await requestPayment(job, kind, amount, job.customer);
+  if (pay.duplicate) return wa.text(job.customer, pay.paid ? "That payment has already been received. Thank you!" : "Your payment request is still open. Please approve the EcoCash prompt on your phone.");
+  await wa.text(job.customer, pay.instructions);
+}
 
 // ---------- the visit ----------
 const proOwns = (pro, job) => job && job.pro_id === pro.id;

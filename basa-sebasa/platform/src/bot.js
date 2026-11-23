@@ -3,7 +3,7 @@ import { one, run, all, getJob, logEvent } from "./db.js";
 import { wa } from "./whatsapp.js";
 import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js";
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
-import { activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney } from "./jobs.js";
+import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
 import { withLock } from "./lock.js";
 
@@ -62,6 +62,11 @@ ${saved.data.quote.note ? `"${saved.data.quote.note}"
 To pay after it's fixed and tested: *${usd(jobMoney(saved).pay2)}*. No new call-out. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
   }
 
+  if (["menu", "restart", "start again", "start over", "back"].includes(text) && c.state.startsWith("ask_")) {
+    setConvo(phone, "ask_service", {});
+    await wa.text(phone, "No problem, let's start again.");
+    return askService(phone);
+  }
   if (["help", "agent", "person", "human"].includes(text)) {
     raiseAlert(null, null, "help", `customer ${phone} asked for a person`);
     return wa.text(phone, "Our Harare admin will message you shortly. You can also type *hi* to book a pro.");
@@ -139,8 +144,9 @@ async function onActiveJob(job, msg, text, reply, c) {
   if (reply === "work:no") return customerConfirm(job, false);
   if (reply === "cancel:yes") { const r = await customerCancel(job); if (r.error) await wa.text(phone, "The pro is already with you, so this job can't be cancelled here. Reply *help* and our Harare admin will call you."); return; }
   if (reply === "cancel:no") return wa.text(phone, "Okay, your booking stays as it is.");
+  if (reply === "pay:retry") return customerRetryPayment(job);
   if (text === "cancel") return wa.buttons(phone, `Cancel booking ${job.id}?`, [{ id: "cancel:yes", title: "Yes, cancel" }, { id: "cancel:no", title: "No, keep it" }]);
-  if (["help", "agent", "person", "human"].includes(text)) { raiseAlert(job.id, job.pro_id, "help", "customer asked for a person"); return wa.text(phone, "Our Harare admin will call you shortly."); }
+  if (["help", "agent", "person", "human"].includes(text) || reply === "help") { raiseAlert(job.id, job.pro_id, "help", "customer asked for a person"); return wa.text(phone, "Our Harare admin will call you shortly."); }
   if (["status", "where", "hi", "hello"].includes(text)) return wa.text(phone, `Your booking ${job.id}: ${STAGE_LABEL[job.stage]}.\nReply *cancel* to cancel, or *help* to talk to our Harare admin. Anything else you type goes to your pro.`);
   if (job.pro_id && !["searching", "offered"].includes(job.stage)) {
     const content = msg.text || (msg.media ? `(${msg.media.kind} sent)` : msg.location ? "(location shared)" : "");

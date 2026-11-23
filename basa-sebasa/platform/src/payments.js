@@ -7,8 +7,19 @@ import { config } from "./config.js";
 import { run, one, all, logEvent } from "./db.js";
 import { usd } from "./rules.js";
 
-let onPaid = () => {};
+let onPaid = () => {}, onFailed = () => {};
 export function setPaidHandler(fn) { onPaid = fn; }
+export function setFailedHandler(fn) { onFailed = fn; }
+
+// A payment that didn't go through (declined, cancelled, not enough balance). The customer is told and can try again.
+export function markFailed(id, reason) {
+  const p = one("SELECT * FROM payments WHERE id = ?", id);
+  if (!p || p.status !== "pending") return false;
+  run("UPDATE payments SET status = 'failed', note = ?, updated_at = ? WHERE id = ?", String(reason).slice(0, 200), Date.now(), id);
+  logEvent(p.job_id, "pay", `EcoCash ${p.kind} ${usd(p.amount)} didn't go through (${reason}).`);
+  onFailed({ ...p, status: "failed", reason });
+  return true;
+}
 
 const PAYNOW_INIT = "https://www.paynow.co.zw/interface/remotetransaction";
 
@@ -33,7 +44,8 @@ export async function requestPayment(job, kind, amount, customerPhone) {
   logEvent(job.id, "pay", `Payment requested: ${kind} ${usd(amount)} via ${mode}.`);
 
   if (mode === "sim") {
-    setTimeout(() => markPaid(id, `SIM${String(Date.now()).slice(-6)}`, "sim"), config.payments.simDelayMs);
+    // The simulated customer approves the prompt, unless the booking was cancelled meanwhile.
+    setTimeout(() => { if (one("SELECT status FROM payments WHERE id = ?", id)?.status === "pending") markPaid(id, `SIM${String(Date.now()).slice(-6)}`, "sim"); }, config.payments.simDelayMs).unref();
     return { id, instructions: `An EcoCash prompt for *${usd(amount)}* is on your phone (simulated). Enter your PIN to approve.` };
   }
   if (mode === "manual") {
@@ -64,6 +76,14 @@ export async function requestPayment(job, kind, amount, customerPhone) {
 export function markPaid(id, ref, by = "system") {
   const p = one("SELECT * FROM payments WHERE id = ?", id);
   if (!p || p.status === "paid") return false;
+  if (p.status === "cancelled") {
+    // Money arrived for a booking that was already cancelled (e.g. the customer approved the EcoCash prompt
+    // after cancelling). Record it truthfully and put it in front of the admin as a refund; the job stays cancelled.
+    run("UPDATE payments SET status = 'paid', ref = ?, note = COALESCE(note,'') || ?, updated_at = ? WHERE id = ?", ref || p.ref, ` arrived after cancellation; refund due (${by})`, Date.now(), id);
+    logEvent(p.job_id, "pay", `EcoCash ${p.kind} ${usd(p.amount)} arrived after the booking was cancelled (ref ${ref || p.ref}). Refund due.`);
+    run("INSERT INTO alerts (job_id, kind, note, at) VALUES (?,?,?,?)", p.job_id, "payment", `Refund due: ${usd(p.amount)} paid after cancellation`, Date.now());
+    return true;
+  }
   run("UPDATE payments SET status = 'paid', ref = ?, note = COALESCE(note,'') || ?, updated_at = ? WHERE id = ?", ref || p.ref, ` confirmed by ${by}`, Date.now(), id);
   logEvent(p.job_id, "pay", `EcoCash ${p.kind} ${usd(p.amount)} confirmed (ref ${ref || p.ref}) by ${by}.`);
   onPaid({ ...p, status: "paid", ref: ref || p.ref });
@@ -78,7 +98,7 @@ export function handlePaynowResult(form) {
   if (!p) return true;
   const st = String(f.status || "").toLowerCase();
   if (st === "paid" || st === "awaiting delivery" || st === "delivered") markPaid(p.id, f.paynowreference || f.reference, "paynow");
-  if (st === "cancelled" || st === "failed") { run("UPDATE payments SET status = 'failed', note = ?, updated_at = ? WHERE id = ?", `Paynow: ${f.status}`, Date.now(), p.id); logEvent(p.job_id, "pay", `EcoCash ${p.kind} ${f.status}.`); }
+  if (st === "cancelled" || st === "failed") markFailed(p.id, `Paynow: ${f.status}`);
   return true;
 }
 

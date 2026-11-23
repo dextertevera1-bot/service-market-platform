@@ -11,3 +11,4 @@
 | Card payments for diaspora | Payer abroad has no EcoCash | Remittances US$2.45bn 2025 | Unlocks diaspora niche | Medium (Paynow cards) | Integration approval | Paynow | After launch | Proposed |
 | Automatic selfie-to-ID match | Fake/borrowed IDs | — | Faster review | Medium, third-party cost | Privacy, accuracy | Vendor | Later | Proposed |
 | Annual re-check and random quality visits | Standards slip after approval | Onboarding doc renewals | Keeps the badge honest | Low | Admin time | — | 3 months after launch | Proposed |
+| Pro "I can't make it" after accepting | Pro falls ill or the car breaks down; today only the admin can re-offer | Mandate §15 T7 gap | Faster recovery, fewer no-shows | Low | Abuse: limit per month, counts against reliability | — | Launch | Proposed |
