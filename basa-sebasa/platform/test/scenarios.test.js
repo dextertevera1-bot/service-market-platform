@@ -230,3 +230,41 @@ test("T8 before sending the quote, the pro sees the total the customer will pay"
   const q = (await api(`/sim/api/outbox?to=${phone}`)).body.at(-1).payload;
   assert.deepEqual(q.interactive.action.buttons.map((b) => b.reply.title), ["Approve quote", "Decline for now"]);
 });
+
+test("T9 Trust Score: 85 at the start, up only at milestones, down for poor ratings and upheld complaints", async () => {
+  const { trustOf, applyTrust, addTrustEvent } = await import("../src/trust.js");
+  const now = Date.now(), base = { jobs_done: 0, rating_sum: 0, rating_n: 0, data: { approvedAt: now } };
+  assert.equal(trustOf(base).score, 85); assert.equal(trustOf(base).level, "Bronze");
+  const silver = { ...base, jobs_done: 5, rating_sum: 24, rating_n: 5, data: { approvedAt: now, probation: { result: "passed" } } };
+  assert.equal(trustOf(silver).score, 88); assert.equal(trustOf(silver).level, "Silver");
+  const busy = { ...silver, jobs_done: 30, rating_sum: 30 * 4.7, rating_n: 30 };
+  assert.equal(trustOf(busy).level, "Silver", "25 jobs isn't enough for Gold without 3 months on the platform");
+  const gold = { ...busy, data: { ...busy.data, approvedAt: now - 100 * 864e5 } };
+  assert.equal(trustOf(gold).score, 91); assert.equal(trustOf(gold).level, "Gold");
+  const slipped = { ...gold, rating_sum: 30 * 4.5 };
+  assert.equal(trustOf(slipped).level, "Silver", "a falling rating loses the level again");
+  const p = JSON.parse(JSON.stringify(gold)); addTrustEvent(p, "complaint", "upheld: left the job unfinished");
+  assert.equal(trustOf(p).score, 83, "an upheld complaint costs 5 points and blocks Gold for 90 days (88 - 5)");
+  const q = JSON.parse(JSON.stringify(silver)); addTrustEvent(q, "lowRating", "2 stars"); applyTrust(q);
+  assert.equal(q.trust, 85); assert.equal(q.data.level, "Silver");
+  const old = JSON.parse(JSON.stringify(silver)); old.data.trustEvents = [{ at: now - 400 * 864e5, kind: "lowRating", pts: 3 }];
+  assert.equal(trustOf(old).score, 88, "penalties drop off after 12 months");
+});
+
+test("T10 the on-the-job timer runs from the Basa Code to Finished and tested", async () => {
+  freePros(); const phone = "263771000015", id = await book(phone);
+  const t = (await offerOf(tok.a)) ? tok.a : tok.b;
+  await api(`/api/pro/offer/${id}/accept`, {}, t); await sayAs(phone)({ reply: "book:yes" });
+  await api(`/api/pro/job/${id}/trip`, {}, t); await api(`/api/pro/job/${id}/arrive`, {}, t);
+  assert.equal((await api("/api/pro/state", null, t)).body.job.timer, null, "no timer before the code");
+  await api(`/api/pro/job/${id}/verify`, { code: getJob(id).data.code }, t);
+  const tm = (await api("/api/pro/state", null, t)).body.job.timer;
+  assert.ok(tm.start && tm.end == null, "running from the code");
+  await api(`/api/pro/job/${id}/quote`, { labour: 30, parts: 0 }, t);
+  assert.match(await lastFrom(phone), /Parts: none needed/, "no parts is fine: parts are optional");
+  await sayAs(phone)({ reply: "quote:approve" });
+  const j = getJob(id); j.data.codeOk -= 42 * 60e3; saveJob(j);
+  await api(`/api/pro/job/${id}/complete`, { checks: ["a", "b", "c"] }, t);
+  const st = (await api("/api/pro/state", null, t)).body.job;
+  assert.ok(st.timer.end, "stopped at Finished and tested"); assert.equal(getJob(id).data.onJobMinutes, 42);
+});

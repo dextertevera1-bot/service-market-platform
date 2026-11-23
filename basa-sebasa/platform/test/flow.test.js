@@ -92,7 +92,7 @@ async function makePro(name, phone, suburb, pin, duress) {
   assert.equal((await api(`/api/ops/pro/${id}/approve`, {}, opsToken)).status, 200);
   st = (await api("/api/pro/state", null, token)).body;
   assert.equal(st.onboarding, null); assert.equal(st.level, "Bronze"); assert.equal(st.probation.left, 5);
-  assert.equal(st.pro.trust, 94); // 35 + documents 10 + references 10 + quiz 25 + questionnaire 14 (11 of 12)
+  assert.equal(st.pro.trust, 85, "everyone who passes starts at 85"); assert.equal(st.trustInfo.next.level, "Silver"); assert.equal(st.trustInfo.next.score, 88);
   assert.ok(st.profile.approved, "the profile photo was approved face to face at the meeting"); assert.equal(st.profile.pending, null);
   await api("/api/pro/online", { on: true }, token);
   return token;

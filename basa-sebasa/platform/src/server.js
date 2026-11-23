@@ -18,6 +18,7 @@ import { RULES, serviceById, SERVICES, usd, money, r2 } from "./rules.js";
 import { SUBURBS, findSuburb } from "./places.js";
 import * as OB from "./onboarding.js";
 import * as PARTS from "./parts.js";
+import * as TRUST from "./trust.js";
 import { withLock } from "./lock.js";
 import { dispatch, outboxStats } from "./whatsapp.js";
 import { getDb, closeDb, backupTo, metaGet, dbPath as openDbPath } from "./db.js";
@@ -114,6 +115,7 @@ function proState(pro) {
     rules: { checkinMinutes: RULES.checkinMinutes, payoutHours: RULES.payoutHours, noShowWaitMinutes: RULES.noShowWaitMinutes },
     onboarding: pro.status === "verified" ? null : OB.onboardingView(pro),
     profile: OB.profileView(pro),
+    trustInfo: pro.status === "verified" ? TRUST.trustOf(pro) : null,
     testMode: simulated.whatsapp,
     probation: pro.data?.probation || null, level: pro.data?.level || null,
     now: Date.now(),
@@ -134,6 +136,8 @@ function proJobView(job) {
     thread: (job.data.thread || []).slice(-60), unread: job.data.proUnread || 0,
     safety: { tracking: !!sf.tracking, checkDue: sf.checkDue || null, firstDone: !!sf.firstDone, needsCheckout: J.CLOSED.includes(job.stage) && !!sf.tracking },
     rating: job.data.rating || null, checks: serviceById(job.service).checks,
+    // On-the-job timer: starts when the Basa Code is confirmed at the gate, stops at "Finished and tested".
+    timer: job.data.codeOk ? { start: job.data.codeOk, end: job.data.completedAt && job.data.completedAt > job.data.codeOk ? job.data.completedAt : null } : null,
     parts: ["diagnosing", "quote_sent"].includes(job.stage) ? PARTS.partsForPro(job) : null,
     part: job.data.part || null,
     partsRules: { maxOptions: RULES.parts.maxOptions },
@@ -156,7 +160,7 @@ function opsOverview() {
   const payouts = all("SELECT p.*, pr.name, pr.ecocash FROM payouts p JOIN pros pr ON pr.id = p.pro_id WHERE p.paid_at IS NULL ORDER BY p.due_at");
   const pros = all("SELECT id, name, phone, trade, suburb, status, online, trust, jobs_done, rating_sum, rating_n, ecocash, em_name, em_phone, data, created_at FROM pros ORDER BY status, name")
     .map((p) => { const full = { ...p, data: JSON.parse(p.data || "{}") };
-      return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(full), trust: OB.trustBreakdown(full, { assumeDocs: true }),
+      return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(), trust: OB.trustBreakdown(full, { assumeDocs: true }),
         ob: { ...full.data.onboarding, assessment: full.data.onboarding?.assessment && { ...full.data.onboarding.assessment, perms: undefined } } } : null }; });
   const probationCalls = all("SELECT id FROM jobs WHERE stage = 'paid' AND json_extract(data,'$.probation') = 1 AND json_extract(data,'$.probationCall') IS NULL ORDER BY updated_at LIMIT 200").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, pro: j.data.pro?.name, customer: j.customer, rating: j.data.rating || null }));
@@ -365,6 +369,12 @@ async function route(req, res) {
       logEvent(j.id, "onboarding", `Probation quality call logged by ${by}${b.note ? `: ${b.note}` : ""}.`);
       return send(res, 200, { ok: true });
     }
+    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/complaint$/))) {
+      const p = getPro(Number(m[1])); if (!p || p.status !== "verified") return send(res, 404, { error: "No such verified pro" });
+      if (!String(b.note || "").trim()) return send(res, 400, { error: "Describe the complaint." });
+      TRUST.addTrustEvent(p, "complaint", b.note); savePro(p); logEvent(null, "trust", `Upheld complaint against ${p.name} recorded by ${by}: ${b.note}.`);
+      await J.updateTrust(p.id); return send(res, 200, { ok: true, trust: getPro(p.id).trust });
+    }
     if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/(suspend|reinstate)$/))) {
       const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
       p.status = m[2] === "suspend" ? "suspended" : "verified";
@@ -449,6 +459,8 @@ export function startServer({ port = config.port, dbPath = config.dbPath } = {})
   openDb(dbPath);
   // The profile photo is compulsory: a verified pro without an approved one can't stay online.
   run("UPDATE pros SET online = 0 WHERE status = 'verified' AND online = 1 AND json_extract(data,'$.profile') IS NULL");
+  // Trust Score model 2 (start 85, milestones): recalculate pros scored under the old model, once.
+  for (const r of all("SELECT id FROM pros WHERE status = 'verified' AND COALESCE(json_extract(data,'$.trustModel'),0) != 2")) { const p = getPro(r.id); TRUST.applyTrust(p); savePro(p); }
   const server = createServer((req, res) => route(req, res).catch((e) => { console.error(req.method, req.url, e); logEvent(null, "error", `${req.method} ${req.url}: ${e.message}`); if (!res.headersSent) send(res, 500, { error: "Something went wrong. Please try again." }); }));
   let sweeping = false; // never two sweeps at once if one runs long
   const timer = setInterval(() => { if (sweeping) return; sweeping = true; J.sweep().catch((e) => { console.error("sweep", e); logEvent(null, "error", `Sweep: ${e.message}`); }).finally(() => { sweeping = false; }); pollPending().catch(() => {}); }, 15e3);

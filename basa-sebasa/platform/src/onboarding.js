@@ -5,6 +5,7 @@ import { checkPin } from "./safety.js";
 import { wa } from "./whatsapp.js";
 import { config } from "./config.js";
 import { assessmentForPro, grade, makePerms } from "./quiz.js";
+import { START as TRUST_START, applyTrust } from "./trust.js";
 
 export const STEPS = [
   { key: "signup", title: "Sign up", who: "You" },
@@ -235,14 +236,16 @@ export function trustBreakdown(p, { assumeDocs = false } = {}) {
   };
   return { parts, total: Math.min(95, Object.values(parts).reduce((a, b) => a + b, 0)) };
 }
-export function startingTrust(p) { return trustBreakdown(p).total; }
+// Everyone who passes starts at the same Trust Score (85); it then grows with milestones (src/trust.js).
+// The meeting-day marks above are kept as the pro's meeting score, shown to the team, not added to the Trust Score.
+export function startingTrust() { return TRUST_START; }
 
 export async function approve(p, by) {
   if (!readyToApprove(p)) return { error: "Not ready: every step must be done first." };
-  p.status = "verified"; p.trust = startingTrust(p);
-  p.data = { ...p.data, level: "Bronze", probation: { left: PROBATION_JOBS, ratings: [] }, approvedBy: by, approvedAt: Date.now() };
+  p.status = "verified"; p.trust = TRUST_START;
+  p.data = { ...p.data, level: "Bronze", trustModel: 2, meetingScore: trustBreakdown(p).total, probation: { left: PROBATION_JOBS, ratings: [] }, approvedBy: by, approvedAt: Date.now() };
   savePro(p); logEvent(null, "onboarding", `${p.name} approved by ${by}: Verified, Bronze, Trust Score ${p.trust}, probation ${PROBATION_JOBS} jobs.`);
-  await tell(p, `Welcome to Basa seBasa, ${first(p)}! 🎉 You're verified. Trust Score ${p.trust}, Bronze level. Your first ${PROBATION_JOBS} jobs are probation. Open your Pro app and go online: ${config.baseUrl}/pro`);
+  await tell(p, `Welcome to Basa seBasa, ${first(p)}! 🎉 You're verified. Trust Score ${p.trust}, Bronze level. It grows as you reach milestones: pass probation (your first ${PROBATION_JOBS} jobs at 4.5★ or more) to reach Silver. Open your Pro app and go online: ${config.baseUrl}/pro`);
   return { ok: true };
 }
 
@@ -255,5 +258,6 @@ export function probationJobDone(proId, jobId, rating) {
     pr.result = avg >= 4.5 ? "passed" : "review"; pr.avg = Math.round(avg * 10) / 10;
     logEvent(jobId, "onboarding", `${p.name} finished probation: average ${pr.avg}★, ${pr.result === "passed" ? "now a full pro" : "needs a review by the team"}.`);
   }
+  if (pr.result) applyTrust(p);
   savePro(p); return pr;
 }

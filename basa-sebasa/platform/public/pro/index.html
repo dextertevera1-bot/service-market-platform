@@ -26,6 +26,11 @@ button, input, textarea { font: inherit; color: inherit; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .face { display: flex; gap: 14px; align-items: center; } .face img, .face .ph { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: none; border: 3px solid var(--yellow); background: var(--sunk); }
 .face .ph { display: grid; place-items: center; font-size: 38px; }
+.timer { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--yellow); border-radius: 12px; padding: 8px 12px; }
+.timer b { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-spacing: .04em; } .timer.done { border-left-color: var(--good); }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .seg3 button { border: 1.5px solid var(--line); background: transparent; border-radius: 10px; padding: 9px 4px; font-weight: 700; font-size: 13.5px; cursor: pointer; }
+.seg3 button[aria-pressed="true"] { background: var(--yellow); border-color: var(--yellow); color: var(--navy); }
+.tcard .bar { margin-top: 2px; }
 .rules { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 2px; }
 .who small { display: block; color: var(--pale); font-size: 13px; }
 .trust { margin-left: auto; text-align: center; } .trust b { display: block; font-size: 26px; line-height: 1; color: var(--yellow); } .trust small { font-size: 10px; letter-spacing: .08em; color: var(--pale); }
@@ -112,7 +117,7 @@ async function api(path, body) {
 }
 async function refresh() {
   if (!token) return render();
-  try { S = await api("/api/pro/state"); } catch (e) { /* keep last screen when the network drops */ }
+  try { S = await api("/api/pro/state"); clockSkew = S.now - Date.now(); } catch (e) { /* keep last screen when the network drops */ }
   render(); geo();
 }
 async function act(path, body, okMsg) {
@@ -161,6 +166,7 @@ function homeView() {
   const h = S.home, p = S.pro;
   return photoCard("top") + `<div class="card hero"><span class="eyebrow">Home</span><h2>Hi ${esc(p.name.split(" ")[0])}, ${p.online ? "you're online" : "you're offline"}</h2><p class="muted" style="margin:0">Day jobs only (07:00–18:00). You choose which jobs to accept.</p>
       <table class="split"><tr><td>Jobs completed today</td><td>${h.jobsToday}</td></tr><tr class="you"><td>Earned today</td><td>${usd(h.earnedToday)}</td></tr></table></div>`
+    + trustCard()
     + (S.probation && !S.probation.result ? `<div class="card"><span class="eyebrow">Probation</span><b>${5 - S.probation.left} of 5 probation jobs done</b><div class="bar"><i style="width:${(5 - S.probation.left) * 20}%"></i></div><span class="muted small">We call each customer to check quality. Keep an average of 4.5★ or more to become a full pro.</span></div>`
       : S.probation?.result === "passed" ? `<div class="card"><span class="eyebrow">Full pro</span><span class="small">✓ Probation passed with an average of ${S.probation.avg}★.</span></div>` : "")
     + (h.last ? `<div class="card"><span class="eyebrow">Last job</span><b>${esc(h.last.id)} · ${esc(h.last.service)} · ${esc(h.last.suburb)}</b><span class="muted small">${esc(h.last.label)}${h.last.payout ? ` · ${usd(h.last.payout.amount)} ${h.last.payout.paid ? `paid to your EcoCash, ref ${esc(h.last.payout.ref)}` : `on its way to your EcoCash within ${S.rules.payoutHours} hours`}` : ""}${h.last.rating ? ` · rated ${"★".repeat(h.last.rating)}` : ""}</span></div>` : "")
@@ -212,7 +218,7 @@ function jobView(j) {
     case "arrived": { const waited = Math.floor((S.now - j.arrivedAt) / 60e3), left = S.rules.noShowWaitMinutes - waited;
       body = head("At the gate", "Ask the customer for their 4-digit Basa Code. Don't go in without it.") + `<div class="card"><div class="field"><label for="code">Basa Code</label><input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off"></div><div id="codeerr" class="err">${j.codeTries ? `${j.codeTries} wrong ${j.codeTries === 1 ? "try" : "tries"}. After 3, our Harare admin calls the customer.` : ""}</div><button class="btn gold" data-a="verify">Confirm code</button></div>`
         + `<div class="card"><span class="muted small">Nobody home? Message them in the Chat tab. ${left > 0 ? `You can close the visit in ${left} min and keep your call-out share.` : "You can close the visit now and keep your call-out share."}</span><button class="btn danger" data-a="noshow" ${left > 0 ? "disabled" : ""}>Customer not home: close visit</button></div>`; break; }
-    case "diagnosing": body = head("Diagnose and quote", j.resumed ? "Saved repair: labour stays as quoted. Get today's part prices, then send the quote." : "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine.">${j.resumed && j.quote?.note ? esc(j.quote.note) : ""}</textarea></div><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal" ${j.resumed && j.quote?.labour ? `value="${j.quote.labour}" disabled` : ""}></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p></div>` + partsCard(j) + `<div class="card offer"><span class="eyebrow">Tell the customer before sending</span><div id="qtotal">${totalLine(j)}</div><p class="muted small" style="margin:0">Show them the quote and say the total out loud. They approve or decline on WhatsApp. No work starts until they approve.</p></div><button class="btn gold" data-a="quote">Send quote</button>`; break;
+    case "diagnosing": body = head("Diagnose and quote", j.resumed ? "Saved repair: labour stays as quoted. Get today's part prices, then send the quote." : "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine.">${j.resumed && j.quote?.note ? esc(j.quote.note) : ""}</textarea></div><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal" ${j.resumed && j.quote?.labour ? `value="${j.quote.labour}" disabled` : ""}></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p></div>` + partsChooser(j) + `<div class="card offer"><span class="eyebrow">Tell the customer before sending</span><div id="qtotal">${totalLine(j)}</div><p class="muted small" style="margin:0">Show them the quote and say the total out loud. They approve or decline on WhatsApp. No work starts until they approve.</p></div><button class="btn gold" data-a="quote">Send quote</button>`; break;
     case "quote_sent": body = head("Quote sent", `Tell the customer the total: <b>${Array.isArray(j.customerTotal) ? j.customerTotal.map(usd).join(" / ") + " depending on the part they choose" : usd(j.customerTotal)}</b>. Wait for them to approve or decline on WhatsApp. Don't start yet.`, `<div class="wait"><span class="spin"></span>${j.quote.options ? `Labour ${usd(j.quote.labour)} · customer choosing between ${j.quote.options.length} part option${j.quote.options.length > 1 ? "s" : ""}` : `Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}`}</div>`) + (j.quote.options ? `<div class="card"><span class="eyebrow">Part options sent</span>${j.quote.options.map((o) => optionRow(o, false)).join("")}</div>` : "") + pay; break;
     case "working": body = head("Repair approved ✓", j.part?.status === "to_collect" ? `The customer chose option ${j.quote.chosen}. Collect the part, then do the work.` : "Do the work, test it, then tick the checks.") + collectCard(j) + `<div class="card"><h3>Before you finish</h3>${j.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}" value="${esc(c)}"> ${esc(c)}</label>`).join("")}<button class="btn gold" data-a="complete">Finished and tested</button></div>` + pay; break;
     case "confirm": body = head("Customer is checking", "They're confirming it works on WhatsApp.", `<div class="wait"><span class="spin"></span>Waiting for the customer</div>`) + pay; break;
@@ -223,7 +229,7 @@ function jobView(j) {
     case "cancelled": body = head("Customer cancelled", "We've let you know what you're owed in the job log."); break;
     default: body = head(j.label, "");
   }
-  return safetyStrip(j) + (pinFor === "checkin" ? pinCard("checkin") : "") + body
+  return safetyStrip(j) + timerStrip(j) + (pinFor === "checkin" ? pinCard("checkin") : "") + body
     + (j.safety.needsCheckout ? pinCard("checkout") : "");
 }
 
@@ -234,12 +240,46 @@ function customerTotal(j, labour, parts) {
   return r2((c.calloutPaid ? 0 : c.pay1) + base + r2(base * r + payout * r));
 }
 function totalLine(j) {
-  const lab = Number($("#qlab")?.value || (j.resumed && j.quote?.labour) || 0), parts = Number($("#qparts")?.value || 0);
-  const picked = [...document.querySelectorAll("[data-po]:checked")].map((c) => j.parts?.options.find((o) => o.quoteId === Number(c.value))?.price).filter((x) => x != null);
+  const mode = modeOf(j), lab = Number($("#qlab")?.value || (j.resumed && j.quote?.labour) || 0), parts = mode === "own" ? Number($("#qparts")?.value || 0) : 0;
+  const picked = mode !== "supplier" ? [] : [...document.querySelectorAll("[data-po]:checked")].map((c) => j.parts?.options.find((o) => o.quoteId === Number(c.value))?.price).filter((x) => x != null);
   if (!lab) return `<span class="muted small">Enter the labour to see the total.</span>`;
   const inc = j.calc.calloutPaid ? "" : ` (includes ${usd(j.calc.pay1)} inspection and travel)`;
   if (picked.length) return `<b style="font-size:20px">${picked.map((p) => usd(customerTotal(j, lab, p))).join(" / ")}</b><br><span class="small">depending on the part option they choose${inc}, EcoCash charges included</span>`;
   return `<b style="font-size:20px">${usd(customerTotal(j, lab, parts))}</b><br><span class="small">in total${inc}, EcoCash charges included</span>`;
+}
+
+// ---------- on-the-job timer: Basa Code confirmed → "Finished and tested" ----------
+const fmtDur = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return `${h ? h + ":" : ""}${String(m).padStart(h ? 2 : 1, "0")}:${String(x).padStart(2, "0")}`; };
+let clockSkew = 0; // server time minus phone time
+function timerStrip(j) {
+  if (!j.timer) return "";
+  const end = j.timer.end, run = !end && ["diagnosing", "quote_sent", "working"].includes(j.stage);
+  if (!run && !end) return "";
+  const ms = (end || Date.now() + clockSkew) - j.timer.start;
+  return `<div class="timer ${end ? "done" : ""}"><span>⏱</span><span class="small">${end ? "Time on this job" : "On the job"}</span><b id="jobtimer" data-start="${j.timer.start}" ${end ? `data-end="${end}"` : ""} style="margin-left:auto">${fmtDur(ms)}</b></div>`;
+}
+setInterval(() => { const el = $("#jobtimer"); if (el && !el.dataset.end) el.textContent = fmtDur(Date.now() + clockSkew - Number(el.dataset.start)); }, 1000);
+
+// ---------- Trust Score: where the pro stands and the next milestone ----------
+function trustCard() {
+  const t = S.trustInfo; if (!t) return "";
+  const n = t.next, pct = (a) => Math.min(100, Math.round(a[0] / (a[1] || 1) * 100));
+  return `<div class="card tcard"><span class="eyebrow">Trust Score · ${esc(t.level)}</span><div class="face" style="gap:10px"><b style="font-size:34px;color:var(--blue)">${t.score}</b><span class="small muted">Starts at 85 when you're verified and grows only when you reach milestones. Poor ratings or an upheld complaint take points off for 12 months.</span></div>
+    ${n ? `<b>Next: ${esc(n.level)} → ${n.score}</b><span class="small">${esc(n.what)}</span>
+      ${n.level === "Silver" ? `<span class="small">Probation: ${5 - (S.probation?.left ?? 5)} of 5 jobs done</span>` : `<span class="small">Jobs ${n.progress.jobs[0]} of ${n.progress.jobs[1]}</span><div class="bar"><i style="width:${pct(n.progress.jobs)}%"></i></div>
+      <span class="small">Rating ${n.progress.rating[0] || "–"}★ (need ${n.progress.rating[1]}★) · ${n.progress.months[0]} of ${n.progress.months[1]} months</span>`}` : `<b>You're at the top level. Keep it up!</b>`}
+    ${t.penalties ? `<span class="small err">−${t.penalties} points from poor ratings or complaints in the last 12 months</span>` : ""}</div>`;
+}
+
+// ---------- parts: optional; many jobs need none ----------
+const partsMode = {}; // per job: "none" | "supplier" | "own"
+const modeOf = (j) => partsMode[j.id] || (j.parts ? "supplier" : "none");
+function partsChooser(j) {
+  const m = modeOf(j), b = (k, t) => `<button data-pm="${k}" aria-pressed="${m === k}">${t}</button>`;
+  const body = m === "none" ? `<p class="small muted" style="margin:0">The quote goes out with no parts. Choose another option if this job needs one.</p>`
+    : m === "own" ? `<div class="field"><label for="qparts">Price of the part you already have ($)</label><input id="qparts" inputmode="decimal" placeholder="0.00"></div>`
+    : partsCard(j);
+  return `<div class="card"><span class="eyebrow">Parts (only if the job needs them)</span><div class="seg3">${b("none", "No parts needed")}${b("supplier", "Get supplier prices")}${b("own", "I have the part")}</div>${m === "supplier" ? partsCard(j).replace(/^<div class="card">/, "<div>") : body}</div>`;
 }
 
 // ---------- parts: prices from verified suppliers, nearest first ----------
@@ -250,12 +290,11 @@ function optionRow(o, pickable, i = 0, max = 3) {
 function partsCard(j) {
   const P = j.parts, max = j.partsRules.maxOptions;
   const ask = (label) => `<div class="field"><label for="ppart">${label}</label><input id="ppart" placeholder="e.g. 30A double-pole breaker, Schneider" autocomplete="off"></div><button class="btn" data-a="partask">Get prices from verified suppliers</button>`;
-  if (!P) return `<div class="card"><span class="eyebrow">Replacement part</span>${ask("Need a part? Describe it")}<p class="muted small" style="margin:0">We ask the nearest Basa-verified suppliers. The customer sees up to ${max} prices, nearest first, and chooses one.</p>
-    <div class="field"><label for="qparts">Or: parts you already have ($)</label><input id="qparts" inputmode="decimal" value="0"></div></div>`;
+  if (!P) return `<div class="card">${ask("Describe the part")}<p class="muted small" style="margin:0">We ask the nearest Basa-verified suppliers. The customer sees up to ${max} prices, nearest first, and chooses one.</p></div>`;
   const waiting = P.status === "open" && P.waiting > 0, left = Math.max(0, Math.round((P.closesAt - S.now) / 60e3));
   return `<div class="card"><span class="eyebrow">Replacement part</span><b>${esc(P.part)}</b>
     <span class="muted small">${P.asked} supplier${P.asked > 1 ? "s" : ""} asked · ${P.options.length} price${P.options.length === 1 ? "" : "s"} in${waiting ? ` · ${P.waiting} still to reply (${left} min left)` : ""}${P.declined ? ` · ${P.declined} don't have it` : ""}</span>
-    ${P.options.length ? `<p class="small" style="margin:0">Tick up to ${max} that fit (nearest first). The customer chooses one.</p>${P.options.map((o, i) => optionRow(o, true, i, max)).join("")}` : waiting ? `<div class="wait"><span class="spin"></span>Waiting for prices…</div>${S.testMode ? `<p class="muted small" style="margin:0">Test mode: answer as the supplier on the ops desk, under <b>Part requests → Answer as this supplier</b>.</p>` : ""}` : `<p class="small err" style="margin:0">No prices came in. Ask again with a different description, or enter the price yourself.</p><div class="field"><label for="qparts">Parts price ($)</label><input id="qparts" inputmode="decimal" value="0"></div>`}
+    ${P.options.length ? `<p class="small" style="margin:0">Tick up to ${max} that fit (nearest first). The customer chooses one.</p>${P.options.map((o, i) => optionRow(o, true, i, max)).join("")}` : waiting ? `<div class="wait"><span class="spin"></span>Waiting for prices…</div>${S.testMode ? `<p class="muted small" style="margin:0">Test mode: answer as the supplier on the ops desk, under <b>Part requests → Answer as this supplier</b>.</p>` : ""}` : `<p class="small err" style="margin:0">No prices came in. Ask again with a different description, or choose <b>I have the part</b> / <b>No parts needed</b> above.</p>`}
     <div style="border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px"><span class="muted small">Wrong part? Ask again (this replaces the request above).</span>${ask("Part needed")}</div></div>`;
 }
 function collectCard(j) {
@@ -335,6 +374,7 @@ function render() {
 }
 
 document.addEventListener("click", async (e) => {
+  const pm = e.target.closest("[data-pm]"); if (pm && S?.job) { partsMode[S.job.id] = pm.dataset.pm; render(); return; }
   const t = e.target.closest("[data-a],[data-tab],[data-q]"); if (!t) return;
   if (t.dataset.tab) { tab = t.dataset.tab; if (tab === "chat" && S.job?.unread) api(`/api/pro/job/${S.job.id}/read`, {}).catch(() => {}); render(); return; }
   if (t.dataset.q) { $("#msg").value = t.dataset.q; $("#msg").focus(); return; }
@@ -351,9 +391,11 @@ document.addEventListener("click", async (e) => {
     else if (a === "verify") { try { await act(`${J}/verify`, { code: $("#code").value }, "Code confirmed ✓"); } catch (err) { const el = $("#codeerr"); if (el) el.textContent = err.message; } }
     else if (a === "noshow") { if (confirm("Close this visit as customer not home?")) await act(`${J}/noshow`); }
     else if (a === "quote") {
-      const picked = [...document.querySelectorAll("[data-po]:checked")].map((c) => Number(c.value)), max = j.partsRules.maxOptions;
+      const mode = modeOf(j), max = j.partsRules.maxOptions, picked = mode === "supplier" ? [...document.querySelectorAll("[data-po]:checked")].map((c) => Number(c.value)) : [];
       if (picked.length > max) return toast(`Tick up to ${max} part options.`);
-      const body = { labour: $("#qlab").value, note: $("#qnote").value, ...(picked.length ? { partOptions: picked } : { parts: $("#qparts")?.value || 0 }) };
+      if (mode === "supplier" && !picked.length) return toast("Tick at least one supplier price, or choose No parts needed.");
+      if (mode === "own" && !(Number($("#qparts")?.value) > 0)) return toast("Enter the price of the part, or choose No parts needed.");
+      const body = { labour: $("#qlab").value, note: $("#qnote").value, ...(picked.length ? { partOptions: picked } : { parts: mode === "own" ? $("#qparts").value : 0 }) };
       await act(`${J}/quote`, body, picked.length ? `Quote sent with ${picked.length} part option${picked.length > 1 ? "s" : ""}.` : "Quote sent to the customer.");
     }
     else if (a === "partask") { const v = $("#ppart").value; await act(`${J}/partrequest`, { part: v }, "Asking the nearest verified suppliers…"); const el = $("#ppart"); if (el) el.value = ""; }

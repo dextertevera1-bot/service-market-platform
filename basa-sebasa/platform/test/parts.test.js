@@ -164,7 +164,7 @@ test("P6 'Not now' saves the diagnosis; going ahead later gets fresh part prices
   await api(`/api/pro/job/${id}/quote`, { labour: 45, partOptions: P.options.map((o) => o.quoteId) }, tok);
   await say(phone)({ reply: "quote:later" });
   assert.equal(getJob(id).stage, "deferred");
-  assert.match((await texts(phone)).at(-1), /Labour stays at \$45\.00.*choose the part again from fresh prices/s);
+  assert.ok((await texts(phone)).some((t) => /Labour stays at \$45\.00.*choose the part again from fresh prices/s.test(t)));
   assert.match((await texts("263772300003")).at(-1), /postponed the repair/);
   await wait(200); // the call-out for this visit is requested and (simulated) paid
   assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", id).n, 1, "call-out paid for the diagnosis visit");

@@ -15,6 +15,7 @@ import { raiseAlert, checkPin, closeAlert, URGENT } from "./safety.js";
 import { config } from "./config.js";
 import { probationJobDone } from "./onboarding.js";
 import * as PARTS from "./parts.js";
+import { applyTrust, addTrustEvent, trustOf } from "./trust.js";
 
 export const ACTIVE = ["searching", "offered", "await_confirm", "await_callout", "ready", "travelling", "arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
 export const ONSITE = ["arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
@@ -172,6 +173,18 @@ export async function proDecline(pro, jobId, reason = "declined") {
   return { ok: true };
 }
 
+// Trust Score: worked out from the pro's record (milestones minus recent penalties); tell the pro when it changes level.
+export async function updateTrust(proId, jobId = null) {
+  const pro = getPro(proId); if (!pro || pro.status !== "verified") return;
+  const ch = applyTrust(pro); savePro(pro);
+  if (ch.before.score === ch.after.score) return;
+  logEvent(jobId, "trust", `${pro.name}: Trust Score ${ch.before.score} → ${ch.after.score}${ch.before.level !== ch.after.level ? `, level ${ch.before.level} → ${ch.after.level}` : ""}.`);
+  if (ch.after.score > ch.before.score && ch.before.level !== ch.after.level) {
+    const nx = trustOf(pro).next;
+    await wa.text(pro.phone, `🎉 Well done ${first(pro.name)}! You've reached *${ch.after.level}* on Basa seBasa. Your Trust Score is now *${ch.after.score}*, and customers see it before they book you.${nx ? `\nNext: ${nx.level} (${nx.score}) at ${nx.what.toLowerCase()}.` : ""}`);
+  }
+}
+
 // ---------- what the customer owes ----------
 export const calloutPaid = (job) => !!one("SELECT id FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", job.id);
 // At the end: the repair, plus the call-out if it hasn't been paid (it usually hasn't: it's paid at the end).
@@ -219,7 +232,7 @@ setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
       saveJob(job);
       if (job.data.resumed && job.pro_id !== job.data.firstPro) logEvent(job.id, "rule", `Provisional: Basa covers the ${usd(m.calloutShare)} call-out share for ${pro.name}, who finished a repair another pro diagnosed.`);
       run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, job.pro_id, amount, Date.now() + RULES.payoutHours * 3600e3);
-      pro.jobs_done += 1; savePro(pro);
+      pro.jobs_done += 1; applyTrust(pro); savePro(pro);
       if (job.data.probation) probationJobDone(pro.id, job.id);
       logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
     });
@@ -321,7 +334,7 @@ export async function proQuote(pro, jobId, { labour, parts, note, partOptions })
   const m = jobMoney(job);
   logEvent(job.id, "app", `Quote sent: labour ${usd(labour)}, parts ${usd(parts)}.`);
   const co = calloutPaid(job) ? 0 : m.pay1;
-  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\n${co ? `Inspection and travel: ${usd(co)}\n` : ""}Labour: ${usd(labour)}\nParts: ${usd(parts)}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(r2(m.pay2 + co))}*\n\nNothing starts until you approve. If you decline, only the inspection and travel (${usd(m.pay1)}) is payable for today's visit, and your quote is saved for ${RULES.diagnosisValidDays} days.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Decline for now" }]);
+  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\n${co ? `Inspection and travel: ${usd(co)}\n` : ""}Labour: ${usd(labour)}\nParts: ${parts ? usd(parts) : "none needed"}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(r2(m.pay2 + co))}*\n\nNothing starts until you approve. If you decline, only the inspection and travel (${usd(m.pay1)}) is payable for today's visit, and your quote is saved for ${RULES.diagnosisValidDays} days.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Decline for now" }]);
   return { ok: true };
 }
 
@@ -411,8 +424,9 @@ export async function proComplete(pro, jobId, checks = []) {
   const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "working") return { error: "Work isn't in progress." };
   if (checks.length < 2) return { error: "Tick the safety and test checks first." };
   if (job.data.part?.status === "to_collect") return { error: "Confirm you've collected the part first." };
-  job.stage = "confirm"; job.data.completedAt = Date.now(); job.data.checks = checks; saveJob(job);
-  logEvent(job.id, "app", `${pro.name} finished and tested: ${checks.join("; ")}.`);
+  job.stage = "confirm"; job.data.completedAt = Date.now(); job.data.checks = checks;
+  job.data.onJobMinutes = job.data.codeOk ? Math.round((job.data.completedAt - job.data.codeOk) / 60e3) : null; saveJob(job);
+  logEvent(job.id, "app", `${pro.name} finished and tested${job.data.onJobMinutes != null ? ` after ${job.data.onJobMinutes} min on the job` : ""}: ${checks.join("; ")}.`);
   await wa.buttons(job.customer, `${first(pro.name)} says the repair is done and tested.\nPlease check it now. Is it working?`, [{ id: "work:yes", title: "Yes, it works" }, { id: "work:no", title: "Not yet" }]);
   return { ok: true };
 }
@@ -429,17 +443,18 @@ export async function customerConfirm(job, works) {
   job.stage = "await_final"; saveJob(job);
   const m = jobMoney(job), withCallout = !calloutPaid(job), amount = finalAmount(job);
   const pay = await requestPayment(job, "final", amount, job.customer);
-  await wa.text(job.customer, `Great! Please pay *${usd(amount)}*:\n${withCallout ? `Inspection and travel: ${usd(m.pay1)}\n` : ""}Labour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\n\n${pay.instructions}`);
+  await wa.text(job.customer, `Great! Please pay *${usd(amount)}*:\n${withCallout ? `Inspection and travel: ${usd(m.pay1)}\n` : ""}Labour: ${usd(m.labour)}\n${m.parts ? `Parts: ${usd(m.parts)}\n` : ""}EcoCash charges: ${usd(m.charges2)}\n\n${pay.instructions}`);
 }
 
 export async function customerRate(job, n) {
   if (job.stage !== "paid" || job.data.rating) return;
   job.data.rating = n; saveJob(job);
-  const pro = getPro(job.pro_id); pro.rating_sum += n; pro.rating_n += 1;
-  if (n >= 4) pro.trust = Math.min(100, pro.trust + 1); if (n <= 2) pro.trust = Math.max(0, pro.trust - 3);
+  let pro = getPro(job.pro_id); pro.rating_sum += n; pro.rating_n += 1;
+  if (n <= 2) addTrustEvent(pro, "lowRating", `${n}★ on ${job.id}`); // a poor rating costs points for 12 months
   savePro(pro);
   if (job.data.probation) probationJobDone(pro.id, job.id, n);
   logEvent(job.id, "wa", `Customer rated ${pro.name} ${n}★.`);
+  await updateTrust(pro.id, job.id);
   await wa.text(job.customer, n >= 4 ? `Thank you! ⭐ We've passed that on to ${first(pro.name)}.` : `Thank you for being honest. Our Harare admin will follow up with you.`);
 }
 
