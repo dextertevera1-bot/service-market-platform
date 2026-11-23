@@ -63,6 +63,7 @@ export function steps(p) {
   st.approved = p.status === "verified" ? "done" : indDone && st.inperson === "done" && st.refs === "done" && st.docs === "done" ? "now" : "todo";
   if (p.status === "rejected") for (const k of Object.keys(st)) if (st[k] !== "done") st[k] = "failed";
   const detail = {
+    auto: "Every required item present, this number not already registered, PINs strong enough. Photos are checked by a person at step 4",
     docs: o.docs.status === "more" ? `We need: ${o.docs.note}` : o.docs.status === "accepted" ? "ID and certificates accepted" : "The team is checking your ID and certificates",
     refs: `Referee 1: ${o.refs.r1 || "not called yet"} · Referee 2: ${o.refs.r2 || "not called yet"}`,
     inperson: o.inperson ? `Documents checked ✓ · trade quiz ${as?.result?.correct}/${as?.result?.of} · questionnaire done ✓` : as?.result ? "Quiz and questionnaire done. The team is finishing your check" : as?.open ? "Take the trade quiz and questionnaire now" : o.slot ? `${o.slot.when} at ${o.slot.where}${o.slot.confirmed ? " · you confirmed ✓" : ""}` : "We'll book a time with you after your references",
