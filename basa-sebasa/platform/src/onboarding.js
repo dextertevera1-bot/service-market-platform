@@ -4,6 +4,7 @@ import { getPro, savePro, logEvent } from "./db.js";
 import { checkPin } from "./safety.js";
 import { wa } from "./whatsapp.js";
 import { config } from "./config.js";
+import { assessmentForPro, grade, makePerms } from "./quiz.js";
 
 export const STEPS = [
   { key: "signup", title: "Sign up", who: "You" },
@@ -11,7 +12,7 @@ export const STEPS = [
   { key: "auto", title: "Automatic checks", who: "System" },
   { key: "docs", title: "Document review", who: "Basa team", target: "within 48 hours" },
   { key: "refs", title: "Reference calls", who: "Basa team", target: "within 2 days" },
-  { key: "inperson", title: "In-person check", who: "Basa team + you", target: "1 to 2 hours" },
+  { key: "inperson", title: "Meeting day", who: "Basa team + you", target: "about 30 minutes" },
   { key: "induction", title: "Induction and agreement", who: "You + Basa team", target: "about 1 hour" },
   { key: "approved", title: "Approved", who: "Basa team", target: "same day" },
 ];
@@ -54,7 +55,9 @@ export function steps(p) {
   st.docs = o.docs.status === "accepted" ? "done" : o.docs.status === "more" ? "action" : "now";
   const refsDone = o.refs.r1 === "positive" && o.refs.r2 === "positive", refsBad = o.refs.r1 === "negative" || o.refs.r2 === "negative";
   st.refs = refsBad ? "failed" : refsDone ? "done" : st.docs === "done" ? "now" : "todo";
-  st.inperson = o.inperson?.passed ? "done" : o.inperson && !o.inperson.passed ? "failed" : st.refs === "done" ? (o.slot && !o.slot.confirmed ? "action" : "now") : "todo";
+  const as = o.assessment;
+  st.inperson = o.inperson?.passed ? "done" : o.inperson && !o.inperson.passed ? "failed" : st.refs !== "done" ? "todo"
+    : (o.slot && !o.slot.confirmed) || (as?.open && !as.result) ? "action" : "now";
   const ind = o.induction, indDone = ind.acks.length >= INDUCTION.length && ind.practice.safe && ind.practice.duress && ind.signed;
   st.induction = indDone ? "done" : st.inperson === "done" ? "action" : "todo";
   st.approved = p.status === "verified" ? "done" : indDone && st.inperson === "done" && st.refs === "done" && st.docs === "done" ? "now" : "todo";
@@ -62,7 +65,7 @@ export function steps(p) {
   const detail = {
     docs: o.docs.status === "more" ? `We need: ${o.docs.note}` : o.docs.status === "accepted" ? "ID and certificates accepted" : "The team is checking your ID and certificates",
     refs: `Referee 1: ${o.refs.r1 || "not called yet"} · Referee 2: ${o.refs.r2 || "not called yet"}`,
-    inperson: o.inperson ? `Practical test ${o.inperson.score}/10 · working safely: ${o.inperson.safety ? "pass" : "fail"}` : o.slot ? `${o.slot.when} at ${o.slot.where}${o.slot.confirmed ? " · you confirmed ✓" : ""}` : "We'll book a time with you after your references",
+    inperson: o.inperson ? `Documents checked ✓ · trade quiz ${as?.result?.correct}/${as?.result?.of} · questionnaire done ✓` : as?.result ? "Quiz and questionnaire done. The team is finishing your check" : as?.open ? "Take the trade quiz and questionnaire now" : o.slot ? `${o.slot.when} at ${o.slot.where}${o.slot.confirmed ? " · you confirmed ✓" : ""}` : "We'll book a time with you after your references",
     induction: `${ind.acks.length}/${INDUCTION.length} rules · PIN practice ${ind.practice.safe && ind.practice.duress ? "✓" : "to do"} · agreement ${ind.signed ? "signed ✓" : "to sign"}`,
   };
   return STEPS.map((s) => ({ ...s, state: st[s.key], detail: detail[s.key] || "" }));
@@ -72,7 +75,10 @@ export const readyToApprove = (p) => steps(p).find((s) => s.key === "approved").
 export function onboardingView(p) {
   const o = ob(p);
   return { steps: steps(p), induction: INDUCTION.map((i) => ({ ...i, done: o.induction.acks.includes(i.id) })), practice: o.induction.practice, signed: o.induction.signed,
-    agreement: AGREEMENT, slot: o.slot, docsNote: o.docs.status === "more" ? o.docs.note : null, status: p.status, rejectedReason: p.data.rejectedReason || null };
+    agreement: AGREEMENT, slot: o.slot,
+    assessment: o.assessment?.open && !o.assessment.result ? assessmentForPro(p.trade, o.assessment.perms) : null,
+    assessmentDone: o.assessment?.result ? { correct: o.assessment.result.correct, of: o.assessment.result.of } : null,
+    docsNote: o.docs.status === "more" ? o.docs.note : null, status: p.status, rejectedReason: p.data.rejectedReason || null };
 }
 
 const tell = (p, text) => wa.text(p.phone, text);
@@ -102,7 +108,17 @@ export async function signAgreement(p, name, agree) {
   logEvent(null, "onboarding", `${p.name} completed induction and signed the Service Provider Agreement.`);
   return { ok: true };
 }
-export function confirmSlot(p) { const o = ob(p); if (!o.slot || o.slot.confirmed) return { error: "Nothing to confirm." }; o.slot.confirmed = Date.now(); savePro(p); logEvent(null, "onboarding", `${p.name} confirmed the in-person check: ${o.slot.when}.`); return { ok: true }; }
+// The pro takes the quiz and questionnaire in the app, once, on the meeting day.
+export function submitAssessment(p, answers, attitude) {
+  const o = ob(p), as = o.assessment;
+  if (!as?.open) return { error: "The quiz opens at your meeting, when the team starts it." };
+  if (as.result) return { error: "You've already sent your answers." };
+  const r = grade(p.trade, as.perms, answers, attitude); if (r.error) return r;
+  as.result = r; savePro(p);
+  logEvent(null, "onboarding", `${p.name} finished the meeting-day assessment: trade quiz ${r.correct}/${r.of}${r.safetyMissed.length ? `, ${r.safetyMissed.length} safety question(s) wrong` : ""}; questionnaire ${r.attitudeGood}/${r.attitudeOf}${r.flags.length ? `, ${r.flags.length} flagged` : ""}.`);
+  return { ok: true };
+}
+export function confirmSlot(p) { const o = ob(p); if (!o.slot || o.slot.confirmed) return { error: "Nothing to confirm." }; o.slot.confirmed = Date.now(); savePro(p); logEvent(null, "onboarding", `${p.name} confirmed the meeting: ${o.slot.when}.`); return { ok: true }; }
 export function resubmitDocs(p, files) {
   const o = ob(p); if (o.docs.status !== "more") return { error: "Nothing was asked for." };
   p.data.files = { ...(p.data.files || {}), ...files }; o.docs = { status: "pending", resubmittedAt: Date.now() }; savePro(p);
@@ -128,22 +144,33 @@ export async function teamStep(p, b, by) {
       if (s.refs !== "done") return { error: "Both references must be positive first." };
       if (!b.when || !b.where) return { error: "Enter the day, time and place." };
       o.slot = { when: String(b.when).slice(0, 60), where: String(b.where).slice(0, 120), confirmed: false, by };
-      await tell(p, `Basa seBasa: your in-person check is booked for ${o.slot.when} at ${o.slot.where}. Bring your original ID and your tools. Please confirm in your Pro app: ${config.baseUrl}/pro`);
+      await tell(p, `Basa seBasa: your meeting is booked for ${o.slot.when} at ${o.slot.where}. Bring ALL your original documents (ID, certificates, anything you uploaded) and your phone with the Pro app; you'll do a short quiz on it. Be ready to talk about your past work. Please confirm in your Pro app: ${config.baseUrl}/pro`);
+      break;
+    case "open": // on the day, the admin opens the quiz on the pro's phone
+      if (!o.slot) return { error: "Book the meeting first." };
+      if (o.assessment?.result) return { error: "The quiz has already been taken." };
+      o.assessment = { open: Date.now(), by, perms: makePerms(p.trade), tries: (o.assessment?.tries || 0) + 1 };
+      break;
+    case "retake":
+      if (!o.assessment?.result || o.assessment.result.quizPassed) return { error: "Only a failed quiz can be retaken." };
+      if ((o.assessment.tries || 1) >= 2) return { error: "The one retake has been used." };
+      o.assessment = { open: Date.now(), by, perms: makePerms(p.trade), tries: (o.assessment.tries || 1) + 1, previous: o.assessment.result };
       break;
     case "inperson": {
-      if (!o.slot) return { error: "Book the in-person check first." };
-      const score = Number(b.score);
-      if (!(score >= 0 && score <= 10)) return { error: "Score must be 0 to 10." };
-      const passed = score >= 7 && !!b.safety;
-      o.inperson = { score, safety: !!b.safety, passed, idMatched: !!b.idMatched, photo: !!b.photo, at: Date.now(), by };
-      if (!passed) return reject(p, `In-person check not passed (score ${score}/10${b.safety ? "" : ", unsafe working"})`, by);
-      await tell(p, `Well done ${first(p)}! You passed the in-person check (${score}/10). Last step: the induction and agreement in your Pro app: ${config.baseUrl}/pro`);
+      const r = o.assessment?.result; if (!r) return { error: "The pro must finish the quiz and questionnaire first." };
+      if (!b.docsChecked || !b.photo) return { error: "Tick that the original documents were checked and the profile photo was taken." };
+      if (!["strong", "acceptable", "concern"].includes(b.pastWork)) return { error: "Say how the past-work discussion went." };
+      const passed = r.quizPassed && b.pastWork !== "concern";
+      o.inperson = { passed, docsChecked: true, photo: true, pastWork: b.pastWork, pastWorkNote: String(b.note || "").slice(0, 500), quiz: r.correct, at: Date.now(), by };
+      if (!passed) return reject(p, !r.quizPassed ? `trade quiz not passed (${r.correct}/${r.of}${r.safetyMissed.length ? ", a safety question wrong" : ""})` : "concerns about past work", by);
+      await tell(p, `Well done ${first(p)}! You passed your meeting-day check (trade quiz ${r.correct}/${r.of}). Last step: the induction and agreement in your Pro app: ${config.baseUrl}/pro`);
       break;
     }
     default: return { error: "Unknown step." };
   }
   const said = { docs: b.result === "accepted" ? "documents accepted" : `asked for more: ${o.docs.note}`, refs: `referee ${b.ref === "r1" ? 1 : 2} ${b.result}`,
-    slot: `in-person check booked for ${o.slot?.when} at ${o.slot?.where}`, inperson: `in-person check passed, ${o.inperson?.score}/10, worked safely` }[b.step];
+    slot: `meeting booked for ${o.slot?.when} at ${o.slot?.where}`, open: "quiz and questionnaire opened on the pro's phone", retake: "one quiz retake allowed",
+    inperson: `meeting-day check passed: documents checked, photo taken, quiz ${o.assessment?.result?.correct}/${o.assessment?.result?.of}, past work ${o.inperson?.pastWork}` }[b.step];
   savePro(p); logEvent(null, "onboarding", `${p.name}: ${said} (${by}).`);
   return { ok: true };
 }
@@ -156,10 +183,22 @@ export async function reject(p, reason, by) {
 }
 
 // Starting Trust Score from the checks passed, as in the onboarding workflow.
-export function startingTrust(p) {
-  const o = ob(p);
-  return Math.min(95, 50 + 10 /* ID */ + 10 /* references */ + Math.round((o.inperson?.score || 0) * 2) + (p.data.files?.certificate ? 5 : 0));
+// Starting Trust Score out of 100 (capped at 95: nobody starts perfect). The meeting-day quiz and
+// questionnaire carry 40 of the 100 points.
+export const TRUST_WEIGHTS = { base: 35, documents: 10, references: 10, quiz: 25, attitude: 15, certificate: 5 };
+export function trustBreakdown(p, { assumeDocs = false } = {}) {
+  const o = ob(p), r = o.assessment?.result, W = TRUST_WEIGHTS;
+  const parts = {
+    base: W.base,
+    documents: o.inperson?.docsChecked || assumeDocs ? W.documents : 0,
+    references: o.refs.r1 === "positive" && o.refs.r2 === "positive" ? W.references : 0,
+    quiz: r ? Math.round(W.quiz * r.correct / r.of) : 0,
+    attitude: r ? Math.round(W.attitude * r.attitudeGood / r.attitudeOf) : 0,
+    certificate: p.data.files?.certificate ? W.certificate : 0,
+  };
+  return { parts, total: Math.min(95, Object.values(parts).reduce((a, b) => a + b, 0)) };
 }
+export function startingTrust(p) { return trustBreakdown(p).total; }
 
 export async function approve(p, by) {
   if (!readyToApprove(p)) return { error: "Not ready: every step must be done first." };

@@ -7,6 +7,15 @@ process.env.ADMIN_USERS = "dex:test-pass,harare:test-pass2";
 const { startServer } = await import("../src/server.js");
 const { money } = await import("../src/rules.js");
 const { scrub } = await import("../src/scrub.js");
+const { QUIZZES, ATTITUDE } = await import("../src/quiz.js");
+const { getProByPhone } = await import("../src/db.js");
+// Answers as the applicant would tick them: `wrong` quiz questions and `flagged` statements answered badly.
+function answersFor(phone, { wrong = [], flagged = [] } = {}) {
+  const p = getProByPhone(phone.replace(/^0/, "263")), perms = p.data.onboarding.assessment.perms, Q = QUIZZES[p.trade];
+  const answers = Q.map((x, i) => { const right = perms[i].indexOf(x.a); return wrong.includes(i) ? (right + 1) % x.o.length : right; });
+  const attitude = ATTITUDE.map((x, i) => ((x.good !== flagged.includes(i)) ? "agree" : "disagree"));
+  return { answers, attitude };
+}
 
 let server, base, opsToken; const tokens = {};
 const CUST = "263771234567";
@@ -45,10 +54,24 @@ async function makePro(name, phone, suburb, pin, duress) {
   await step({ step: "docs", result: "accepted" });
   await step({ step: "refs", ref: "r1", result: "positive" });
   await step({ step: "refs", ref: "r2", result: "positive" });
-  await step({ step: "slot", when: "Thu 3 Dec, 10:00", where: "Basa test site, Avondale" });
+  await step({ step: "slot", when: "Thu 3 Dec, 10:00", where: "Basa office, Avondale" });
   await api("/api/pro/onboarding/confirm-slot", {}, token);
-  assert.equal((await api("/api/pro/onboarding/ack", { id: "code" }, token)).status, 409, "induction opens after the in-person check");
-  await step({ step: "inperson", score: 8, safety: true, idMatched: true, photo: true });
+  assert.equal((await api("/api/pro/onboarding/ack", { id: "code" }, token)).status, 409, "induction opens after the meeting");
+  assert.equal((await api("/api/pro/onboarding/assessment", { answers: [], attitude: [] }, token)).status, 409, "quiz closed until the admin opens it");
+  assert.equal((await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "strong" })).status, 409, "needs the quiz first");
+  await step({ step: "open" });
+  st = (await api("/api/pro/state", null, token)).body;
+  assert.equal(st.onboarding.assessment.quiz.length, 10); assert.equal(st.onboarding.assessment.attitude.length, 12);
+  assert.ok(!JSON.stringify(st.onboarding.assessment).includes('"a":'), "no answers sent to the phone");
+  const ans = answersFor(phone, { flagged: [0] });
+  assert.equal((await api("/api/pro/onboarding/assessment", { answers: ans.answers.slice(0, 5), attitude: ans.attitude }, token)).status, 409, "every question needed");
+  assert.equal((await api("/api/pro/onboarding/assessment", ans, token)).status, 200);
+  assert.equal((await api("/api/pro/onboarding/assessment", ans, token)).status, 409, "only once");
+  const ovA = (await api("/api/ops/overview", null, opsToken)).body.pros.find((x) => x.id === id).onboarding;
+  assert.equal(ovA.ob.assessment.result.correct, 10); assert.equal(ovA.ob.assessment.result.flags.length, 1);
+  assert.equal(ovA.ob.assessment.perms, undefined, "answer order not sent to the ops desk either");
+  assert.equal((await step({ step: "inperson", docsChecked: false, photo: true, pastWork: "strong" })).status, 409, "documents must be checked");
+  await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "strong", note: "Showed 3 fridge jobs" });
   // Induction in the app: every rule, both PINs practised, agreement signed.
   st = (await api("/api/pro/state", null, token)).body;
   for (const i of st.onboarding.induction) await api("/api/pro/onboarding/ack", { id: i.id }, token);
@@ -63,7 +86,7 @@ async function makePro(name, phone, suburb, pin, duress) {
   assert.equal((await api(`/api/ops/pro/${id}/approve`, {}, opsToken)).status, 200);
   st = (await api("/api/pro/state", null, token)).body;
   assert.equal(st.onboarding, null); assert.equal(st.level, "Bronze"); assert.equal(st.probation.left, 5);
-  assert.equal(st.pro.trust, 86); // 50 + ID 10 + references 10 + test 8/10 x2
+  assert.equal(st.pro.trust, 94); // 35 + documents 10 + references 10 + quiz 25 + questionnaire 14 (11 of 12)
   await api("/api/pro/online", { on: true }, token);
   return token;
 }
@@ -212,8 +235,16 @@ test("a failed in-person check ends the application", async () => {
   const step = (b) => api(`/api/ops/pro/${id}/step`, b, opsToken);
   await step({ step: "docs", result: "accepted" }); await step({ step: "refs", ref: "r1", result: "positive" }); await step({ step: "refs", ref: "r2", result: "positive" });
   await step({ step: "slot", when: "Fri", where: "Office" });
-  const r = await step({ step: "inperson", score: 9, safety: false });
-  assert.equal(r.body.rejected, true, "unsafe working fails whatever the score");
+  await step({ step: "open" });
+  const T = (await api("/api/pro/verify", { phone: "0773555111", code: (await api("/api/pro/login", { phone: "0773555111" })).body.devCode })).body.token;
+  // 9 out of 10, but the one wrong answer is a safety question: not passed.
+  const safeIdx = QUIZZES.appl.findIndex((x) => x.s);
+  await api("/api/pro/onboarding/assessment", answersFor("0773555111", { wrong: [safeIdx] }), T);
+  await step({ step: "retake" }); // one retake allowed
+  await api("/api/pro/onboarding/assessment", answersFor("0773555111", { wrong: [safeIdx] }), T);
+  assert.equal((await step({ step: "retake" })).status, 409, "only one retake");
+  const r = await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "acceptable" });
+  assert.equal(r.body.rejected, true, "a wrong safety answer fails whatever the score");
   const l = await api("/api/pro/login", { phone: "0773555111" });
   assert.equal(l.status, 403); assert.match(l.body.error, /reapply after 3 months/);
 });

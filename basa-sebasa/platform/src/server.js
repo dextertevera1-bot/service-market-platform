@@ -147,7 +147,8 @@ function opsOverview() {
   const payouts = all("SELECT p.*, pr.name, pr.ecocash FROM payouts p JOIN pros pr ON pr.id = p.pro_id WHERE p.paid_at IS NULL ORDER BY p.due_at");
   const pros = all("SELECT id, name, phone, trade, suburb, status, online, trust, jobs_done, rating_sum, rating_n, ecocash, em_name, em_phone, data, created_at FROM pros ORDER BY status, name")
     .map((p) => { const full = { ...p, data: JSON.parse(p.data || "{}") };
-      return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(full), ob: full.data.onboarding } : null }; });
+      return { ...full, trade: serviceById(p.trade)?.name || p.trade, onboarding: p.status === "applied" ? { steps: OB.steps(full), ready: OB.readyToApprove(full), trustIfApproved: OB.startingTrust(full), trust: OB.trustBreakdown(full, { assumeDocs: true }),
+        ob: { ...full.data.onboarding, assessment: full.data.onboarding?.assessment && { ...full.data.onboarding.assessment, perms: undefined } } } : null }; });
   const probationCalls = all("SELECT id FROM jobs WHERE stage = 'paid' AND json_extract(data,'$.probation') = 1 AND json_extract(data,'$.probationCall') IS NULL ORDER BY updated_at LIMIT 200").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, pro: j.data.pro?.name, customer: j.customer, rating: j.data.rating || null }));
   const events = all("SELECT * FROM events ORDER BY id DESC LIMIT 120");
@@ -247,8 +248,9 @@ async function route(req, res) {
     const pro = getPro(Number(s.ref)); if (!pro || !["verified", "applied"].includes(pro.status)) return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
     const b = method === "POST" ? json(await readBody(req, path.endsWith("/docs") ? 12e6 : 1e6)) : {};
     if (path === "/api/pro/state") return send(res, 200, proState(pro));
-    if ((m = path.match(/^\/api\/pro\/onboarding\/(ack|practice|sign|confirm-slot|docs)$/))) {
+    if ((m = path.match(/^\/api\/pro\/onboarding\/(ack|practice|sign|confirm-slot|docs|assessment)$/))) {
       let r;
+      if (m[1] === "assessment") { r = OB.submitAssessment(pro, b.answers, b.attitude); return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) }); }
       if (m[1] === "ack") r = OB.ackInduction(pro, b.id);
       else if (m[1] === "practice") r = OB.practisePin(pro, b.pin);
       else if (m[1] === "sign") r = await OB.signAgreement(pro, b.name, b.agree);
@@ -294,7 +296,7 @@ async function route(req, res) {
   }
   if (path.startsWith("/api/ops/")) {
     const s = session(req, "ops"); if (!s) return send(res, 401, { error: "Please log in." });
-    const by = s.ref, b = method === "POST" ? json(await readBody(req)) : {};
+    const by = s.ref, b = method === "POST" ? json(await readBody(req, path.endsWith("/photo") ? 12e6 : 1e6)) : {};
     if (path === "/api/ops/overview") return send(res, 200, opsOverview());
     if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)$/))) { const j = getJob(m[1]); if (!j) return send(res, 404, { error: "No such job" });
       return send(res, 200, { job: { ...j, label: J.STAGE_LABEL[j.stage], money: J.jobMoney(j) }, payments: all("SELECT * FROM payments WHERE job_id = ?", j.id), payouts: all("SELECT * FROM payouts WHERE job_id = ?", j.id), events: all("SELECT * FROM events WHERE job_id = ? ORDER BY id", j.id) }); }
@@ -312,6 +314,13 @@ async function route(req, res) {
       const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
       const r = m[2] === "step" ? await OB.teamStep(p, b, by) : m[2] === "approve" ? await OB.approve(p, by) : await OB.reject(p, String(b.note || "not approved"), by);
       return send(res, r.error ? 409 : 200, r);
+    }
+    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/photo$/))) {
+      const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
+      const files = await savePhotos(p.id, { selfie: b.image }); if (!files.selfie) return send(res, 400, { error: "Send a JPEG or PNG photo." });
+      p.data = { ...p.data, photo: files.selfie, files: { ...(p.data.files || {}), profile: files.selfie } }; savePro(p);
+      logEvent(null, "onboarding", `Profile photo of ${p.name} taken by ${by} at the meeting.`);
+      return send(res, 200, { ok: true });
     }
     if ((m = path.match(/^\/api\/ops\/job\/(BSB-\d+)\/probation-call$/))) {
       const j = getJob(m[1]); if (!j || !j.data.probation) return send(res, 404, { error: "No probation call for this job." });

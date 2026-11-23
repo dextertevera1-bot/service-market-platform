@@ -3,7 +3,7 @@
 The real system behind the demo: the customer WhatsApp bot, the Pro app, the ops desk and the pro sign-up form, on one small server.
 
 - **Customers** book on WhatsApp (Cloud API). Nothing to install.
-- **Pros** apply at `/join`, then log in to the Pro app at `/pro` (installs from the browser, no app store) and follow the 8 onboarding steps: sign up, documents, automatic checks, document review, reference calls, in-person check, induction and agreement (in the app, including practising both PINs), approval. Then 5 probation jobs with a quality call to each customer.
+- **Pros** apply at `/join`, then log in to the Pro app at `/pro` (installs from the browser, no app store) and follow the 8 onboarding steps: sign up, documents, automatic checks, document review, reference calls, meeting day (original documents checked, profile photo, a 10-question trade quiz and a 12-statement questionnaire in the Pro app, past work discussed), induction and agreement (in the app, including practising both PINs), approval. The quiz and questionnaire carry 40 of the 100 starting Trust Score points. The trade quizzes in `src/quiz.js` are drafts: have a qualified technician check them before real applicants take them. Then 5 probation jobs with a quality call to each customer.
 - **Harare admin and Dex** run everything from the ops desk at `/ops`: safety alerts, EcoCash confirmations, payouts, applications, jobs.
 - Payments are EcoCash in USD, in three modes: `manual` (merchant code, admin confirms), `paynow` (prompt on the customer's phone), `sim` (testing only).
 

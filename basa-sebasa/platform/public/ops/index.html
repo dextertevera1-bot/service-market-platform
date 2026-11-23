@@ -58,6 +58,7 @@ dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--c
 </head>
 <body>
 <div id="app"></div>
+<datalist id="venues"></datalist>
 <dialog id="dlg"><div id="dlgbody"></div><p><button class="btn q" onclick="document.getElementById('dlg').close()">Close</button></p></dialog>
 <script>
 const $ = (s) => document.querySelector(s);
@@ -99,6 +100,21 @@ function alertsView() {
       <ol class="ladder">${a.ladder.map((s, i) => `<li class="${i < a.step ? "done" : i === a.step ? "now" : ""}">${esc(s)}</li>`).join("")}</ol>
       <div class="row">${a.step < a.ladder.length ? `<button class="btn" data-alert="${a.id}" data-do="step">Done: next step</button>` : ""}<button class="btn q" data-alert="${a.id}" data-do="close">Close: confirmed safe / resolved</button></div></div>`; }).join("");
 }
+// Step 6, the meeting day: book → pro confirms → open the quiz on their phone → results → admin's checks → result.
+function meetingStep(p, o, ob) {
+  const as = ob.assessment, r = as?.result, t = o.trust;
+  if (!ob.slot) return `<b>Step 6 · Book the meeting</b> <small>about 30 minutes; any quiet place</small><div class="row"><input class="s" type="datetime-local" id="sw${p.id}" style="width:200px"><input class="s" id="sp${p.id}" placeholder="Place, e.g. Basa office, 12 Samora Machel Ave" list="venues" style="width:280px"><button class="btn" data-step="${p.id}" data-s="slot">Book and tell the pro</button></div>`;
+  const head = `<b>Step 6 · Meeting day</b> ${esc(ob.slot.when)} at ${esc(ob.slot.where)} · ${ob.slot.confirmed ? "pro confirmed ✓" : "waiting for the pro to confirm"}`;
+  if (!as) return head + `<div class="small">On the day: check every original document against the uploads, take the profile photo, then open the quiz on the pro's phone.</div><div class="row"><button class="btn" data-step="${p.id}" data-s="open">Start the quiz on the pro's phone</button></div>`;
+  if (!r) return head + `<div class="small">● The pro is answering the trade quiz (10 questions) and questionnaire (12 statements) in the Pro app…</div>`;
+  const pass = r.quizPassed;
+  return head + `<div style="display:grid;gap:4px"><div><b>Trade quiz:</b> ${r.correct}/${r.of} ${pass ? `<span class="tag done">passed</span>` : `<span class="tag bad">not passed</span>`}${r.safetyMissed.length ? `<br><small style="color:var(--bad)">Safety question(s) wrong: ${r.safetyMissed.map(esc).join(" · ")}</small>` : ""}</div>
+      <div><b>Questionnaire:</b> ${r.attitudeGood}/${r.attitudeOf}${r.flags.length ? `<br><small style="color:var(--warn)">Talk these through: ${r.flags.map(esc).join(" · ")}</small>` : " · no concerns"}</div>
+      <div class="small">Starting Trust Score if approved: <b>${t.total}</b> = base ${t.parts.base} + documents ${t.parts.documents} (once ticked) + references ${t.parts.references} + quiz ${t.parts.quiz}/25 + questionnaire ${t.parts.attitude}/15${t.parts.certificate ? ` + certificate ${t.parts.certificate}` : ""}</div></div>
+    <div class="row"><label class="row" style="gap:4px"><input type="checkbox" id="dc${p.id}"> All original documents checked against the uploads</label><label class="row" style="gap:4px"><input type="checkbox" id="ph${p.id}"> Profile photo taken</label><label class="btn q" style="cursor:pointer">Upload photo<input type="file" accept="image/*" capture="user" data-photo="${p.id}" hidden></label></div>
+    <div class="row">Past work discussion <select class="s" id="pw${p.id}" style="width:auto"><option value="">Choose…</option><option value="strong">Strong</option><option value="acceptable">Acceptable</option><option value="concern">Concern</option></select><input class="s" id="pn${p.id}" placeholder="Notes: jobs discussed, anything to watch" style="width:300px"></div>
+    <div class="row"><button class="btn" data-step="${p.id}" data-s="inperson">Record result</button>${!pass && (as.tries || 1) < 2 ? `<button class="btn q" data-step="${p.id}" data-s="retake">Allow one retake</button>` : ""}</div>`;
+}
 const STEP_ICON = { done: "✓", now: "●", action: "…", failed: "✗", todo: "○" };
 function onboardingSection(apps) {
   const body = apps.map((p) => { const o = p.onboarding, ob = o.ob || {}, st = Object.fromEntries(o.steps.map((x) => [x.key, x.state]));
@@ -106,11 +122,7 @@ function onboardingSection(apps) {
     if (st.docs === "now") next = `<b>Step 4 · Document review</b><div class="thumbs">${["idFront", "idBack", "selfie", "certificate"].filter((k) => p.data.files?.[k]).map((k) => `<a href="#" data-file="${p.id}/${k}">${{ idFront: "ID front", idBack: "ID back", selfie: "Selfie with ID", certificate: "Certificate" }[k]}</a>`).join(" · ")}</div><div class="row"><button class="btn" data-step="${p.id}" data-s="docs" data-r="accepted">ID and certificates genuine: accept</button><button class="btn q" data-step="${p.id}" data-s="docs" data-r="more">Ask for more</button></div>`;
     else if (st.docs === "action") next = `<b>Step 4 · Waiting for the pro</b> to send: ${esc(ob.docs?.note)}`;
     else if (st.refs === "now") next = `<b>Step 5 · Reference calls</b><div class="small">Referees: ${esc(p.data.referees || "-")}<br>Ask: what work they did, quality, honesty, punctuality, would they hire them again?</div>${["r1", "r2"].map((r, i) => `<div class="row">Referee ${i + 1}: ${ob.refs?.[r] ? `<b>${esc(ob.refs[r])}</b>` : `<button class="btn" data-step="${p.id}" data-s="refs" data-ref="${r}" data-r="positive">Positive</button><button class="btn r" data-step="${p.id}" data-s="refs" data-ref="${r}" data-r="negative">Not positive</button>`}</div>`).join("")}`;
-    else if (st.inperson === "now" || st.inperson === "action") next = !ob.slot
-      ? `<b>Step 6 · Book the in-person check</b><div class="row"><input class="s" id="sw${p.id}" placeholder="Day and time" style="width:150px"><input class="s" id="sp${p.id}" placeholder="Place" style="width:180px"><button class="btn" data-step="${p.id}" data-s="slot">Book and tell the pro</button></div>`
-      : `<b>Step 6 · In-person check</b> ${esc(ob.slot.when)} at ${esc(ob.slot.where)} · ${ob.slot.confirmed ? "pro confirmed ✓" : "waiting for the pro to confirm"}
-        <div class="row"><label class="row" style="gap:4px"><input type="checkbox" id="id${p.id}"> Original ID matches</label><label class="row" style="gap:4px"><input type="checkbox" id="ph${p.id}"> Profile photo taken</label><label class="row" style="gap:4px"><input type="checkbox" id="sf${p.id}"> Worked safely (must pass)</label></div>
-        <div class="row">Practical test score <input class="s" id="sc${p.id}" inputmode="numeric" placeholder="0–10" style="width:70px"> <small>pass mark 7</small><button class="btn" data-step="${p.id}" data-s="inperson">Record result</button></div>`;
+    else if (st.inperson === "now" || st.inperson === "action") next = meetingStep(p, o, ob);
     else if (st.induction === "action") next = `<b>Step 7 · Induction</b>: the pro is going through it in the Pro app (${esc(o.steps.find((x) => x.key === "induction").detail)}).`;
     else if (st.approved === "now") next = `<b>Step 8 · Ready to approve</b>: starting Trust Score ${o.trustIfApproved}, Bronze level, 5 probation jobs.<div class="row"><button class="btn" data-approve="${p.id}">Approve</button></div>`;
     return `<div class="alert calm"><div class="row"><b>${esc(p.name)}</b><span class="tag">${esc(p.trade)}</span><span>${esc(p.suburb)}</span><span class="muted">+${esc(p.phone)} · applied ${ago(p.created_at)} ago</span><button class="btn r" data-reject="${p.id}" style="margin-left:auto">Reject</button></div>
@@ -124,7 +136,7 @@ function render() {
   if (!token) { const u0 = $("#u")?.value || "", p0 = $("#p")?.value || "";
     app.innerHTML = `<div class="login"><img src="/assets/icon-192.png" alt=""><h2 style="justify-content:center">Ops desk</h2><input id="u" placeholder="Name (e.g. harare)" autocomplete="username" autocapitalize="none" spellcheck="false"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" data-do="login">Log in</button><div class="err">${esc(err)}</div></div>`; $("#u").value = u0; $("#p").value = p0; return; }
   if (!D) { app.innerHTML = `<main><p>Loading…</p></main>`; return; }
-  const keep = {}; app.querySelectorAll("input").forEach((el) => { if (el.id) keep[el.id] = el.type === "checkbox" ? el.checked : el.value; }); const focus = document.activeElement?.id;
+  const keep = {}; app.querySelectorAll("input, select").forEach((el) => { if (el.id) keep[el.id] = el.type === "checkbox" ? el.checked : el.value; }); const focus = document.activeElement?.id;
   const live = D.jobs.filter((j) => !["paid", "cancelled", "deferred", "noshow"].includes(j.stage));
   const urgent = D.alerts.filter((a) => URGENT.includes(a.kind)).length, apps = D.pros.filter((p) => p.status === "applied");
   const dueSoon = D.payouts.filter((p) => p.due_at - Date.now() < 6 * 3600e3).length;
@@ -184,9 +196,15 @@ document.addEventListener("click", async (e) => {
       const id = d.step, body = { step: d.s, result: d.r, ref: d.ref };
       if (d.s === "docs" && d.r === "more") { body.note = prompt("What's missing? (sent to the pro)"); if (!body.note) return; }
       if (d.s === "refs" && d.r === "negative" && !confirm("A reference that isn't positive ends the application. Continue?")) return;
-      if (d.s === "slot") { body.when = $("#sw" + id).value; body.where = $("#sp" + id).value; }
-      if (d.s === "inperson") { body.score = $("#sc" + id).value; body.safety = $("#sf" + id).checked; body.idMatched = $("#id" + id).checked; body.photo = $("#ph" + id).checked;
-        if (body.score === "" ) return alert("Enter the practical test score."); if (!(Number(body.score) >= 7 && body.safety) && !confirm("This fails the in-person check and ends the application. Continue?")) return; }
+      if (d.s === "slot") { const v = $("#sw" + id).value; if (!v) return alert("Choose the day and time.");
+        const dt = new Date(v); body.when = dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + ", " + dt.toTimeString().slice(0, 5); body.where = $("#sp" + id).value;
+        try { const vs = JSON.parse(localStorage.getItem("basa-venues") || "[]"); if (body.where && !vs.includes(body.where)) localStorage.setItem("basa-venues", JSON.stringify([body.where, ...vs].slice(0, 6))); } catch {} }
+      if (d.s === "inperson") { body.docsChecked = $("#dc" + id).checked; body.photo = $("#ph" + id).checked; body.pastWork = $("#pw" + id).value; body.note = $("#pn" + id).value;
+        if (!body.docsChecked || !body.photo) return alert("Tick that the original documents were checked and the profile photo was taken.");
+        if (!body.pastWork) return alert("Choose how the past-work discussion went.");
+        const failing = body.pastWork === "concern" || /not passed/.test(t.closest(".nextstep").textContent);
+        if (failing && !confirm("This result ends the application (the pro may reapply after 3 months). Continue?")) return; }
+      if (d.s === "open" && !confirm("Open the quiz on the pro's phone now? Do this only when you're with them.")) return;
       await api(`/api/ops/pro/${id}/step`, body); await refresh();
     }
     else if (d.refund) { await api(`/api/ops/job/${d.refund}/refunded`, { ref: $("#rf" + d.refund).value }); await refresh(); }
@@ -198,6 +216,14 @@ document.addEventListener("click", async (e) => {
     else if (d.reoffer) { await api(`/api/ops/job/${d.reoffer}/reoffer`, {}); $("#dlg").close(); await refresh(); }
     else if (d.cancel) { const note = prompt("Message to the customer:"); if (note != null) { await api(`/api/ops/job/${d.cancel}/cancel`, { note }); $("#dlg").close(); await refresh(); } }
   } catch (x) { err = x.message; render(); if (token) alert(x.message); }
+});
+try { $("#venues").innerHTML = JSON.parse(localStorage.getItem("basa-venues") || "[]").map((v) => `<option value="${esc(v)}">`).join(""); } catch {}
+document.addEventListener("change", async (e) => {
+  const id = e.target.dataset?.photo; if (!id || !e.target.files[0]) return;
+  const f = e.target.files[0], img = new Image(), url = URL.createObjectURL(f);
+  img.onload = async () => { const k = Math.min(1, 1000 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = img.width * k; c.height = img.height * k; c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    try { await api(`/api/ops/pro/${id}/photo`, { image: c.toDataURL("image/jpeg", 0.85) }); const box = $("#ph" + id); if (box) box.checked = true; alert("Profile photo saved."); } catch (x) { alert(x.message); } };
+  img.src = url;
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.target.id === "p" || e.target.id === "u")) $("[data-do=login]").click(); });
 setInterval(() => { if (!document.querySelector("dialog[open]")) refresh(); }, 5000);

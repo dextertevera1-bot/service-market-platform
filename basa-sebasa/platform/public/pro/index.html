@@ -220,7 +220,16 @@ function onboardingView() {
   if (ob.docsNote) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>We need one more thing</h3><p style="margin:0">${esc(ob.docsNote)}</p>
     <div class="field"><label for="dkind">Which photo is it?</label><select id="dkind" style="border:1.5px solid var(--line);border-radius:10px;padding:10px;background:var(--card)"><option value="idFront">ID, front</option><option value="idBack">ID, back</option><option value="selfie">Selfie holding your ID</option><option value="certificate">Trade certificate</option></select></div>
     <div class="field"><input type="file" id="dfile" accept="image/*"></div><button class="btn gold" data-a="sendocs">Send photo</button></div>`;
-  if (ob.slot && !ob.slot.confirmed) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>In-person check booked</h3><table class="split"><tr><td>When</td><td>${esc(ob.slot.when)}</td></tr><tr><td>Where</td><td>${esc(ob.slot.where)}</td></tr></table><p class="muted small" style="margin:0">Bring your original ID and your own tools. You'll do a short practical test for your trade.</p><button class="btn gold" data-a="slotok">I'll be there</button></div>`;
+  if (ob.slot && !ob.slot.confirmed) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>In-person check booked</h3><table class="split"><tr><td>When</td><td>${esc(ob.slot.when)}</td></tr><tr><td>Where</td><td>${esc(ob.slot.where)}</td></tr></table><p class="muted small" style="margin:0">Bring <b>all your original documents</b> (ID, certificates, anything you uploaded) and this phone. On the day you'll do a short trade quiz and questionnaire in this app, and talk about your past work.</p><button class="btn gold" data-a="slotok">I'll be there</button></div>`;
+  if (ob.assessment) {
+    const A = ob.assessment;
+    out += `<div class="card offer"><span class="eyebrow">Meeting day · your turn</span><h3>Trade quiz</h3><p class="muted small" style="margin:0">${A.quiz.length} questions. Pass mark ${A.passMark} out of ${A.quiz.length}, and every question marked <b>Safety</b> must be right. You can only send your answers once.</p>
+      ${A.quiz.map((x) => `<div style="border-top:1px dashed var(--line);padding-top:8px"><b>${x.i + 1}. ${esc(x.q)}</b>${x.safety ? ` <span class="small" style="color:var(--bad);font-weight:700">Safety</span>` : ""}${x.o.map((opt, k) => `<label class="tick" style="margin-top:6px"><input type="radio" name="q${x.i}" id="q${x.i}_${k}" value="${k}"> ${esc(opt)}</label>`).join("")}</div>`).join("")}</div>
+      <div class="card offer"><h3>About how you work</h3><p class="muted small" style="margin:0">Answer honestly; there are no trick questions. Agree or disagree with each statement.</p>
+      ${A.attitude.map((x) => `<div style="border-top:1px dashed var(--line);padding-top:8px"><b>${esc(x.t)}</b><div class="two" style="margin-top:6px"><label class="tick"><input type="radio" name="t${x.i}" id="t${x.i}_y" value="agree"> Agree</label><label class="tick"><input type="radio" name="t${x.i}" id="t${x.i}_n" value="disagree"> Disagree</label></div></div>`).join("")}
+      <div id="qerr" class="err"></div><button class="btn gold" data-a="sendquiz">Send my answers</button></div>`;
+  }
+  if (ob.assessmentDone && indStep.state !== "action" && indStep.state !== "done") out += `<div class="card center"><h3>✓ Answers sent</h3><p class="muted small" style="margin:0">Trade quiz: ${ob.assessmentDone.correct} out of ${ob.assessmentDone.of}. The team is finishing your check now.</p></div>`;
   if (indStep.state === "action") {
     const allAck = ob.induction.every((i) => i.done), pr = ob.practice || {};
     out += `<div class="card"><span class="eyebrow">Induction · 1 of 3</span><h3>How Basa seBasa works</h3><p class="muted small" style="margin:0">Tick each rule once you understand it.</p>${ob.induction.map((i) => `<label class="tick"><input type="checkbox" data-ack="${i.id}" ${i.done ? "checked disabled" : ""}> ${esc(i.text)}</label>`).join("")}</div>`;
@@ -245,7 +254,7 @@ function loginView() {
 function render() {
   const app = $("#app");
   // keep what the pro is typing between refreshes
-  const keep = {}; app.querySelectorAll("input, textarea").forEach((el) => { if (el.id) keep[el.id] = el.type === "checkbox" ? el.checked : el.value; });
+  const keep = {}; app.querySelectorAll("input, textarea").forEach((el) => { if (el.id) keep[el.id] = el.type === "checkbox" || el.type === "radio" ? el.checked : el.value; });
   const focus = document.activeElement?.id, th = $("#thread"), atBottom = !th || th.scrollHeight - th.scrollTop - th.clientHeight < 60;
   if (!token || !S) { app.innerHTML = token ? `<main><div class="card center"><div class="spin"></div></div></main>` : loginView(); }
   else {
@@ -255,7 +264,7 @@ function render() {
     const main = S.onboarding ? onboardingView() : S.offer ? offerView() : j && !home ? (tab === "chat" ? chatView(j) : jobView(j)) : homeView();
     app.innerHTML = header() + `<main>${main}</main>`;
   }
-  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
+  Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox" || el.type === "radio") { if (!el.disabled) el.checked = v; } else el.value = v; });
   if (focus && document.getElementById(focus)) document.getElementById(focus).focus();
   const t2 = $("#thread"); if (t2 && atBottom) t2.scrollTop = t2.scrollHeight;
 }
@@ -282,6 +291,14 @@ document.addEventListener("click", async (e) => {
     else if (a === "checkin" || a === "checkout") {
       try { await act(`${J}/${a}`, { pin: $("#pin").value }, a === "checkout" ? "Checked out ✓. Back to home" : "Checked in ✓"); pinFor = null; if (a === "checkout") { home = true; tab = "job"; } render(); }
       catch (err) { const el = $("#pinerr"); if (el) el.textContent = err.message; }
+    }
+    else if (a === "sendquiz") {
+      const A = S.onboarding.assessment, pick = (n) => { const el = document.querySelector(`input[name="${n}"]:checked`); return el ? el.value : null; };
+      const answers = A.quiz.map((x) => pick("q" + x.i)), attitude = A.attitude.map((x) => pick("t" + x.i));
+      const missing = answers.filter((x) => x == null).length + attitude.filter((x) => x == null).length;
+      if (missing) { const el = $("#qerr"); if (el) el.textContent = `${missing} still to answer.`; return; }
+      if (!confirm("Send your answers? You can't change them afterwards.")) return;
+      await act("/api/pro/onboarding/assessment", { answers: answers.map(Number), attitude }, "Answers sent ✓");
     }
     else if (a === "slotok") await act("/api/pro/onboarding/confirm-slot", {}, "Confirmed. See you there.");
     else if (a === "practice") { try { const r = await act("/api/pro/onboarding/practice", { pin: $("#ppin").value }, "Checked in ✓"); $("#ppin").value = ""; } catch (err) { const el = $("#pinerr"); if (el) el.textContent = err.message; } }
