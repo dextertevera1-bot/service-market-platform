@@ -185,6 +185,28 @@ export async function updateTrust(proId, jobId = null) {
   }
 }
 
+// ---------- the receipt (sent on WhatsApp as soon as the final payment is confirmed) ----------
+const hTime = (t) => new Date(t + 2 * 3600e3).toISOString().slice(11, 16); // Harare time, HH:MM
+export const durationText = (min) => min == null ? null : min < 1 ? "under 1 min" : min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+export function receiptText(job, pro, p) {
+  const m = jobMoney(job), d = job.data, q = d.quote || {};
+  const mins = d.onJobMinutes ?? (d.codeOk && d.completedAt ? Math.round((d.completedAt - d.codeOk) / 60e3) : null);
+  const part = d.part ? `${q.part} (${d.part.shop})` : null;
+  return [
+    `✅ Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!`, "",
+    `🧾 *Basa seBasa receipt ${job.id}*`,
+    `${serviceById(job.service).name} · ${d.suburb} · ${hDate(d.paidAt || Date.now())}`,
+    `Pro: ${pro.name}`,
+    mins != null ? `⏱ Time on the job: *${durationText(mins)}* (${hTime(d.codeOk)}–${hTime(d.completedAt)}, Basa Code to finished and tested)` : null, "",
+    `Inspection and travel: ${usd(m.pay1)}`,
+    `Labour: ${usd(m.labour)}`,
+    m.parts ? `Parts${part ? `: ${part}` : ""}: ${usd(m.parts)}` : `Parts: none`,
+    `EcoCash charges: ${usd(m.charges2)}`,
+    `*Total paid: ${usd(m.pay1 + m.pay2)}*`, "",
+    `Keep this message as your receipt. Reply *help* if anything isn't right with the repair.`,
+  ].filter((x) => x != null).join("\n");
+}
+
 // ---------- what the customer owes ----------
 export const calloutPaid = (job) => !!one("SELECT id FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", job.id);
 // At the end: the repair, plus the call-out if it hasn't been paid (it usually hasn't: it's paid at the end).
@@ -236,7 +258,8 @@ setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
       if (job.data.probation) probationJobDone(pro.id, job.id);
       logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
     });
-    await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nInspection and travel: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
+    // The receipt goes out the moment the payment is confirmed, with the time the pro spent on the job.
+    await wa.text(job.customer, receiptText(job, pro, p));
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
   }
 }));

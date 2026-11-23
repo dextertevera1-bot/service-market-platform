@@ -267,4 +267,9 @@ test("T10 the on-the-job timer runs from the Basa Code to Finished and tested", 
   await api(`/api/pro/job/${id}/complete`, { checks: ["a", "b", "c"] }, t);
   const st = (await api("/api/pro/state", null, t)).body.job;
   assert.ok(st.timer.end, "stopped at Finished and tested"); assert.equal(getJob(id).data.onJobMinutes, 42);
+  await sayAs(phone)({ reply: "work:yes" }); await wait(200);
+  const msgs = (await api(`/sim/api/outbox?to=${phone}`)).body.map((m) => m.payload.text?.body || m.payload.interactive?.body?.text || "");
+  const r = msgs.findIndex((x) => /Basa seBasa receipt/.test(x));
+  assert.ok(r >= 0, "receipt sent on WhatsApp"); assert.match(msgs[r], /Time on the job: \*42 min\*/); assert.match(msgs[r], /Total paid: \$/);
+  assert.ok(msgs.findIndex((x) => /How did .* do\?/.test(x)) > r, "receipt first, then the rating request");
 });
