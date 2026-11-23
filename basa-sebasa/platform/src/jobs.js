@@ -16,13 +16,13 @@ import { config } from "./config.js";
 import { probationJobDone } from "./onboarding.js";
 import * as PARTS from "./parts.js";
 
-export const ACTIVE = ["searching", "offered", "await_callout", "ready", "travelling", "arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
+export const ACTIVE = ["searching", "offered", "await_confirm", "await_callout", "ready", "travelling", "arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
 export const ONSITE = ["arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
 export const CLOSED = ["paid", "cancelled", "deferred", "noshow"];
 const first = (name) => String(name || "").split(" ")[0];
 
 export const STAGE_LABEL = {
-  searching: "Looking for a pro", offered: "Offered to a pro", await_callout: "Waiting for the call-out payment", ready: "Confirmed: pro getting ready",
+  searching: "Looking for a pro", offered: "Offered to a pro", await_confirm: "Waiting for the customer to confirm", await_callout: "Waiting for the call-out payment", ready: "Confirmed: pro getting ready",
   travelling: "Pro on the way", arrived: "Pro at the gate", diagnosing: "Pro diagnosing", quote_sent: "Quote with the customer", working: "Work in progress",
   confirm: "Customer checking the work", await_final: "Waiting for the final payment", paid: "Paid and closed", cancelled: "Cancelled",
   deferred: "Repair saved for later", noshow: "Closed: customer not home",
@@ -134,17 +134,32 @@ export async function proAccept(pro, jobId) {
 No call-out to pay: your first visit covers it. You'll get a new Basa Code when ${first(pro.name)} sets off.`);
     return { ok: true };
   }
-  // The call-out is paid at the end, with the repair (founder decision, 23 Nov 2026): no payment before the visit.
-  job.pro_id = pro.id; job.stage = "ready";
+  // No payment before the visit; the customer confirms the booking and the inspection-and-travel cost first (founder, 23 Nov 2026).
+  job.pro_id = pro.id; job.stage = "await_confirm"; job.data.confirmBy = Date.now() + RULES.confirmMinutes * 60e3;
   job.data.km = km; job.data.travel = r2(Math.max(0, km - RULES.freeKm) * RULES.perKm); // frozen once accepted
   job.data.pro = { id: pro.id, name: pro.name, trust: pro.trust, rating: pro.rating_n ? r2(pro.rating_sum / pro.rating_n) : null, jobs: pro.jobs_done, home: pro.suburb };
   job.data.offer = null; job.data.searchingSince = null;
   saveJob(job);
-  logEvent(job.id, "app", `${pro.name} accepted. Call-out to be paid at the end.`);
-  const m = jobMoney(job);
-  const travelLine = job.data.travel > 0 ? ` (includes ${usd(job.data.travel)} travel: ${km} km, the first ${RULES.freeKm} km are free)` : "";
+  logEvent(job.id, "app", `${pro.name} accepted. Waiting for the customer to confirm the booking and the ${usd(jobMoney(job).pay1)} inspection and travel.`);
   if (pro.data?.photo) await wa.image(job.customer, `${config.baseUrl}/media/pro/${pro.id}`, `${pro.name}, your Basa pro`);
-  await wa.text(job.customer, `✅ *${pro.name}* accepted your job.\nTrust Score ${pro.trust}${job.data.pro.rating ? ` · ★${job.data.pro.rating}` : ""} · ID and trade checked in person by Basa seBasa.\n\n*Nothing to pay now.* The call-out of *${usd(m.pay1)}*${travelLine}, EcoCash charges included, is paid at the end on EcoCash, together with any repair you approve.\n\nPlease note: if you decide not to go ahead with the repair, or you're not home when ${first(pro.name)} arrives, the call-out is still payable for the visit.\n\n${first(pro.name)} will let you know when they set off. You'll get your *Basa Code* then.`);
+  await sendBookingConfirm(job, pro);
+  return { ok: true };
+}
+
+// The customer sees the pro and the exact inspection-and-travel cost, and confirms before the pro sets off.
+async function sendBookingConfirm(job, pro) {
+  const m = jobMoney(job), km = job.data.km;
+  const travel = job.data.travel > 0 ? `\nThis includes ${usd(m.pay1 - RULES.callout - RULES.calloutCharges)} extra travel (${km} km away; the first ${RULES.freeKm} km are free).` : "";
+  await wa.buttons(job.customer, `✅ *${pro.name}* can come: ${job.data.when}.\nTrust Score ${pro.trust}${job.data.pro.rating ? ` · ★${job.data.pro.rating}` : ""} · ID and trade checked in person by Basa seBasa.\n\n*Inspection and travel: ${usd(m.pay1)}* (EcoCash charges included).${travel}\n\n• Nothing to pay now: you pay at the end on EcoCash, together with any repair.\n• ${first(pro.name)} will show you a full quote and the total before any work starts. You approve or decline.\n• If you decline the repair, or you're not home when ${first(pro.name)} arrives, only the ${usd(m.pay1)} is payable.\n\nDo you confirm this booking?`, [{ id: "book:yes", title: "Confirm booking" }, { id: "book:no", title: "Cancel" }]);
+}
+
+export async function customerConfirmBooking(job) {
+  if (job.stage !== "await_confirm") return;
+  const pro = getPro(job.pro_id);
+  job.stage = "ready"; job.data.bookingConfirmedAt = Date.now(); delete job.data.confirmBy; saveJob(job);
+  logEvent(job.id, "wa", `Customer confirmed the booking and the ${usd(jobMoney(job).pay1)} inspection and travel.`);
+  await wa.text(job.customer, `Booked ✓ ${first(pro.name)} will let you know when they set off. You'll get your *Basa Code* then.`);
+  await wa.text(pro.phone, `Basa seBasa: the customer confirmed ${job.id}. Open your Pro app when you're ready to set off.`);
   return { ok: true };
 }
 
@@ -171,7 +186,7 @@ export async function payOwedCallout(phone) {
   const job = getJob(o.job_id);
   if (o.status === "pending") run("UPDATE payments SET status = 'failed', note = COALESCE(note,'') || ' replaced by a new request', updated_at = ? WHERE id = ?", Date.now(), o.id);
   const pay = await requestPayment(job, "callout", o.amount, phone);
-  await wa.text(phone, `Call-out for ${job.id}: *${usd(o.amount)}*.\n\n${pay.instructions}`);
+  await wa.text(phone, `Inspection and travel for ${job.id}: *${usd(o.amount)}*.\n\n${pay.instructions}`);
   return true;
 }
 
@@ -208,7 +223,7 @@ setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
       if (job.data.probation) probationJobDone(pro.id, job.id);
       logEvent(job.id, "pay", `Payout of ${usd(amount)} to ${pro.name} due within ${RULES.payoutHours} h. Basa keeps ${usd(m.platform)}.`);
     });
-    await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nCall-out: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
+    await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!\n\n*Receipt ${job.id}*\nInspection and travel: ${usd(m.pay1)}\nLabour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\nTotal paid: *${usd(m.pay1 + m.pay2)}*`);
     await wa.list(job.customer, `How did ${first(pro.name)} do? Your rating helps keep Basa seBasa trusted.`, "Rate the job", [5, 4, 3, 2, 1].map((n) => ({ id: `rate:${n}`, title: "★".repeat(n), description: ["", "Poor", "Not great", "OK", "Good", "Excellent"][n] })));
   }
 }));
@@ -280,7 +295,7 @@ export async function proNoShow(pro, jobId) {
   const m = jobMoney(job);
   logEvent(job.id, "server", `Visit closed: customer not home. Call-out ${usd(m.pay1)} requested; ${pro.name}'s ${usd(m.calloutShare)} share is paid out once it's collected.`);
   const pay = await requestPayment(job, "callout", m.pay1, job.customer);
-  await wa.text(job.customer, `${first(pro.name)} waited ${RULES.noShowWaitMinutes} minutes at your gate and couldn't reach you, so this visit is closed. As explained when you booked, the call-out is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
+  await wa.text(job.customer, `${first(pro.name)} waited ${RULES.noShowWaitMinutes} minutes at your gate and couldn't reach you, so this visit is closed. As you confirmed when booking, the inspection and travel is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
   return { ok: true };
 }
 
@@ -306,7 +321,7 @@ export async function proQuote(pro, jobId, { labour, parts, note, partOptions })
   const m = jobMoney(job);
   logEvent(job.id, "app", `Quote sent: labour ${usd(labour)}, parts ${usd(parts)}.`);
   const co = calloutPaid(job) ? 0 : m.pay1;
-  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\n${co ? `Call-out${m.travel ? " + travel" : ""}: ${usd(co)}\n` : ""}Labour: ${usd(labour)}\nParts: ${usd(parts)}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(r2(m.pay2 + co))}*\n\nNothing starts until you approve. If you choose *Not now*, only the call-out (${usd(m.pay1)}) is payable for today's visit.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Not now" }]);
+  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\n${co ? `Inspection and travel: ${usd(co)}\n` : ""}Labour: ${usd(labour)}\nParts: ${usd(parts)}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(r2(m.pay2 + co))}*\n\nNothing starts until you approve. If you decline, only the inspection and travel (${usd(m.pay1)}) is payable for today's visit, and your quote is saved for ${RULES.diagnosisValidDays} days.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Decline for now" }]);
   return { ok: true };
 }
 
@@ -318,10 +333,10 @@ const optionLine = (job, o) => `*${o.n}.* ${usd(o.price)} · ${o.conditionName} 
 async function sendOptionsQuote(job) {
   const q = job.data.quote;
   const co = calloutPaid(job) ? 0 : jobMoney(job).pay1;
-  const body = `*Quote for ${job.id}*\n${scrub(q.note).text || "Repair as diagnosed."}\n\n${co ? `Call-out: ${usd(co)}\n` : ""}Labour: ${usd(q.labour)}\nPart needed: *${q.part}*\n\nPrices from Basa-verified suppliers, nearest first:\n${q.options.map((o) => optionLine(job, o)).join("\n")}\n\nTotals include ${co ? "the call-out and " : ""}EcoCash charges. You pay only after it's fixed and tested; parts are charged at the supplier's price. Nothing is bought until you choose.`;
+  const body = `*Quote for ${job.id}*\n${scrub(q.note).text || "Repair as diagnosed."}\n\n${co ? `Inspection and travel: ${usd(co)}\n` : ""}Labour: ${usd(q.labour)}\nPart needed: *${q.part}*\n\nPrices from Basa-verified suppliers, nearest first:\n${q.options.map((o) => optionLine(job, o)).join("\n")}\n\nTotals include ${co ? "inspection, travel and " : ""}EcoCash charges. You pay only after it's fixed and tested; parts are charged at the supplier's price. Nothing is bought until you choose.`;
   await wa.list(job.customer, body, "Choose a part", [
     ...q.options.map((o) => ({ id: `quote:opt:${o.n}`, title: `Option ${o.n} · ${usd(o.price)}`, description: `${o.conditionName}, ${o.shop}, ${o.suburb} (${o.km} km)` })),
-    { id: "quote:later", title: "Not now", description: "Save this diagnosis for 30 days" },
+    { id: "quote:later", title: "Decline for now", description: `Pay only the ${usd(jobMoney(job).pay1)} inspection; quote saved 30 days` },
   ]);
 }
 
@@ -363,9 +378,9 @@ export async function customerQuote(job, approve, optionN = null) {
     // Today's visit: the call-out is paid now (it was never taken up front). Not again for a saved repair put back on hold.
     if (!again && !calloutPaid(job)) {
       const pay = await requestPayment(job, "callout", m.pay1, job.customer);
-      await wa.text(job.customer, `For today's visit and diagnosis, please pay the call-out: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
+      await wa.text(job.customer, `For today's inspection and travel, please pay *${usd(m.pay1)}*.\n\n${pay.instructions}`);
     }
-    await wa.buttons(job.customer, `Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.${q.options && !q.chosen ? `\n\nLabour stays at ${usd(q.labour)}. Supplier prices change, so you'll choose the part again from fresh prices when you go ahead.` : ""}
+    await wa.buttons(job.customer, `Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay for another inspection to go ahead before then.${q.options && !q.chosen ? `\n\nLabour stays at ${usd(q.labour)}. Supplier prices change, so you'll choose the part again from fresh prices when you go ahead.` : ""}
 
 When you're ready, just message us here and tap *Go ahead with repair*. We'll send a reminder before it expires.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }]);
   }
@@ -414,7 +429,7 @@ export async function customerConfirm(job, works) {
   job.stage = "await_final"; saveJob(job);
   const m = jobMoney(job), withCallout = !calloutPaid(job), amount = finalAmount(job);
   const pay = await requestPayment(job, "final", amount, job.customer);
-  await wa.text(job.customer, `Great! Please pay *${usd(amount)}*:\n${withCallout ? `Call-out${m.travel ? " + travel" : ""}: ${usd(m.pay1)}\n` : ""}Labour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\n\n${pay.instructions}`);
+  await wa.text(job.customer, `Great! Please pay *${usd(amount)}*:\n${withCallout ? `Inspection and travel: ${usd(m.pay1)}\n` : ""}Labour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\n\n${pay.instructions}`);
 }
 
 export async function customerRate(job, n) {
@@ -443,15 +458,15 @@ export async function customerCancel(job) {
   if (was === "travelling" && paid) {
     run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, jobMoney(job).calloutShare, Date.now() + RULES.payoutHours * 3600e3);
     logEvent(job.id, "wa", "Customer cancelled after the pro set off: call-out covers the trip.");
-    await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the call-out covers the trip. Message us any time to book again.`);
+    await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the inspection and travel covers the trip. Message us any time to book again.`);
   } else if (was === "travelling") {
     const m = jobMoney(job);
     logEvent(job.id, "wa", `Customer cancelled after the pro set off: call-out ${usd(m.pay1)} requested for the trip.`);
     const pay = await requestPayment(job, "callout", m.pay1, job.customer);
-    await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the call-out is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
+    await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the inspection and travel is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
   } else if (paid) {
     logEvent(job.id, "wa", "Customer cancelled after paying the call-out, before the pro set off: refund to review on the ops desk.");
-    await wa.text(job.customer, `Cancelled. Our Harare admin will contact you about your call-out payment. Message us any time to book again.`);
+    await wa.text(job.customer, `Cancelled. Our Harare admin will contact you about your payment. Message us any time to book again.`);
   } else {
     run("UPDATE payments SET status = 'cancelled' WHERE job_id = ? AND status = 'pending'", job.id);
     logEvent(job.id, "wa", "Customer cancelled before paying.");
@@ -509,6 +524,14 @@ export async function sweep() {
   for (const r of all("SELECT id FROM jobs WHERE stage = 'offered' AND json_extract(data,'$.offer.expires') < ?", now)) await lock(r.id, async () => {
     const job = getJob(r.id); if (job.stage === "offered" && job.data.offer && job.data.offer.expires < Date.now()) await proDecline(getPro(job.data.offer.pro), job.id, "expired");
   });
+  // A booking the customer didn't confirm in time is released, so the pro is free for other jobs.
+  for (const r of all("SELECT id FROM jobs WHERE stage = 'await_confirm' AND json_extract(data,'$.confirmBy') < ?", now)) await lock(r.id, async () => {
+    const job = getJob(r.id); if (job.stage !== "await_confirm" || !(job.data.confirmBy < Date.now())) return;
+    const pro = getPro(job.pro_id); job.stage = "cancelled"; job.data.cancelledFrom = "await_confirm"; saveJob(job);
+    logEvent(job.id, "server", `Booking not confirmed within ${RULES.confirmMinutes} minutes: released.`);
+    await wa.text(job.customer, `We didn't hear back, so this booking has been released. Nothing to pay. Message us any time to book again.`);
+    if (pro) await wa.text(pro.phone, `Basa seBasa: the customer didn't confirm ${job.id}, so it's cancelled. You're free for other jobs.`);
+  });
   for (const r of all("SELECT id FROM jobs WHERE stage = 'searching'")) await lock(r.id, async () => { const job = getJob(r.id); if (job.stage === "searching") await offerNext(job); });
   for (const r of all(`SELECT id FROM jobs WHERE stage IN (${ONSITE.map(() => "?").join(",")}) AND json_extract(data,'$.safety.checkDue') < ? AND json_extract(data,'$.safety.missedRaised') IS NULL`, ...ONSITE, now - RULES.checkinGraceMinutes * 60e3)) await lock(r.id, async () => {
     const job = getJob(r.id), sf = job.data.safety || {};
@@ -525,7 +548,7 @@ export async function sweep() {
     for (const d of [7, 25]) if (days >= d && !rm.includes(d)) {
       rm.push(d); job.data.reminders = rm; saveJob(job);
       // Outside WhatsApp's 24-hour window this must be an approved template (see README).
-      await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${savedPriceText(job)} as quoted, no new call-out, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
+      await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${savedPriceText(job)} as quoted, no new inspection charge, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
       logEvent(job.id, "wa", `Saved-repair reminder sent (day ${d}).`);
     }
   });

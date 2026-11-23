@@ -1,7 +1,11 @@
 // Business rules agreed with the founder. Change numbers here, nowhere else.
 export const RULES = {
-  callout: 9,            // $9 call-out
-  calloutPlatform: 1,    // Basa keeps $1, the pro gets $8
+  // Inspection and travel (call-out): the customer pays $7.18 in total, EcoCash charges included (founder, 23 Nov 2026).
+  // Split: pro $6, Basa $1 (Basa's share is never shown to customers), $0.18 covers EcoCash charges.
+  callout: 7,
+  calloutPlatform: 1,
+  calloutCharges: 0.18,  // fixed EcoCash charges on the call-out, so the customer always sees $7.18
+  confirmMinutes: 20,    // the customer confirms the booking within 20 minutes of a pro accepting
   commission: 15,        // % of labour only
   freeKm: 10,            // travel free within 10 km
   perKm: 0.5,            // then $0.50 per km
@@ -52,7 +56,7 @@ export function money({ km = 0, travel = null, labour = 0, parts = 0 } = {}) {
   const fee = r2(labour * RULES.commission / 100);
   const calloutShare = r2(RULES.callout - RULES.calloutPlatform + t);
   const payout = r2(calloutShare + labour - fee + parts);
-  const pay1 = r2((RULES.callout + t) * (1 + rate));               // call-out, before the pro travels
+  const pay1 = r2(RULES.callout + RULES.calloutCharges + t * (1 + rate)); // inspection and travel ($7.18 within 10 km)
   const base2 = r2(labour + parts);
   const charges2 = r2(base2 * rate + payout * rate);                 // EcoCash charges on collection and payout
   const pay2 = r2(base2 + charges2);                                 // after the work is tested

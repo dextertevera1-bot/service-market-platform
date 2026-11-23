@@ -102,11 +102,11 @@ test("C11 customer not home: the call-out is asked for, the pro is paid once it'
   const { config } = await import("../src/config.js"); const old = config.payments.simDelayMs; config.payments.simDelayMs = 999999;
   freePros(); const phone = "263771000011", id = await book(phone);
   const t = (await offerOf(tok.a)) ? tok.a : tok.b;
-  await api(`/api/pro/offer/${id}/accept`, {}, t);
+  await api(`/api/pro/offer/${id}/accept`, {}, t); await sayAs(phone)({ reply: "book:yes" });
   await api(`/api/pro/job/${id}/trip`, {}, t); await api(`/api/pro/job/${id}/arrive`, {}, t);
   const j = getJob(id); j.data.testFastNoShow = true; saveJob(j);
   assert.equal((await api(`/api/pro/job/${id}/noshow`, {}, t)).status, 200);
-  assert.match(await lastFrom(phone), /call-out is payable for the trip/);
+  assert.match(await lastFrom(phone), /inspection and travel is payable for the trip: \*\$7\.18\*/);
   assert.equal(one("SELECT COUNT(*) n FROM payouts WHERE job_id = ?", id).n, 0, "nothing paid out before the customer pays");
   // The customer comes back before paying: asked to settle first.
   await sayAs(phone)({ text: "hi" });
@@ -116,7 +116,7 @@ test("C11 customer not home: the call-out is asked for, the pro is paid once it'
   config.payments.simDelayMs = 30;
   await sayAs(phone)({ reply: "pay:due" }); await wait(200);
   assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ? AND status = 'paid'", id).n, 1);
-  assert.equal(one("SELECT amount FROM payouts WHERE job_id = ?", id).amount, 8, "the pro's $8 call-out share is now owed");
+  assert.equal(one("SELECT amount FROM payouts WHERE job_id = ?", id).amount, 6, "the pro's $6 call-out share is now owed");
   await sayAs(phone)({ text: "hi" });
   assert.match(await lastFrom(phone), /What do you need help with/, "can book again");
   config.payments.simDelayMs = old;
@@ -197,4 +197,36 @@ test("T6 pro loses connection on site: missed check-in raises an alert", async (
   const j = getJob(id); j.stage = "diagnosing"; j.pro_id = 101; j.data.safety = { tracking: 1, checkDue: Date.now() - 11 * 60e3, firstDone: false }; saveJob(j);
   await sweep();
   assert.ok(one("SELECT id FROM alerts WHERE job_id = ? AND kind = 'missed'", id));
+});
+
+test("C12 the customer must confirm the booking; no answer in time releases the pro, nothing to pay", async () => {
+  freePros(); const phone = "263771000012", id = await book(phone);
+  const t = (await offerOf(tok.a)) ? tok.a : tok.b;
+  await api(`/api/pro/offer/${id}/accept`, {}, t);
+  assert.equal(getJob(id).stage, "await_confirm");
+  assert.match(await lastFrom(phone), /Do you confirm this booking\?/);
+  const j = getJob(id); j.data.confirmBy = Date.now() - 1; saveJob(j);
+  await sweep();
+  assert.equal(getJob(id).stage, "cancelled");
+  assert.match(await lastFrom(phone), /released\. Nothing to pay/);
+  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ?", id).n, 0);
+  // A customer who taps Cancel at the confirmation also pays nothing.
+  freePros(); const id2 = await book("263771000013"); const t2 = (await offerOf(tok.a)) ? tok.a : tok.b;
+  await api(`/api/pro/offer/${id2}/accept`, {}, t2); await sayAs("263771000013")({ reply: "book:no" });
+  assert.equal(getJob(id2).stage, "cancelled"); assert.match(await lastFrom("263771000013"), /nothing to pay/);
+});
+
+test("T8 before sending the quote, the pro sees the total the customer will pay", async () => {
+  freePros(); const phone = "263771000014", id = await book(phone);
+  const t = (await offerOf(tok.a)) ? tok.a : tok.b;
+  await api(`/api/pro/offer/${id}/accept`, {}, t); await sayAs(phone)({ reply: "book:yes" });
+  const j = getJob(id); j.stage = "diagnosing"; saveJob(j);
+  const st = (await api("/api/pro/state", null, t)).body.job;
+  assert.equal(st.calc.pay1, 7.18); assert.equal(st.calc.calloutPaid, false);
+  await api(`/api/pro/job/${id}/quote`, { labour: 40, parts: 18, note: "relay" }, t);
+  const st2 = (await api("/api/pro/state", null, t)).body.job;
+  assert.equal(st2.customerTotal, 67.5, "the pro is told the full total to say to the customer");
+  assert.match(await lastFrom(phone), /\$67\.50/);
+  const q = (await api(`/sim/api/outbox?to=${phone}`)).body.at(-1).payload;
+  assert.deepEqual(q.interactive.action.buttons.map((b) => b.reply.title), ["Approve quote", "Decline for now"]);
 });

@@ -103,7 +103,9 @@ after(() => server.close());
 
 test("money rules match the agreed demo numbers", () => {
   const m = money({ km: 4, labour: 40, parts: 18 });
-  assert.equal(m.pay1, 9.18); assert.equal(m.pay2, 60.36); assert.equal(m.total, 69.54); assert.equal(m.payout, 60); assert.equal(m.platform, 7);
+  // Inspection and travel $7.18 including charges (founder, 23 Nov 2026): pro $6, Basa $1, charges $0.18.
+  assert.equal(m.pay1, 7.18); assert.equal(m.calloutShare, 6); assert.equal(m.pay2, 60.32); assert.equal(m.total, 67.5); assert.equal(m.payout, 58); assert.equal(m.platform, 7);
+  assert.equal(money({ km: 14 }).pay1, 9.22, "extra travel is added on top, with its EcoCash charges");
   assert.equal(money({ km: 14 }).travel, 2); // 4 km beyond the free 10 km
 });
 
@@ -140,7 +142,8 @@ test("a whole job, end to end", async () => {
   out = await inbox();
   const when = out.find((p) => p.interactive?.type === "button" && /When do you need someone/.test(textOf(p)));
   assert.ok(when, "summary with times");
-  assert.match(textOf(when), /\$9\.18/);
+  assert.match(textOf(when), /Inspection and travel: \*\$7\.18\*/);
+  assert.ok(!/\$1\b|keeps/.test(textOf(when)), "Basa's $1 is never shown to the customer");
   await say({ reply: "when:am" });
 
   // The nearest pro (Kudzai, Avondale) gets the offer first and declines; it moves to Tendai.
@@ -151,9 +154,15 @@ test("a whole job, end to end", async () => {
   assert.ok(s.offer, "offer moved to Tendai");
   const id = s.offer.id;
   s = (await api(`/api/pro/offer/${id}/accept`, {}, tendai)).body;
-  assert.equal(s.job.stage, "ready", "no payment before the visit: the call-out is paid at the end");
+  assert.equal(s.job.stage, "await_confirm", "the customer must confirm the booking first");
   out = await inbox();
-  assert.ok(out.some((p) => /Tendai M\.\* accepted/.test(textOf(p)) && /Nothing to pay now/.test(textOf(p)) && /still payable for the visit/.test(textOf(p))), "the customer is told the call-out is paid at the end");
+  const conf = out.find((p) => /Tendai M\.\* can come/.test(textOf(p)));
+  assert.ok(conf && /Inspection and travel: \$7\.18/.test(textOf(conf)) && /Nothing to pay now/.test(textOf(conf)) && /only the \$7\.18 is payable/.test(textOf(conf)), "the customer is told the inspection and travel cost and when it's payable");
+  assert.deepEqual(conf.interactive.action.buttons.map((b) => b.reply.id), ["book:yes", "book:no"]);
+  assert.equal((await api(`/api/pro/job/${id}/trip`, {}, tendai)).status, 409, "the pro can't set off before the customer confirms");
+  await say({ reply: "book:yes" });
+  s = (await api("/api/pro/state", null, tendai)).body;
+  assert.equal(s.job.stage, "ready");
   assert.equal((await api(`/api/ops/job/${id}`, null, opsToken)).body.payments.length, 0, "no EcoCash request before the visit");
 
   // Double taps don't create a second call-out request.
@@ -193,7 +202,7 @@ test("a whole job, end to end", async () => {
   // Quote, approval, completion.
   await api(`/api/pro/job/${id}/quote`, { labour: 40, parts: 18, note: "Start relay burnt out. Compressor is fine." }, tendai);
   out = await inbox();
-  assert.match(textOf(out.find((p) => /Quote for/.test(textOf(p)))), /Call-out: \$9\.18[\s\S]*To pay after it.s fixed and tested: \$69\.54/, "the quote shows one total at the end, call-out included");
+  assert.match(textOf(out.find((p) => /Quote for/.test(textOf(p)))), /Inspection and travel: \$7\.18[\s\S]*To pay after it.s fixed and tested: \$67\.50/, "the quote shows one total at the end, call-out included");
   await say({ reply: "quote:approve" });
   assert.equal((await api(`/api/pro/job/${id}/complete`, { checks: ["Power isolated before work"] }, tendai)).status, 409, "needs the checks");
   await api(`/api/pro/job/${id}/complete`, { checks: ["Power isolated before work", "Leak test done", "Unit cooling at handover"] }, tendai);
@@ -206,15 +215,15 @@ test("a whole job, end to end", async () => {
   // Money adds up.
   const detail = (await api(`/api/ops/job/${id}`, null, opsToken)).body;
   const paid = detail.payments.filter((p) => p.status === "paid").reduce((a, p) => a + p.amount, 0);
-  assert.equal(Math.round(paid * 100) / 100, 69.54);
-  assert.equal(detail.payouts[0].amount, 60);
+  assert.equal(Math.round(paid * 100) / 100, 67.5);
+  assert.equal(detail.payouts[0].amount, 58);
 
   await say({ reply: "rate:5" });
   // Checking out with the PIN stops tracking and sends the pro home.
   s = (await api(`/api/pro/job/${id}/checkout`, { pin: "1357" }, tendai)).body.state;
   assert.equal(s.job, null);
   assert.equal(s.home.jobsToday, 1);
-  assert.equal(s.home.earnedToday, 60);
+  assert.equal(s.home.earnedToday, 58);
   assert.equal(s.home.last.rating, 5);
   assert.equal(s.probation.left, 4, "first probation job counted");
   ov = (await api("/api/ops/overview", null, opsToken)).body;
@@ -267,7 +276,7 @@ test("saved repair: not now, reminder, go ahead later with no new call-out, same
   for (const k of ["kudzai", "tendai"]) { st = (await api("/api/pro/state", null, tokens[k])).body; if (st.offer) { who = k; break; } }
   assert.ok(who, "a pro got the offer");
   const T = tokens[who], id = st.offer.id;
-  await api(`/api/pro/offer/${id}/accept`, {}, T); await wait(150);
+  await api(`/api/pro/offer/${id}/accept`, {}, T); await sayS({ reply: "book:yes" });
   await api(`/api/pro/job/${id}/trip`, {}, T);
   let code = textOf((await box()).find((p) => /Basa Code is/.test(textOf(p)))).match(/\*(\d{4})\*/)[1];
   await api(`/api/pro/job/${id}/arrive`, {}, T); await api(`/api/pro/job/${id}/verify`, { code }, T);
@@ -306,7 +315,7 @@ test("saved repair: not now, reminder, go ahead later with no new call-out, same
   await sayS({ reply: "work:yes" }); await wait(150);
   const detail = (await api(`/api/ops/job/${id}`, null, opsToken)).body;
   assert.deepEqual(detail.payments.filter((p) => p.status === "paid").map((p) => p.kind).sort(), ["callout", "final"], "one call-out only");
-  assert.deepEqual(detail.payouts.map((p) => p.amount).sort((a, b) => a - b), [8, 37]);
+  assert.deepEqual(detail.payouts.map((p) => p.amount).sort((a, b) => a - b), [6, 37]);
 });
 
 test("customer can cancel before the pro sets off, and nothing is charged", async () => {

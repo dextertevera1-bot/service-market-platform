@@ -47,7 +47,7 @@ async function toDiagnosing(phone) {
   for (const m of [{ text: "hi" }, { reply: "svc:hvac" }, { text: "Fridge not cooling" }, { reply: "skip" }, { text: "Avondale" }, { reply: "skip" }, { reply: "when:am" }]) await s(m);
   const id = one("SELECT id FROM jobs WHERE customer = ? ORDER BY created_at DESC", phone).id;
   assert.equal((await api(`/api/pro/offer/${id}/accept`, {}, tok)).status, 200);
-  await wait(150);
+  await s({ reply: "book:yes" });
   for (const a of ["trip", "arrive"]) assert.equal((await api(`/api/pro/job/${id}/${a}`, {}, tok)).status, 200, a);
   assert.equal((await api(`/api/pro/job/${id}/verify`, { code: getJob(id).data.code }, tok)).status, 200);
   assert.equal(getJob(id).stage, "diagnosing");

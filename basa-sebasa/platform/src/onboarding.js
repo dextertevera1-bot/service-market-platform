@@ -23,7 +23,7 @@ export const INDUCTION = [
   { id: "checks", text: "Tick the safety and test checks before you finish every job" },
   { id: "nocash", text: "No cash and no jobs off the app. All payments by EcoCash" },
   { id: "contacts", text: "Talk to customers only through the app chat. Phone numbers are removed" },
-  { id: "money", text: "Basa keeps $1 of the $9 call-out and 15% of labour. Parts are paid back in full. Payouts within 24 hours of the customer paying" },
+  { id: "money", text: "Basa keeps $1 of the $7 call-out (I get $6 plus extra travel) and 15% of labour. Parts are paid back in full. Payouts within 24 hours of the customer paying" },
   { id: "checkins", text: "Safety check-ins with your PIN: 15 minutes into every job, and when you finish" },
   { id: "duress", text: "Duress PIN: if you're forced to check in, use it. The app looks normal, but our Harare admin is alerted and calls the police" },
   { id: "sos", text: "SOS and \"I feel uneasy\" buttons. You can decline or leave any job that feels unsafe" },

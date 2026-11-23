@@ -3,7 +3,7 @@ import { one, run, all, getJob, logEvent } from "./db.js";
 import { wa } from "./whatsapp.js";
 import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js";
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
-import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney, savedPriceText, owedCallout, payOwedCallout } from "./jobs.js";
+import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney, savedPriceText, owedCallout, payOwedCallout, customerConfirmBooking } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
 import { withLock } from "./lock.js";
 
@@ -44,7 +44,7 @@ async function handleOne(msg) {
   if (owed) {
     if (reply === "pay:due") return payOwedCallout(phone);
     if (reply === "help" || ["help", "agent", "person", "human"].includes(text)) { raiseAlert(owed.job_id, null, "help", "customer asked about an owed call-out"); return wa.text(phone, "Our Harare admin will call you shortly."); }
-    return wa.buttons(phone, `Welcome back! Before we book your next visit, there's a call-out of *${usd(owed.amount)}* still to pay for ${owed.job_id}.`, [{ id: "pay:due", title: "Pay now" }, { id: "help", title: "Talk to us" }]);
+    return wa.buttons(phone, `Welcome back! Before we book your next visit, there's *${usd(owed.amount)}* for inspection and travel still to pay for ${owed.job_id}.`, [{ id: "pay:due", title: "Pay now" }, { id: "help", title: "Talk to us" }]);
   }
   const saved = savedRepairFor(phone);
   if (reply.startsWith("resume:")) {
@@ -66,7 +66,7 @@ async function handleOne(msg) {
     return wa.buttons(phone, `Welcome back! 👋 You have a saved repair: *${serviceById(saved.service).name}* (${saved.id}), diagnosed by ${String(saved.data.pro?.name || "your pro").split(" ")[0]}.
 ${saved.data.quote.note ? `"${saved.data.quote.note}"
 ` : ""}
-To pay after it's fixed and tested: *${savedPriceText(saved)}*. No new call-out. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
+To pay after it's fixed and tested: *${savedPriceText(saved)}*. No new inspection charge. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
   }
 
   if (["menu", "restart", "start again", "start over", "back"].includes(text) && c.state.startsWith("ask_")) {
@@ -137,7 +137,7 @@ function askService(phone) {
 
 function askWhen(phone, d) {
   const s = serviceById(d.service), m = money({ km: 0 });
-  const body = `*${s.name} in ${d.suburb}*\n"${d.desc}"\n\nCall-out: *$${RULES.callout}* covers the inspection and travel up to ${RULES.freeKm} km (*${usd(m.pay1)}* with EcoCash charges). Extra travel beyond ${RULES.freeKm} km is shown when a pro accepts.\n*Nothing to pay now:* the call-out is paid at the end on EcoCash, together with any repair. It's still payable if you decide not to go ahead with the repair.\n\nSimilar repairs usually come to ${usd(s.guide[0])}–${usd(s.guide[1])} in total. Your exact quote comes first, and nothing starts until you approve it.\n\nWe book day jobs only (07:00–18:00). When do you need someone?`;
+  const body = `*${s.name} in ${d.suburb}*\n"${d.desc}"\n\nInspection and travel: *${usd(m.pay1)}* (EcoCash charges included), within ${RULES.freeKm} km. Any extra travel is shown before you confirm.\n*Nothing to pay now:* you pay at the end on EcoCash, together with any repair. It's still payable if you decide not to go ahead with the repair.\n\nSimilar repairs usually come to ${usd(s.guide[0])}–${usd(s.guide[1])} in total. Your exact quote comes first, and nothing starts until you approve it.\n\nWe book day jobs only (07:00–18:00). When do you need someone?`;
   const opts = isDayTime() ? [{ id: "when:now", title: "As soon as possible" }, { id: "when:am", title: "Tomorrow, 08:00" }, { id: "cancel", title: "Cancel" }]
     : [{ id: "when:am", title: "Tomorrow, 08:00" }, { id: "when:pm", title: "Tomorrow, 14:00" }, { id: "cancel", title: "Cancel" }];
   return wa.buttons(phone, body, opts);
@@ -145,6 +145,8 @@ function askWhen(phone, d) {
 
 async function onActiveJob(job, msg, text, reply, c) {
   const phone = job.customer;
+  if (reply === "book:yes" || (job.stage === "await_confirm" && ["yes", "confirm", "ok"].includes(text))) return customerConfirmBooking(job);
+  if (reply === "book:no") { const r = await customerCancel(job); if (r?.error) await wa.text(phone, "This booking can't be cancelled here now. Reply *help* and our Harare admin will call you."); return; }
   if (reply === "quote:approve") return customerQuote(job, true);
   if (reply.startsWith("quote:opt:")) return customerQuote(job, true, Number(reply.slice(10)));
   if (job.stage === "quote_sent" && job.data.quote?.options && /^[1-3]$/.test(text)) return customerQuote(job, true, Number(text));

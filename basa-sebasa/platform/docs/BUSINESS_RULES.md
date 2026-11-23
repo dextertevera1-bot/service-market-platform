@@ -4,7 +4,7 @@ Source of truth for prices in code: `src/rules.js`. Change only with founder app
 
 | Rule | Implemented value | Where |
 |---|---|---|
-| Call-out (inspection) | $9; Basa keeps $1, pro gets $8 | `RULES.callout`, `RULES.calloutPlatform` |
+| Inspection and travel (call-out) | Customer pays $7.18 including EcoCash charges within 10 km (pro $6, Basa $1, charges $0.18); Basa's $1 is never shown to customers. Customer confirms the booking and this cost before the pro sets off. | `RULES.callout`, `RULES.calloutPlatform`, `RULES.calloutCharges` |
 | Travel | Free within 10 km, then $0.50/km, all to the pro, frozen when the pro accepts | `RULES.freeKm`, `RULES.perKm` |
 | Commission | 15% of **labour only** (not parts, not call-out) | `RULES.commission`, `money()` |
 | EcoCash charges | Added to the customer's total; placeholder 2% (`ECOCASH_RATE`), real rate to confirm | `RULES.ecocashRate` |

@@ -5,6 +5,7 @@
 - EcoCash only, USD, no cash; EcoCash charges on the customer; manual payouts within 24 h.
 - Diagnosis valid 30 days; original pro 24 h first refusal.
 - Day jobs only; pros are independent; Harare admin + Dex monitor; security concern → Harare admin calls police.
+- Inspection and travel $7.18 including charges; Basa keeps $1 (not shown to customers); customer confirms the booking and cost first; pro tells the customer the total before work and the customer approves or declines (23 Nov 2026).
 - Call-out paid at the end, not up front (23 Nov 2026): too risky to ask Zimbabwean customers to pay before the visit; a disclaimer says it is still payable if they don't go ahead.
 - Profile photo (23 Nov 2026): every pro must upload a clear selfie in the Pro app; compulsory before approval and before going online.
 - Parts Network Phase 1 (23 Nov 2026): approved. Up to 3 supplier options with price and location, nearest first; the customer chooses; the pro buys the part; the customer pays after the work is done (no upfront part payment, no money through Basa for parts); suppliers are for transparency.

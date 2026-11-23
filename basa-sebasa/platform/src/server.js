@@ -128,6 +128,9 @@ function proJobView(job) {
     customer: `Customer in ${job.data.suburb}`, // name and number stay private
     quote: job.data.quote || null, arrivedAt: job.data.arrivedAt || null, codeTries: job.data.codeTries || 0,
     money: { calloutShare: m.calloutShare, travel: m.travel, labour: m.labour, parts: m.parts, fee: m.fee, payout: m.payout },
+    // What the customer pays in total, so the pro can tell them before any work starts.
+    calc: { pay1: m.pay1, calloutPaid: J.calloutPaid(job), rate: RULES.ecocashRate, commission: RULES.commission, calloutShare: m.calloutShare },
+    customerTotal: job.data.quote && !job.data.quote.options ? J.finalAmount(job) : job.data.quote?.options && !job.data.quote.chosen ? job.data.quote.options.map((o) => J.optionTotal(job, o)) : job.data.quote ? J.finalAmount(job) : null,
     thread: (job.data.thread || []).slice(-60), unread: job.data.proUnread || 0,
     safety: { tracking: !!sf.tracking, checkDue: sf.checkDue || null, firstDone: !!sf.firstDone, needsCheckout: J.CLOSED.includes(job.stage) && !!sf.tracking },
     rating: job.data.rating || null, checks: serviceById(job.service).checks,

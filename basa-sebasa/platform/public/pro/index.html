@@ -205,14 +205,15 @@ function jobView(j) {
   const pay = `<div class="card"><table class="split"><tr><td>Call-out share${m.travel ? " + travel" : ""}</td><td>${usd(m.calloutShare)}</td></tr>${m.labour ? `<tr><td>Labour</td><td>${usd(m.labour)}</td></tr><tr><td>Basa fee (15% of labour)</td><td>−${usd(m.fee)}</td></tr><tr><td>Parts</td><td>${usd(m.parts)}</td></tr>` : ""}<tr class="you"><td>You get</td><td>${usd(m.payout)}</td></tr></table></div>`;
   let body = "";
   switch (j.stage) {
+    case "await_confirm": body = head("Waiting for the customer", "They're confirming the booking and the inspection-and-travel cost on WhatsApp. Don't set off yet.", `<div class="wait"><span class="spin"></span>We'll tell you as soon as they confirm.</div>`) + cust; break;
     case "await_callout": body = head("Waiting for the call-out", "The customer is paying on EcoCash. Don't leave yet.", `<div class="wait"><span class="spin"></span>We'll tell you as soon as it's paid.</div>`) + cust; break;
     case "ready": body = head("Job confirmed ✓", "Get your tools and set off. The customer gets their Basa Code when you do. They pay the call-out at the end, with the repair.") + cust + `<button class="btn gold" data-a="trip">I'm setting off</button>`; break;
     case "travelling": body = head("On the way", `About ${Math.max(10, Math.round((j.km || 5) * 2.5))} min. Drive safely.`) + cust + `<button class="btn gold" data-a="arrive">I've arrived</button>`; break;
     case "arrived": { const waited = Math.floor((S.now - j.arrivedAt) / 60e3), left = S.rules.noShowWaitMinutes - waited;
       body = head("At the gate", "Ask the customer for their 4-digit Basa Code. Don't go in without it.") + `<div class="card"><div class="field"><label for="code">Basa Code</label><input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off"></div><div id="codeerr" class="err">${j.codeTries ? `${j.codeTries} wrong ${j.codeTries === 1 ? "try" : "tries"}. After 3, our Harare admin calls the customer.` : ""}</div><button class="btn gold" data-a="verify">Confirm code</button></div>`
         + `<div class="card"><span class="muted small">Nobody home? Message them in the Chat tab. ${left > 0 ? `You can close the visit in ${left} min and keep your call-out share.` : "You can close the visit now and keep your call-out share."}</span><button class="btn danger" data-a="noshow" ${left > 0 ? "disabled" : ""}>Customer not home: close visit</button></div>`; break; }
-    case "diagnosing": body = head("Diagnose and quote", j.resumed ? "Saved repair: labour stays as quoted. Get today's part prices, then send the quote." : "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine.">${j.resumed && j.quote?.note ? esc(j.quote.note) : ""}</textarea></div><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal" ${j.resumed && j.quote?.labour ? `value="${j.quote.labour}" disabled` : ""}></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p></div>` + partsCard(j) + `<button class="btn gold" data-a="quote">Send quote</button>`; break;
-    case "quote_sent": body = head("Quote sent", "Waiting for the customer to approve on WhatsApp. Don't start yet.", `<div class="wait"><span class="spin"></span>${j.quote.options ? `Labour ${usd(j.quote.labour)} · customer choosing between ${j.quote.options.length} part option${j.quote.options.length > 1 ? "s" : ""}` : `Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}`}</div>`) + (j.quote.options ? `<div class="card"><span class="eyebrow">Part options sent</span>${j.quote.options.map((o) => optionRow(o, false)).join("")}</div>` : "") + pay; break;
+    case "diagnosing": body = head("Diagnose and quote", j.resumed ? "Saved repair: labour stays as quoted. Get today's part prices, then send the quote." : "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine.">${j.resumed && j.quote?.note ? esc(j.quote.note) : ""}</textarea></div><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal" ${j.resumed && j.quote?.labour ? `value="${j.quote.labour}" disabled` : ""}></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p></div>` + partsCard(j) + `<div class="card offer"><span class="eyebrow">Tell the customer before sending</span><div id="qtotal">${totalLine(j)}</div><p class="muted small" style="margin:0">Show them the quote and say the total out loud. They approve or decline on WhatsApp. No work starts until they approve.</p></div><button class="btn gold" data-a="quote">Send quote</button>`; break;
+    case "quote_sent": body = head("Quote sent", `Tell the customer the total: <b>${Array.isArray(j.customerTotal) ? j.customerTotal.map(usd).join(" / ") + " depending on the part they choose" : usd(j.customerTotal)}</b>. Wait for them to approve or decline on WhatsApp. Don't start yet.`, `<div class="wait"><span class="spin"></span>${j.quote.options ? `Labour ${usd(j.quote.labour)} · customer choosing between ${j.quote.options.length} part option${j.quote.options.length > 1 ? "s" : ""}` : `Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}`}</div>`) + (j.quote.options ? `<div class="card"><span class="eyebrow">Part options sent</span>${j.quote.options.map((o) => optionRow(o, false)).join("")}</div>` : "") + pay; break;
     case "working": body = head("Repair approved ✓", j.part?.status === "to_collect" ? `The customer chose option ${j.quote.chosen}. Collect the part, then do the work.` : "Do the work, test it, then tick the checks.") + collectCard(j) + `<div class="card"><h3>Before you finish</h3>${j.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}" value="${esc(c)}"> ${esc(c)}</label>`).join("")}<button class="btn gold" data-a="complete">Finished and tested</button></div>` + pay; break;
     case "confirm": body = head("Customer is checking", "They're confirming it works on WhatsApp.", `<div class="wait"><span class="spin"></span>Waiting for the customer</div>`) + pay; break;
     case "await_final": body = head("Waiting for payment", "The customer is paying the balance on EcoCash.", `<div class="wait"><span class="spin"></span>Almost done</div>`) + pay; break;
@@ -224,6 +225,21 @@ function jobView(j) {
   }
   return safetyStrip(j) + (pinFor === "checkin" ? pinCard("checkin") : "") + body
     + (j.safety.needsCheckout ? pinCard("checkout") : "");
+}
+
+// The total the customer pays at the end for this quote (same formula as the server), shown live while the pro types.
+function customerTotal(j, labour, parts) {
+  const c = j.calc, r = c.rate / 100, r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+  const fee = r2(labour * c.commission / 100), payout = r2(c.calloutShare + labour - fee + parts), base = r2(labour + parts);
+  return r2((c.calloutPaid ? 0 : c.pay1) + base + r2(base * r + payout * r));
+}
+function totalLine(j) {
+  const lab = Number($("#qlab")?.value || (j.resumed && j.quote?.labour) || 0), parts = Number($("#qparts")?.value || 0);
+  const picked = [...document.querySelectorAll("[data-po]:checked")].map((c) => j.parts?.options.find((o) => o.quoteId === Number(c.value))?.price).filter((x) => x != null);
+  if (!lab) return `<span class="muted small">Enter the labour to see the total.</span>`;
+  const inc = j.calc.calloutPaid ? "" : ` (includes ${usd(j.calc.pay1)} inspection and travel)`;
+  if (picked.length) return `<b style="font-size:20px">${picked.map((p) => usd(customerTotal(j, lab, p))).join(" / ")}</b><br><span class="small">depending on the part option they choose${inc}, EcoCash charges included</span>`;
+  return `<b style="font-size:20px">${usd(customerTotal(j, lab, parts))}</b><br><span class="small">in total${inc}, EcoCash charges included</span>`;
 }
 
 // ---------- parts: prices from verified suppliers, nearest first ----------
@@ -315,6 +331,7 @@ function render() {
   Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox" || el.type === "radio") { if (!el.disabled) el.checked = v; } else el.value = v; });
   if (focus && document.getElementById(focus)) document.getElementById(focus).focus();
   const t2 = $("#thread"); if (t2 && atBottom) t2.scrollTop = t2.scrollHeight;
+  liveTotal();
 }
 
 document.addEventListener("click", async (e) => {
@@ -327,7 +344,7 @@ document.addEventListener("click", async (e) => {
     else if (a === "verifycode") { const r = await api("/api/pro/verify", { phone: login.phone, code: $("#otp").value }); token = r.token; store.set("basa-pro-token", token); login = { step: "phone" }; await refresh(); }
     else if (a === "back") { login = { step: "phone", phone: login.phone }; render(); }
     else if (a === "online") await act("/api/pro/online", { on: !S.pro.online });
-    else if (a === "accept") await act(`/api/pro/offer/${S.offer.id}/accept`, {}, "Accepted. The customer is paying the call-out.");
+    else if (a === "accept") await act(`/api/pro/offer/${S.offer.id}/accept`, {}, "Accepted. Waiting for the customer to confirm.");
     else if (a === "decline") await act(`/api/pro/offer/${S.offer.id}/decline`, {}, "Declined.");
     else if (a === "trip") await act(`${J}/trip`, {}, "Location sharing on for this job.");
     else if (a === "arrive") await act(`${J}/arrive`);
@@ -387,6 +404,10 @@ function shrink(file) {
     img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", 0.82)); };
     img.onerror = () => reject(new Error("That photo couldn't be read.")); img.src = url; });
 }
+// Keep the "tell the customer" total up to date as the pro types or ticks part options.
+function liveTotal() { const el = $("#qtotal"); if (el && S?.job) el.innerHTML = totalLine(S.job); }
+document.addEventListener("input", (e) => { if (["qlab", "qparts"].includes(e.target.id)) liveTotal(); });
+document.addEventListener("change", (e) => { if (e.target.dataset?.po) liveTotal(); });
 document.addEventListener("submit", async (e) => {
   if (e.target.id !== "compose") return; e.preventDefault();
   const v = $("#msg").value.trim(); if (!v || !S?.job) return;
