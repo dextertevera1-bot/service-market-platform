@@ -151,12 +151,10 @@ test("a whole job, end to end", async () => {
   assert.ok(s.offer, "offer moved to Tendai");
   const id = s.offer.id;
   s = (await api(`/api/pro/offer/${id}/accept`, {}, tendai)).body;
-  assert.equal(s.job.stage, "await_callout");
+  assert.equal(s.job.stage, "ready", "no payment before the visit: the call-out is paid at the end");
   out = await inbox();
-  assert.ok(out.some((p) => /Tendai M\.\* accepted/.test(textOf(p))));
-  await wait(150); // simulated EcoCash confirms
-  s = (await api("/api/pro/state", null, tendai)).body;
-  assert.equal(s.job.stage, "ready");
+  assert.ok(out.some((p) => /Tendai M\.\* accepted/.test(textOf(p)) && /Nothing to pay now/.test(textOf(p)) && /still payable for the visit/.test(textOf(p))), "the customer is told the call-out is paid at the end");
+  assert.equal((await api(`/api/ops/job/${id}`, null, opsToken)).body.payments.length, 0, "no EcoCash request before the visit");
 
   // Double taps don't create a second call-out request.
   const ov1 = (await api("/api/ops/overview", null, opsToken)).body;
@@ -195,7 +193,7 @@ test("a whole job, end to end", async () => {
   // Quote, approval, completion.
   await api(`/api/pro/job/${id}/quote`, { labour: 40, parts: 18, note: "Start relay burnt out. Compressor is fine." }, tendai);
   out = await inbox();
-  assert.match(textOf(out.find((p) => /Quote for/.test(textOf(p)))), /\$60\.36/);
+  assert.match(textOf(out.find((p) => /Quote for/.test(textOf(p)))), /Call-out: \$9\.18[\s\S]*To pay after it.s fixed and tested: \$69\.54/, "the quote shows one total at the end, call-out included");
   await say({ reply: "quote:approve" });
   assert.equal((await api(`/api/pro/job/${id}/complete`, { checks: ["Power isolated before work"] }, tendai)).status, 409, "needs the checks");
   await api(`/api/pro/job/${id}/complete`, { checks: ["Power isolated before work", "Leak test done", "Unit cooling at handover"] }, tendai);
@@ -318,7 +316,7 @@ test("customer can cancel before the pro sets off, and nothing is charged", asyn
   await sayX({ text: "Avondale" }); await sayX({ reply: "skip" }); await sayX({ reply: "when:am" });
   await sayX({ text: "cancel" }); await sayX({ reply: "cancel:yes" });
   const out = (await api(`/sim/api/outbox?to=${phone}`)).body.map((m) => m.payload);
-  assert.ok(out.some((p) => /nothing to refund/.test(p.text?.body || "")));
+  assert.ok(out.some((p) => /nothing to pay/.test(p.text?.body || "")));
 });
 
 test("webhook verification and signature check", async () => {

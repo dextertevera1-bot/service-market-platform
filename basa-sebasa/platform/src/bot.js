@@ -3,7 +3,7 @@ import { one, run, all, getJob, logEvent } from "./db.js";
 import { wa } from "./whatsapp.js";
 import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js";
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
-import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney, savedPriceText } from "./jobs.js";
+import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney, savedPriceText, owedCallout, payOwedCallout } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
 import { withLock } from "./lock.js";
 
@@ -39,6 +39,13 @@ async function handleOne(msg) {
   if (job) return withLock("job:" + job.id, () => { const fresh = getJob(job.id); return onActiveJob(fresh, msg, text, reply, c); });
 
   // A saved repair (diagnosed, customer chose "Not now"), valid for 30 days.
+  // A call-out still owed from an earlier visit (not home, saved for later, cancelled on the way) is settled before a new booking.
+  const owed = owedCallout(phone);
+  if (owed) {
+    if (reply === "pay:due") return payOwedCallout(phone);
+    if (reply === "help" || ["help", "agent", "person", "human"].includes(text)) { raiseAlert(owed.job_id, null, "help", "customer asked about an owed call-out"); return wa.text(phone, "Our Harare admin will call you shortly."); }
+    return wa.buttons(phone, `Welcome back! Before we book your next visit, there's a call-out of *${usd(owed.amount)}* still to pay for ${owed.job_id}.`, [{ id: "pay:due", title: "Pay now" }, { id: "help", title: "Talk to us" }]);
+  }
   const saved = savedRepairFor(phone);
   if (reply.startsWith("resume:")) {
     if (!saved || reply.slice(7) !== saved.id) { setConvo(phone, "idle"); return wa.text(phone, "Sorry, that saved repair has expired. Type *hi* to book a new visit."); }
@@ -130,7 +137,7 @@ function askService(phone) {
 
 function askWhen(phone, d) {
   const s = serviceById(d.service), m = money({ km: 0 });
-  const body = `*${s.name} in ${d.suburb}*\n"${d.desc}"\n\nCall-out: *$${RULES.callout}* covers the inspection and travel up to ${RULES.freeKm} km (*${usd(m.pay1)}* with EcoCash charges). Extra travel beyond ${RULES.freeKm} km is shown before you pay.\n\nSimilar repairs usually come to ${usd(s.guide[0])}–${usd(s.guide[1])} in total. Your exact quote comes first, and nothing starts until you approve it.\n\nWe book day jobs only (07:00–18:00). When do you need someone?`;
+  const body = `*${s.name} in ${d.suburb}*\n"${d.desc}"\n\nCall-out: *$${RULES.callout}* covers the inspection and travel up to ${RULES.freeKm} km (*${usd(m.pay1)}* with EcoCash charges). Extra travel beyond ${RULES.freeKm} km is shown when a pro accepts.\n*Nothing to pay now:* the call-out is paid at the end on EcoCash, together with any repair. It's still payable if you decide not to go ahead with the repair.\n\nSimilar repairs usually come to ${usd(s.guide[0])}–${usd(s.guide[1])} in total. Your exact quote comes first, and nothing starts until you approve it.\n\nWe book day jobs only (07:00–18:00). When do you need someone?`;
   const opts = isDayTime() ? [{ id: "when:now", title: "As soon as possible" }, { id: "when:am", title: "Tomorrow, 08:00" }, { id: "cancel", title: "Cancel" }]
     : [{ id: "when:am", title: "Tomorrow, 08:00" }, { id: "when:pm", title: "Tomorrow, 14:00" }, { id: "cancel", title: "Cancel" }];
   return wa.buttons(phone, body, opts);

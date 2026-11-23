@@ -111,13 +111,15 @@ test("P3 the pro sees prices nearest first and sends the customer 3 options with
   assert.deepEqual(rows.map((r) => r.id), ["quote:opt:1", "quote:opt:2", "quote:opt:3", "quote:later"]);
   assert.match(body, /Part needed: \*Start relay, Samsung RT38\*/);
   assert.ok(body.indexOf("Avondale Fridge Spares") < body.indexOf("Belgravia Cooling") && body.indexOf("Belgravia Cooling") < body.indexOf("Msasa Refrigeration"));
-  const t1 = money({ travel: j.data.travel, labour: 40, parts: 18 }).pay2;
+  const t1m = money({ travel: j.data.travel, labour: 40, parts: 18 }), t1 = Math.round((t1m.pay1 + t1m.pay2) * 100) / 100; // call-out paid at the end too
   assert.ok(body.includes("$" + t1.toFixed(2)), "each option shows the total to pay after testing");
   assert.equal(one("SELECT COUNT(*) n FROM part_quotes WHERE status = 'offered'").n, 3, "the 3 options are marked as sent to the customer");
 });
 
 test("P4 the customer picks option 2; commission stays on labour only; the pro must collect before finishing", async () => {
   const phone = "263771300002", id = one("SELECT id FROM jobs WHERE customer = ?", phone).id;
+  const optionTotalShown = optionTotal(getJob(id), { price: 15 });
+  assert.ok((await msgs(phone)).at(-1).interactive.body.text.includes("$" + optionTotalShown.toFixed(2)), "the total shown includes the call-out");
   await say(phone)({ reply: "quote:opt:2" });
   let j = getJob(id);
   assert.equal(j.stage, "working"); assert.equal(j.data.quote.chosen, 2); assert.equal(j.data.quote.parts, 15); assert.equal(j.data.part.shop, "Belgravia Cooling");
@@ -137,8 +139,8 @@ test("P4 the customer picks option 2; commission stays on labour only; the pro m
   j = getJob(id); assert.equal(j.stage, "paid");
   const m = money({ travel: j.data.travel, labour: 40, parts: 15 });
   assert.equal(m.fee, 6, "15% of $40 labour; nothing on the $15 part");
-  assert.equal(one("SELECT amount FROM payments WHERE job_id = ? AND kind = 'final'", id).amount, m.pay2);
-  assert.equal(m.pay2, optionTotal(j, { price: 15 }), "the customer pays exactly the total shown for option 2");
+  assert.equal(one("SELECT amount FROM payments WHERE job_id = ? AND kind = 'final'", id).amount, Math.round((m.pay1 + m.pay2) * 100) / 100, "one payment at the end: call-out + repair");
+  assert.equal(Math.round((m.pay1 + m.pay2) * 100) / 100, optionTotalShown, "the customer pays exactly the total shown for option 2");
   assert.equal(one("SELECT amount FROM payouts WHERE job_id = ? ORDER BY id DESC", id).amount, m.payout, "the pro is paid back the part in full");
 });
 
@@ -164,7 +166,10 @@ test("P6 'Not now' saves the diagnosis; going ahead later gets fresh part prices
   assert.equal(getJob(id).stage, "deferred");
   assert.match((await texts(phone)).at(-1), /Labour stays at \$45\.00.*choose the part again from fresh prices/s);
   assert.match((await texts("263772300003")).at(-1), /postponed the repair/);
+  await wait(200); // the call-out for this visit is requested and (simulated) paid
+  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", id).n, 1, "call-out paid for the diagnosis visit");
   const payouts = one("SELECT COUNT(*) n FROM payouts WHERE job_id = ?", id).n;
+  assert.equal(payouts, 1, "the pro's call-out share is owed once it's paid");
   // Check out, then the customer goes ahead.
   await api(`/api/pro/job/${id}/checkout`, { pin: "1357" }, tok);
   await say(phone)({ text: "hi" });

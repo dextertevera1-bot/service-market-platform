@@ -4,7 +4,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 Object.assign(process.env, { PAYMENT_MODE: "sim", SIM_PAY_DELAY_MS: "40", ADMIN_USERS: "dex:test-pass-123" });
 const { startServer } = await import("../src/server.js");
-const { run, one, getJob, saveJob, getProByPhone } = await import("../src/db.js");
+const { run, one, all, getJob, saveJob, getProByPhone } = await import("../src/db.js");
 const { sweep } = await import("../src/jobs.js");
 const { markPaid, markFailed } = await import("../src/payments.js");
 const { hashPin } = await import("../src/safety.js");
@@ -46,20 +46,15 @@ test("C3 customer picks the wrong category and starts again", async () => {
   assert.match(await lastFrom("263771000003"), /Fridge & aircon/);
 });
 
-test("C5 customer cancels after the pro accepted, before paying: nothing charged", async () => {
+test("C5 customer cancels after the pro accepted, before the pro sets off: nothing to pay", async () => {
   freePros(); const id = await book("263771000005");
   const t = (await offerOf(tok.a)) ? tok.a : tok.b;
   await api(`/api/pro/offer/${id}/accept`, {}, t);
   await sayAs("263771000005")({ text: "cancel" }); await sayAs("263771000005")({ reply: "cancel:yes" });
   assert.equal(getJob(id).stage, "cancelled");
   await wait(120);
-  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ? AND status = 'paid'", id).n, 0, "the cancelled call-out request is never confirmed");
-  // If the customer still approves the EcoCash prompt after cancelling, the money is recorded and flagged as a refund.
-  const p = one("SELECT * FROM payments WHERE job_id = ?", id);
-  assert.equal(markPaid(p.id, "LATE1", "paynow"), true);
-  assert.equal(getJob(id).stage, "cancelled", "the job stays cancelled");
-  const ov = (await api("/api/ops/overview", null, ops)).body;
-  assert.ok(ov.refunds.some((r) => r.id === id), "shown under Refunds to review");
+  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ?", id).n, 0, "no EcoCash request at all: the call-out is only paid at the end");
+  assert.match(await lastFrom("263771000005"), /nothing to pay/);
 });
 
 test("C6 unstable connection: the same WhatsApp message delivered twice is handled once", async () => {
@@ -69,27 +64,61 @@ test("C6 unstable connection: the same WhatsApp message delivered twice is handl
   assert.equal((await outbox("263771000006")).filter((t) => /Welcome to/.test(t)).length, 1);
 });
 
-test("C7 + A4 duplicate payment request and duplicate confirmation change nothing twice", async () => {
-  freePros(); const id = await book("263771000007");
+// Take a job straight to "customer checking the work" (the visit itself is covered in flow.test.js).
+async function toConfirm(phone) {
+  freePros(); const id = await book(phone);
   const t = (await offerOf(tok.a)) ? tok.a : tok.b;
-  await api(`/api/pro/offer/${id}/accept`, {}, t); await wait(120);
-  const p = one("SELECT * FROM payments WHERE job_id = ? AND kind = 'callout'", id);
-  assert.equal(markPaid(p.id, "AGAIN", "test"), false, "second confirmation ignored");
-  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ?", id).n, 1, "one call-out request only");
+  await api(`/api/pro/offer/${id}/accept`, {}, t);
+  const j = getJob(id); j.stage = "confirm"; j.data.quote = { labour: 30, parts: 0 }; saveJob(j);
+  return id;
+}
+
+test("C7 + A4 duplicate payment request and duplicate confirmation change nothing twice", async () => {
+  const id = await toConfirm("263771000007");
+  await sayAs("263771000007")({ reply: "work:yes" }); await sayAs("263771000007")({ reply: "pay:retry" }); await wait(150);
+  const pays = all("SELECT * FROM payments WHERE job_id = ?", id);
+  assert.equal(pays.length, 1, "one payment request only, even after a repeated tap");
+  assert.equal(pays[0].kind, "final");
+  const { finalAmount, jobMoney } = await import("../src/jobs.js"); const m = jobMoney(getJob(id));
+  assert.equal(pays[0].amount, Math.round((m.pay1 + m.pay2) * 100) / 100, "call-out and repair in one payment at the end");
+  assert.equal(markPaid(pays[0].id, "AGAIN", "test"), false, "second confirmation ignored");
+  assert.equal(one("SELECT COUNT(*) n FROM payouts WHERE job_id = ?", id).n, 1, "one payout");
 });
 
 test("C8 payment fails (not enough balance): customer is told and can try again", async () => {
-  freePros(); process.env.SIM_PAY_DELAY_MS = "999999";
   const { config } = await import("../src/config.js"); const old = config.payments.simDelayMs; config.payments.simDelayMs = 999999;
-  const id = await book("263771000008");
-  const t = (await offerOf(tok.a)) ? tok.a : tok.b;
-  await api(`/api/pro/offer/${id}/accept`, {}, t);
+  const id = await toConfirm("263771000008");
+  await sayAs("263771000008")({ reply: "work:yes" });
   const p = one("SELECT * FROM payments WHERE job_id = ? AND status = 'pending'", id);
   markFailed(p.id, "insufficient balance"); await wait(50);
   assert.match(await lastFrom("263771000008"), /didn't go through/);
   config.payments.simDelayMs = 30;
   await sayAs("263771000008")({ reply: "pay:retry" }); await wait(150);
-  assert.equal(getJob(id).stage, "ready", "paid on the retry");
+  assert.equal(getJob(id).stage, "paid", "paid on the retry");
+  config.payments.simDelayMs = old;
+});
+
+test("C11 customer not home: the call-out is asked for, the pro is paid once it's collected, and a new booking waits until it's paid", async () => {
+  const { config } = await import("../src/config.js"); const old = config.payments.simDelayMs; config.payments.simDelayMs = 999999;
+  freePros(); const phone = "263771000011", id = await book(phone);
+  const t = (await offerOf(tok.a)) ? tok.a : tok.b;
+  await api(`/api/pro/offer/${id}/accept`, {}, t);
+  await api(`/api/pro/job/${id}/trip`, {}, t); await api(`/api/pro/job/${id}/arrive`, {}, t);
+  const j = getJob(id); j.data.testFastNoShow = true; saveJob(j);
+  assert.equal((await api(`/api/pro/job/${id}/noshow`, {}, t)).status, 200);
+  assert.match(await lastFrom(phone), /call-out is payable for the trip/);
+  assert.equal(one("SELECT COUNT(*) n FROM payouts WHERE job_id = ?", id).n, 0, "nothing paid out before the customer pays");
+  // The customer comes back before paying: asked to settle first.
+  await sayAs(phone)({ text: "hi" });
+  assert.match(await lastFrom(phone), /still to pay for/);
+  const ov = (await api("/api/ops/overview", null, ops)).body;
+  assert.ok(ov.owedCallouts.some((o) => o.job_id === id), "listed under Call-outs owed on the ops desk");
+  config.payments.simDelayMs = 30;
+  await sayAs(phone)({ reply: "pay:due" }); await wait(200);
+  assert.equal(one("SELECT COUNT(*) n FROM payments WHERE job_id = ? AND status = 'paid'", id).n, 1);
+  assert.equal(one("SELECT amount FROM payouts WHERE job_id = ?", id).amount, 8, "the pro's $8 call-out share is now owed");
+  await sayAs(phone)({ text: "hi" });
+  assert.match(await lastFrom(phone), /What do you need help with/, "can book again");
   config.payments.simDelayMs = old;
 });
 

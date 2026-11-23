@@ -183,8 +183,10 @@ export function sweepParts(now = Date.now()) {
 }
 
 // What the ops desk shows.
-export function partsOverview() {
+// testLinks: only while WhatsApp is simulated, so the team can answer as a supplier from the ops desk.
+export function partsOverview({ testLinks = false } = {}) {
   const requests = all("SELECT * FROM part_requests ORDER BY id DESC LIMIT 50").map((r) => ({ ...r, trade: serviceById(r.trade)?.name,
-    quotes: all("SELECT q.id, q.status, q.price, q.condition, q.warranty_days, q.km, s.shop, s.suburb FROM part_quotes q JOIN suppliers s ON s.id = q.supplier_id WHERE q.request_id = ? ORDER BY q.km", r.id) }));
+    quotes: all("SELECT q.id, q.status, q.price, q.condition, q.warranty_days, q.km, q.token, s.shop, s.suburb FROM part_quotes q JOIN suppliers s ON s.id = q.supplier_id WHERE q.request_id = ? ORDER BY q.km", r.id)
+      .map(({ token, ...q }) => (testLinks ? { ...q, link: `/supplier/?t=${token}` } : q)) }));
   return { suppliers: listSuppliers(), requests, checks: P.supplierChecks.map((c) => ({ id: c, name: CHECK_NAME[c] })) };
 }

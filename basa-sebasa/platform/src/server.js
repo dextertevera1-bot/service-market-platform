@@ -114,6 +114,7 @@ function proState(pro) {
     rules: { checkinMinutes: RULES.checkinMinutes, payoutHours: RULES.payoutHours, noShowWaitMinutes: RULES.noShowWaitMinutes },
     onboarding: pro.status === "verified" ? null : OB.onboardingView(pro),
     profile: OB.profileView(pro),
+    testMode: simulated.whatsapp,
     probation: pro.data?.probation || null, level: pro.data?.level || null,
     now: Date.now(),
   };
@@ -162,7 +163,12 @@ function opsOverview() {
     WHERE j.stage = 'cancelled' AND json_extract(j.data,'$.refundDone') IS NULL AND NOT EXISTS (SELECT 1 FROM payouts o WHERE o.job_id = j.id) GROUP BY j.id ORDER BY j.updated_at DESC LIMIT 200`);
   const savedRepairs = all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY json_extract(data,'$.deferredAt') LIMIT 100").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, service: serviceById(j.service).name, suburb: j.data.suburb, customer: j.customer, pro: j.data.pro?.name, toPay: J.jobMoney(j).pay2, until: J.savedUntil(j), reminders: j.data.reminders || [] }));
-  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, parts: PARTS.partsOverview(), trades: SERVICES.map((x) => ({ id: x.id, name: x.name })), suburbs: Object.keys(SUBURBS), outbox: outboxStats(), mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
+  // Call-outs owed for visits that ended without a repair (paid at the end, so they can go unpaid).
+  const owedCallouts = all(`SELECT p.id, p.job_id, p.amount, p.status, p.created_at, j.customer, j.stage, json_extract(j.data,'$.pro.name') pro FROM payments p JOIN jobs j ON j.id = p.job_id
+    WHERE p.kind = 'callout' AND p.status IN ('pending','failed') AND j.stage IN ('deferred','noshow','cancelled')
+    AND NOT EXISTS (SELECT 1 FROM payments x WHERE x.job_id = p.job_id AND x.kind = 'callout' AND x.status = 'paid')
+    AND p.id = (SELECT MAX(y.id) FROM payments y WHERE y.job_id = p.job_id AND y.kind = 'callout') ORDER BY p.created_at LIMIT 200`);
+  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, owedCallouts, parts: PARTS.partsOverview({ testLinks: simulated.whatsapp }), trades: SERVICES.map((x) => ({ id: x.id, name: x.name })), suburbs: Object.keys(SUBURBS), outbox: outboxStats(), mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
 }
 
 // ---------- routes ----------

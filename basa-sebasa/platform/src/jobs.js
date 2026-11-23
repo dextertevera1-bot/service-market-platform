@@ -22,7 +22,7 @@ export const CLOSED = ["paid", "cancelled", "deferred", "noshow"];
 const first = (name) => String(name || "").split(" ")[0];
 
 export const STAGE_LABEL = {
-  searching: "Looking for a pro", offered: "Offered to a pro", await_callout: "Waiting for the call-out payment", ready: "Call-out paid: pro getting ready",
+  searching: "Looking for a pro", offered: "Offered to a pro", await_callout: "Waiting for the call-out payment", ready: "Confirmed: pro getting ready",
   travelling: "Pro on the way", arrived: "Pro at the gate", diagnosing: "Pro diagnosing", quote_sent: "Quote with the customer", working: "Work in progress",
   confirm: "Customer checking the work", await_final: "Waiting for the final payment", paid: "Paid and closed", cancelled: "Cancelled",
   deferred: "Repair saved for later", noshow: "Closed: customer not home",
@@ -134,17 +134,17 @@ export async function proAccept(pro, jobId) {
 No call-out to pay: your first visit covers it. You'll get a new Basa Code when ${first(pro.name)} sets off.`);
     return { ok: true };
   }
-  job.pro_id = pro.id; job.stage = "await_callout";
+  // The call-out is paid at the end, with the repair (founder decision, 23 Nov 2026): no payment before the visit.
+  job.pro_id = pro.id; job.stage = "ready";
   job.data.km = km; job.data.travel = r2(Math.max(0, km - RULES.freeKm) * RULES.perKm); // frozen once accepted
   job.data.pro = { id: pro.id, name: pro.name, trust: pro.trust, rating: pro.rating_n ? r2(pro.rating_sum / pro.rating_n) : null, jobs: pro.jobs_done, home: pro.suburb };
   job.data.offer = null; job.data.searchingSince = null;
   saveJob(job);
-  logEvent(job.id, "app", `${pro.name} accepted.`);
+  logEvent(job.id, "app", `${pro.name} accepted. Call-out to be paid at the end.`);
   const m = jobMoney(job);
-  const pay = await requestPayment(job, "callout", m.pay1, job.customer);
   const travelLine = job.data.travel > 0 ? ` (includes ${usd(job.data.travel)} travel: ${km} km, the first ${RULES.freeKm} km are free)` : "";
   if (pro.data?.photo) await wa.image(job.customer, `${config.baseUrl}/media/pro/${pro.id}`, `${pro.name}, your Basa pro`);
-  await wa.text(job.customer, `✅ *${pro.name}* accepted your job.\nTrust Score ${pro.trust}${job.data.pro.rating ? ` · ★${job.data.pro.rating}` : ""} · ID and trade checked in person by Basa seBasa.\n\nTo confirm, please pay the call-out: *${usd(m.pay1)}*${travelLine}, EcoCash charges included.\n\n${pay.instructions}`);
+  await wa.text(job.customer, `✅ *${pro.name}* accepted your job.\nTrust Score ${pro.trust}${job.data.pro.rating ? ` · ★${job.data.pro.rating}` : ""} · ID and trade checked in person by Basa seBasa.\n\n*Nothing to pay now.* The call-out of *${usd(m.pay1)}*${travelLine}, EcoCash charges included, is paid at the end on EcoCash, together with any repair you approve.\n\nPlease note: if you decide not to go ahead with the repair, or you're not home when ${first(pro.name)} arrives, the call-out is still payable for the visit.\n\n${first(pro.name)} will let you know when they set off. You'll get your *Basa Code* then.`);
   return { ok: true };
 }
 
@@ -157,10 +157,37 @@ export async function proDecline(pro, jobId, reason = "declined") {
   return { ok: true };
 }
 
+// ---------- what the customer owes ----------
+export const calloutPaid = (job) => !!one("SELECT id FROM payments WHERE job_id = ? AND kind = 'callout' AND status = 'paid'", job.id);
+// At the end: the repair, plus the call-out if it hasn't been paid (it usually hasn't: it's paid at the end).
+export function finalAmount(job) { const m = jobMoney(job); return r2(m.pay2 + (calloutPaid(job) ? 0 : m.pay1)); }
+// A call-out still owed for a visit that ended without a repair (saved for later, not home, cancelled on the way).
+export function owedCallout(phone) {
+  return one(`SELECT p.*, j.stage FROM payments p JOIN jobs j ON j.id = p.job_id WHERE j.customer = ? AND p.kind = 'callout' AND p.status IN ('pending','failed')
+    AND j.stage IN ('deferred','noshow','cancelled') AND NOT EXISTS (SELECT 1 FROM payments x WHERE x.job_id = p.job_id AND x.kind = 'callout' AND x.status = 'paid') ORDER BY p.id DESC`, phone) || null;
+}
+export async function payOwedCallout(phone) {
+  const o = owedCallout(phone); if (!o) return false;
+  const job = getJob(o.job_id);
+  if (o.status === "pending") run("UPDATE payments SET status = 'failed', note = COALESCE(note,'') || ' replaced by a new request', updated_at = ? WHERE id = ?", Date.now(), o.id);
+  const pay = await requestPayment(job, "callout", o.amount, phone);
+  await wa.text(phone, `Call-out for ${job.id}: *${usd(o.amount)}*.\n\n${pay.instructions}`);
+  return true;
+}
+
 // ---------- payments arriving ----------
 setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
   const job = getJob(p.job_id); if (!job) return;
   const pro = job.pro_id ? getPro(job.pro_id) : null;
+  if (p.kind === "callout" && ["deferred", "noshow", "cancelled"].includes(job.stage) && pro) {
+    // The call-out for a visit with no repair (saved for later, not home, cancelled on the way): now the pro's share is owed.
+    if (!job.data.calloutPayoutDone) tx(() => { // once only, even if the customer paid twice
+      job.data.calloutPayoutDone = true; job.data.calloutPaidAt = Date.now(); saveJob(job);
+      run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, jobMoney(job).calloutShare, Date.now() + RULES.payoutHours * 3600e3);
+      logEvent(job.id, "pay", `Call-out paid. Payout of ${usd(jobMoney(job).calloutShare)} to ${pro.name} due within ${RULES.payoutHours} h.`); });
+    await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you!`);
+    return;
+  }
   if (p.kind === "callout" && job.stage === "await_callout") {
     job.stage = "ready"; job.data.calloutPaidAt = Date.now(); saveJob(job);
     await wa.text(job.customer, `Payment received: *${usd(p.amount)}*, ref ${p.ref}. Thank you.\n\n${first(pro.name)} is getting ready and will let you know when they set off. You'll get your *Basa Code* then.`);
@@ -187,15 +214,17 @@ setPaidHandler((p) => withLock("job:" + p.job_id, async () => {
 }));
 
 setFailedHandler((p) => withLock("job:" + p.job_id, async () => {
-  const job = getJob(p.job_id); if (!job || !["await_callout", "await_final"].includes(job.stage)) return;
-  await wa.buttons(job.customer, `Your EcoCash payment of *${usd(p.amount)}* didn't go through. Please check you have enough balance, then tap *Try again*. Nothing has been taken.`, [{ id: `pay:retry`, title: "Try again" }, { id: "help", title: "Talk to us" }]);
+  const job = getJob(p.job_id); if (!job) return;
+  const owed = p.kind === "callout" && ["deferred", "noshow", "cancelled"].includes(job.stage);
+  if (!owed && !["await_callout", "await_final"].includes(job.stage)) return;
+  await wa.buttons(job.customer, `Your EcoCash payment of *${usd(p.amount)}* didn't go through. Please check you have enough balance, then tap *Try again*. Nothing has been taken.`, [{ id: owed ? "pay:due" : "pay:retry", title: "Try again" }, { id: "help", title: "Talk to us" }]);
 }));
 
 // The customer tries a failed payment again (only the payment this job is waiting for).
 export async function customerRetryPayment(job) {
   const kind = job.stage === "await_callout" ? "callout" : job.stage === "await_final" ? "final" : null;
   if (!kind) return;
-  const m = jobMoney(job), amount = kind === "callout" ? m.pay1 : m.pay2;
+  const m = jobMoney(job), amount = kind === "callout" ? m.pay1 : finalAmount(job);
   const pay = await requestPayment(job, kind, amount, job.customer);
   if (pay.duplicate) return wa.text(job.customer, pay.paid ? "That payment has already been received. Thank you!" : "Your payment request is still open. Please approve the EcoCash prompt on your phone.");
   await wa.text(job.customer, pay.instructions);
@@ -249,9 +278,9 @@ export async function proNoShow(pro, jobId) {
   if (Date.now() - job.data.arrivedAt < RULES.noShowWaitMinutes * 60e3 && !job.data.testFastNoShow) return { error: `Please wait ${RULES.noShowWaitMinutes} minutes and try calling through the app first.` };
   job.stage = "noshow"; saveJob(job);
   const m = jobMoney(job);
-  run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, m.calloutShare, Date.now() + RULES.payoutHours * 3600e3);
-  logEvent(job.id, "server", `Visit closed: customer not home. ${pro.name} keeps the ${usd(m.calloutShare)} call-out share.`);
-  await wa.text(job.customer, `${first(pro.name)} waited ${RULES.noShowWaitMinutes} minutes at your gate and couldn't reach you, so this visit is closed. The call-out covers the trip. Message us any time to book again.`);
+  logEvent(job.id, "server", `Visit closed: customer not home. Call-out ${usd(m.pay1)} requested; ${pro.name}'s ${usd(m.calloutShare)} share is paid out once it's collected.`);
+  const pay = await requestPayment(job, "callout", m.pay1, job.customer);
+  await wa.text(job.customer, `${first(pro.name)} waited ${RULES.noShowWaitMinutes} minutes at your gate and couldn't reach you, so this visit is closed. As explained when you booked, the call-out is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
   return { ok: true };
 }
 
@@ -276,17 +305,20 @@ export async function proQuote(pro, jobId, { labour, parts, note, partOptions })
   job.stage = "quote_sent"; saveJob(job);
   const m = jobMoney(job);
   logEvent(job.id, "app", `Quote sent: labour ${usd(labour)}, parts ${usd(parts)}.`);
-  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\nLabour: ${usd(labour)}\nParts: ${usd(parts)}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(m.pay2)}*\n\nNothing starts until you approve.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Not now" }]);
+  const co = calloutPaid(job) ? 0 : m.pay1;
+  await wa.buttons(job.customer, `*Quote for ${job.id}*\n${scrub(note).text || "Repair as diagnosed."}\n\n${co ? `Call-out${m.travel ? " + travel" : ""}: ${usd(co)}\n` : ""}Labour: ${usd(labour)}\nParts: ${usd(parts)}\nEcoCash charges: ${usd(m.charges2)}\n*To pay after it's fixed and tested: ${usd(r2(m.pay2 + co))}*\n\nNothing starts until you approve. If you choose *Not now*, only the call-out (${usd(m.pay1)}) is payable for today's visit.`, [{ id: "quote:approve", title: "Approve quote" }, { id: "quote:later", title: "Not now" }]);
   return { ok: true };
 }
 
 // The total the customer pays after testing if they pick this option (part at cost, no commission on it).
-export const optionTotal = (job, o) => money({ travel: job.data.travel ?? 0, labour: job.data.quote.labour, parts: o.price }).pay2;
+// Includes the call-out when it hasn't been paid yet (it's paid at the end, with the repair).
+export const optionTotal = (job, o) => { const m = money({ travel: job.data.travel ?? 0, labour: job.data.quote.labour, parts: o.price }); return r2(m.pay2 + (calloutPaid(job) ? 0 : m.pay1)); };
 const optionLine = (job, o) => `*${o.n}.* ${usd(o.price)} · ${o.conditionName} · ${o.warrantyDays ? `${o.warrantyDays}-day warranty` : "no warranty"}\n    ${o.shop}, ${o.suburb} (${o.km} km)\n    Total after it's fixed and tested: *${usd(optionTotal(job, o))}*`;
 
 async function sendOptionsQuote(job) {
   const q = job.data.quote;
-  const body = `*Quote for ${job.id}*\n${scrub(q.note).text || "Repair as diagnosed."}\n\nLabour: ${usd(q.labour)}\nPart needed: *${q.part}*\n\nPrices from Basa-verified suppliers, nearest first:\n${q.options.map((o) => optionLine(job, o)).join("\n")}\n\nTotals include EcoCash charges. You pay only after it's fixed and tested; parts are charged at the supplier's price. Nothing is bought until you choose.`;
+  const co = calloutPaid(job) ? 0 : jobMoney(job).pay1;
+  const body = `*Quote for ${job.id}*\n${scrub(q.note).text || "Repair as diagnosed."}\n\n${co ? `Call-out: ${usd(co)}\n` : ""}Labour: ${usd(q.labour)}\nPart needed: *${q.part}*\n\nPrices from Basa-verified suppliers, nearest first:\n${q.options.map((o) => optionLine(job, o)).join("\n")}\n\nTotals include ${co ? "the call-out and " : ""}EcoCash charges. You pay only after it's fixed and tested; parts are charged at the supplier's price. Nothing is bought until you choose.`;
   await wa.list(job.customer, body, "Choose a part", [
     ...q.options.map((o) => ({ id: `quote:opt:${o.n}`, title: `Option ${o.n} · ${usd(o.price)}`, description: `${o.conditionName}, ${o.shop}, ${o.suburb} (${o.km} km)` })),
     { id: "quote:later", title: "Not now", description: "Save this diagnosis for 30 days" },
@@ -327,9 +359,13 @@ export async function customerQuote(job, approve, optionN = null) {
     saveJob(job);
     if (q.options && !q.chosen) await PARTS.settleQuotes(q.requestId, null, job, pro);
     const m = jobMoney(job);
-    if (!again) run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, m.calloutShare, Date.now() + RULES.payoutHours * 3600e3);
     logEvent(job.id, "wa", `Customer chose to repair later. Diagnosis valid ${RULES.diagnosisValidDays} days; ${pro.name} gets ${RULES.firstRefusalHours} h first refusal.`);
-    await wa.buttons(job.customer, `No problem. Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.${q.options && !q.chosen ? `\n\nLabour stays at ${usd(q.labour)}. Supplier prices change, so you'll choose the part again from fresh prices when you go ahead.` : ""}
+    // Today's visit: the call-out is paid now (it was never taken up front). Not again for a saved repair put back on hold.
+    if (!again && !calloutPaid(job)) {
+      const pay = await requestPayment(job, "callout", m.pay1, job.customer);
+      await wa.text(job.customer, `For today's visit and diagnosis, please pay the call-out: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
+    }
+    await wa.buttons(job.customer, `Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.${q.options && !q.chosen ? `\n\nLabour stays at ${usd(q.labour)}. Supplier prices change, so you'll choose the part again from fresh prices when you go ahead.` : ""}
 
 When you're ready, just message us here and tap *Go ahead with repair*. We'll send a reminder before it expires.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }]);
   }
@@ -376,9 +412,9 @@ export async function customerConfirm(job, works) {
     return;
   }
   job.stage = "await_final"; saveJob(job);
-  const m = jobMoney(job);
-  const pay = await requestPayment(job, "final", m.pay2, job.customer);
-  await wa.text(job.customer, `Great! Please pay the balance: *${usd(m.pay2)}* (labour ${usd(m.labour)} + parts ${usd(m.parts)} + EcoCash charges ${usd(m.charges2)}).\n\n${pay.instructions}`);
+  const m = jobMoney(job), withCallout = !calloutPaid(job), amount = finalAmount(job);
+  const pay = await requestPayment(job, "final", amount, job.customer);
+  await wa.text(job.customer, `Great! Please pay *${usd(amount)}*:\n${withCallout ? `Call-out${m.travel ? " + travel" : ""}: ${usd(m.pay1)}\n` : ""}Labour: ${usd(m.labour)}\nParts: ${usd(m.parts)}\nEcoCash charges: ${usd(m.charges2)}\n\n${pay.instructions}`);
 }
 
 export async function customerRate(job, n) {
@@ -408,13 +444,18 @@ export async function customerCancel(job) {
     run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, jobMoney(job).calloutShare, Date.now() + RULES.payoutHours * 3600e3);
     logEvent(job.id, "wa", "Customer cancelled after the pro set off: call-out covers the trip.");
     await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the call-out covers the trip. Message us any time to book again.`);
+  } else if (was === "travelling") {
+    const m = jobMoney(job);
+    logEvent(job.id, "wa", `Customer cancelled after the pro set off: call-out ${usd(m.pay1)} requested for the trip.`);
+    const pay = await requestPayment(job, "callout", m.pay1, job.customer);
+    await wa.text(job.customer, `Cancelled. ${first(pro.name)} was already on the way, so the call-out is payable for the trip: *${usd(m.pay1)}*.\n\n${pay.instructions}`);
   } else if (paid) {
     logEvent(job.id, "wa", "Customer cancelled after paying the call-out, before the pro set off: refund to review on the ops desk.");
     await wa.text(job.customer, `Cancelled. Our Harare admin will contact you about your call-out payment. Message us any time to book again.`);
   } else {
     run("UPDATE payments SET status = 'cancelled' WHERE job_id = ? AND status = 'pending'", job.id);
     logEvent(job.id, "wa", "Customer cancelled before paying.");
-    await wa.text(job.customer, `Cancelled. Nothing was paid, so there's nothing to refund. Message us any time to book again.`);
+    await wa.text(job.customer, `Cancelled. There's nothing to pay. Message us any time to book again.`);
   }
   return { ok: true };
 }

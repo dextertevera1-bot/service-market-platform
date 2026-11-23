@@ -1,6 +1,6 @@
 # Test report (23 Nov 2026, Systems Director audit)
 
-Automatic (`npm test`): **36 passed, 0 failed** (27 earlier + 8 parts tests P1–P8 + 1 profile-photo test, 23 Nov 2026). Browser run of the parts path (3 shops price, customer picks option 2, pro collects, paid): passed, no page errors. Browser runs (onboarding with meeting day → job → payout; saved repair): passed, no page errors.
+Automatic (`npm test`): **37 passed, 0 failed** (call-out at the end: C5, C7, C8 rewritten, C11 added) (27 earlier + 8 parts tests P1–P8 + 1 profile-photo test, 23 Nov 2026). Browser run of the parts path (3 shops price, customer picks option 2, pro collects, paid): passed, no page errors. Browser runs (onboarding with meeting day → job → payout; saved repair): passed, no page errors.
 
 ## Mandate §15 scenarios
 

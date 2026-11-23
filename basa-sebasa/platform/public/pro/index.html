@@ -181,7 +181,7 @@ function offerView() {
   return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${Math.min(100, left / 60 * 100)}%"></i></div>
     <h3>${esc(o.service)} · ${esc(o.suburb)}</h3><p style="margin:0">"${esc(o.desc)}"</p>
     <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Distance</td><td>${o.km} km</td></tr><tr class="you"><td>Call-out you get</td><td>${usd(o.earnings)}</td></tr></table>
-    <p class="small ok" style="margin:0">✓ Customer's WhatsApp number verified · pays the call-out before you travel</p><p class="muted small" style="margin:0">Your choice: accept only if you're comfortable with it.</p>
+    <p class="small ok" style="margin:0">✓ Customer's WhatsApp number verified · agreed to pay the call-out at the end, even if they don't go ahead with the repair</p><p class="muted small" style="margin:0">Your choice: accept only if you're comfortable with it.</p>
     <div class="two"><button class="btn" data-a="decline">Decline</button><button class="btn gold" data-a="accept">Accept</button></div></div>`;
 }
 
@@ -206,7 +206,7 @@ function jobView(j) {
   let body = "";
   switch (j.stage) {
     case "await_callout": body = head("Waiting for the call-out", "The customer is paying on EcoCash. Don't leave yet.", `<div class="wait"><span class="spin"></span>We'll tell you as soon as it's paid.</div>`) + cust; break;
-    case "ready": body = head("Call-out paid ✓", "Get your tools and set off. The customer gets their Basa Code when you do.") + cust + `<button class="btn gold" data-a="trip">I'm setting off</button>`; break;
+    case "ready": body = head("Job confirmed ✓", "Get your tools and set off. The customer gets their Basa Code when you do. They pay the call-out at the end, with the repair.") + cust + `<button class="btn gold" data-a="trip">I'm setting off</button>`; break;
     case "travelling": body = head("On the way", `About ${Math.max(10, Math.round((j.km || 5) * 2.5))} min. Drive safely.`) + cust + `<button class="btn gold" data-a="arrive">I've arrived</button>`; break;
     case "arrived": { const waited = Math.floor((S.now - j.arrivedAt) / 60e3), left = S.rules.noShowWaitMinutes - waited;
       body = head("At the gate", "Ask the customer for their 4-digit Basa Code. Don't go in without it.") + `<div class="card"><div class="field"><label for="code">Basa Code</label><input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off"></div><div id="codeerr" class="err">${j.codeTries ? `${j.codeTries} wrong ${j.codeTries === 1 ? "try" : "tries"}. After 3, our Harare admin calls the customer.` : ""}</div><button class="btn gold" data-a="verify">Confirm code</button></div>`
@@ -217,8 +217,8 @@ function jobView(j) {
     case "confirm": body = head("Customer is checking", "They're confirming it works on WhatsApp.", `<div class="wait"><span class="spin"></span>Waiting for the customer</div>`) + pay; break;
     case "await_final": body = head("Waiting for payment", "The customer is paying the balance on EcoCash.", `<div class="wait"><span class="spin"></span>Almost done</div>`) + pay; break;
     case "paid": body = head("Paid. Well done", j.rating ? `The customer rated you ${"★".repeat(j.rating)}.` : "Waiting for the customer's rating.") + pay; break;
-    case "noshow": body = head("Visit closed", `Customer not home. You keep the ${usd(m.calloutShare)} call-out share.`); break;
-    case "deferred": body = head("Repair saved for later", "The customer will repair another time. You keep the call-out and get first refusal on the repair."); break;
+    case "noshow": body = head("Visit closed", `Customer not home. We've asked them to pay the call-out; your ${usd(m.calloutShare)} share is paid to you once it's collected.`); break;
+    case "deferred": body = head("Repair saved for later", `The customer will repair another time. They pay the call-out now; your ${usd(m.calloutShare)} share is paid to you once it's collected. You get first refusal on the repair.`); break;
     case "cancelled": body = head("Customer cancelled", "We've let you know what you're owed in the job log."); break;
     default: body = head(j.label, "");
   }
@@ -239,7 +239,7 @@ function partsCard(j) {
   const waiting = P.status === "open" && P.waiting > 0, left = Math.max(0, Math.round((P.closesAt - S.now) / 60e3));
   return `<div class="card"><span class="eyebrow">Replacement part</span><b>${esc(P.part)}</b>
     <span class="muted small">${P.asked} supplier${P.asked > 1 ? "s" : ""} asked · ${P.options.length} price${P.options.length === 1 ? "" : "s"} in${waiting ? ` · ${P.waiting} still to reply (${left} min left)` : ""}${P.declined ? ` · ${P.declined} don't have it` : ""}</span>
-    ${P.options.length ? `<p class="small" style="margin:0">Tick up to ${max} that fit (nearest first). The customer chooses one.</p>${P.options.map((o, i) => optionRow(o, true, i, max)).join("")}` : waiting ? `<div class="wait"><span class="spin"></span>Waiting for prices…</div>` : `<p class="small err" style="margin:0">No prices came in. Ask again with a different description, or enter the price yourself.</p><div class="field"><label for="qparts">Parts price ($)</label><input id="qparts" inputmode="decimal" value="0"></div>`}
+    ${P.options.length ? `<p class="small" style="margin:0">Tick up to ${max} that fit (nearest first). The customer chooses one.</p>${P.options.map((o, i) => optionRow(o, true, i, max)).join("")}` : waiting ? `<div class="wait"><span class="spin"></span>Waiting for prices…</div>${S.testMode ? `<p class="muted small" style="margin:0">Test mode: answer as the supplier on the ops desk, under <b>Part requests → Answer as this supplier</b>.</p>` : ""}` : `<p class="small err" style="margin:0">No prices came in. Ask again with a different description, or enter the price yourself.</p><div class="field"><label for="qparts">Parts price ($)</label><input id="qparts" inputmode="decimal" value="0"></div>`}
     <div style="border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px"><span class="muted small">Wrong part? Ask again (this replaces the request above).</span>${ask("Part needed")}</div></div>`;
 }
 function collectCard(j) {

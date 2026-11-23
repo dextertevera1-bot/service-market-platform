@@ -13,6 +13,7 @@ Source of truth for prices in code: `src/rules.js`. Change only with founder app
 | Quote | Customer approves before any work | `src/jobs.js` |
 | Saved diagnosis | Valid 30 days; reminders day 7 and 25; original pro 24 h first refusal | `RULES.diagnosisValidDays`, `RULES.firstRefusalHours` |
 | Parts (Phase 1) | Customer chooses 1 of up to 3 verified-supplier prices, nearest first. Pro buys and fits; customer pays the part at cost in the balance after testing. No commission and no parts fee on parts (fee setting OFF). Supplier prices hold 48 h; suppliers have 30 min to reply. | `RULES.parts`, `src/parts.js` |
+| Call-out timing | Paid at the end with the repair, in one EcoCash payment (founder decision 23 Nov 2026). If no repair (Not now / not home / cancelled after the pro set off) the call-out is requested then; the pro's share is paid out once collected; a new booking waits until it's paid. | `src/jobs.js` `finalAmount`, `owedCallout` |
 | Hours | Day jobs only, 07:00–18:00 Harare | `RULES.dayStart/dayEnd` |
 | Safety | Check-in 15 min into each visit and at check-out (PIN); duress PIN; Harare admin calls police | `src/safety.js` |
 | Maids | $5 / $6 / $8 per hour | `RULES.maidRates` (not yet in a booking flow) |
