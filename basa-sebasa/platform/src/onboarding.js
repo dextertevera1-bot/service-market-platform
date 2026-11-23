@@ -60,13 +60,13 @@ export function steps(p) {
     : (o.slot && !o.slot.confirmed) || (as?.open && !as.result) ? "action" : "now";
   const ind = o.induction, indDone = ind.acks.length >= INDUCTION.length && ind.practice.safe && ind.practice.duress && ind.signed;
   st.induction = indDone ? "done" : st.inperson === "done" ? "action" : "todo";
-  st.approved = p.status === "verified" ? "done" : indDone && st.inperson === "done" && st.refs === "done" && st.docs === "done" ? "now" : "todo";
+  st.approved = p.status === "verified" ? "done" : indDone && st.inperson === "done" && st.refs === "done" && st.docs === "done" && p.data.profile ? "now" : "todo";
   if (p.status === "rejected") for (const k of Object.keys(st)) if (st[k] !== "done") st[k] = "failed";
   const detail = {
     auto: "Every required item present, this number not already registered, PINs strong enough. Photos are checked by a person at step 4",
     docs: o.docs.status === "more" ? `We need: ${o.docs.note}` : o.docs.status === "accepted" ? "ID and certificates accepted" : "The team is checking your ID and certificates",
     refs: `Referee 1: ${o.refs.r1 || "not called yet"} · Referee 2: ${o.refs.r2 || "not called yet"}`,
-    inperson: o.inperson ? `Documents checked ✓ · trade quiz ${as?.result?.correct}/${as?.result?.of} · questionnaire done ✓` : as?.result ? "Quiz and questionnaire done. The team is finishing your check" : as?.open ? "Take the trade quiz and questionnaire now" : o.slot ? `${o.slot.when} at ${o.slot.where}${o.slot.confirmed ? " · you confirmed ✓" : ""}` : "We'll book a time with you after your references",
+    inperson: o.inperson ? `Documents checked ✓ · profile photo matches ✓ · trade quiz ${as?.result?.correct}/${as?.result?.of} · questionnaire done ✓` : as?.result ? "Quiz and questionnaire done. The team is finishing your check" : as?.open ? "Take the trade quiz and questionnaire now" : o.slot ? `${o.slot.when} at ${o.slot.where}${o.slot.confirmed ? " · you confirmed ✓" : ""}` : "We'll book a time with you after your references",
     induction: `${ind.acks.length}/${INDUCTION.length} rules · PIN practice ${ind.practice.safe && ind.practice.duress ? "✓" : "to do"} · agreement ${ind.signed ? "signed ✓" : "to sign"}`,
   };
   return STEPS.map((s) => ({ ...s, state: st[s.key], detail: detail[s.key] || "" }));
@@ -84,6 +84,40 @@ export function onboardingView(p) {
 
 const tell = (p, text) => wa.text(p.phone, text);
 const first = (p) => p.name.split(" ")[0];
+
+// ----- profile photo: a clear selfie the pro takes in the Pro app (compulsory) -----
+// Customers see it on WhatsApp before the pro arrives, so a person checks it matches the pro before it goes live.
+// data.profile = the approved photo (live); data.profileNew = a newer one waiting for the check, or sent back.
+export const PHOTO_MIN_BYTES = 20000;
+export function profileView(p) {
+  const n = p.data.profileNew;
+  return { approved: p.data.profile ? { at: p.data.profile.approvedAt } : null, pending: n ? { status: n.status, note: n.note || null, at: n.at } : null };
+}
+export function submitProfilePhoto(p, file) {
+  p.data.profileNew = { file, at: Date.now(), status: "pending" };
+  p.data.files = { ...(p.data.files || {}), profilePending: file };
+  savePro(p); logEvent(null, "onboarding", `${p.name} uploaded a ${p.data.profile ? "new " : ""}profile photo: waiting for the team to check it.`);
+  return { ok: true };
+}
+function approvePhoto(p, by) {
+  const n = p.data.profileNew;
+  p.data.profile = { file: n.file, at: n.at, approvedAt: Date.now(), by };
+  p.data.photo = n.file; p.data.files = { ...(p.data.files || {}), profile: n.file };
+  delete p.data.profileNew; delete p.data.files.profilePending;
+}
+export async function reviewProfilePhoto(p, ok, note, by) {
+  const n = p.data.profileNew; if (!n || n.status !== "pending") return { error: "No profile photo waiting to be checked." };
+  if (ok) {
+    approvePhoto(p, by); savePro(p); logEvent(null, "onboarding", `Profile photo of ${p.name} approved by ${by}.`);
+    await tell(p, `Basa seBasa: your profile photo is approved ✓. Customers will see it before you arrive.${p.status === "verified" ? " You can go online now." : ""}`);
+  } else {
+    if (!String(note || "").trim()) return { error: "Say what's wrong with the photo (sent to the pro)." };
+    n.status = "redo"; n.note = String(note).slice(0, 200); savePro(p);
+    logEvent(null, "onboarding", `Profile photo of ${p.name} sent back by ${by}: ${n.note}.`);
+    await tell(p, `Basa seBasa: please take a new profile photo: ${n.note}. Open your Pro app: ${config.baseUrl}/pro`);
+  }
+  return { ok: true };
+}
 
 // ----- the pro's own steps (Pro app) -----
 export function markLoggedIn(p) { const o = ob(p); if (!o.loggedIn) { o.loggedIn = true; savePro(p); logEvent(null, "onboarding", `${p.name} logged in to the Pro app: phone verified.`); } }
@@ -159,10 +193,12 @@ export async function teamStep(p, b, by) {
       break;
     case "inperson": {
       const r = o.assessment?.result; if (!r) return { error: "The pro must finish the quiz and questionnaire first." };
-      if (!b.docsChecked || !b.photo) return { error: "Tick that the original documents were checked and the profile photo was taken." };
+      if (!p.data.profile && p.data.profileNew?.status !== "pending") return { error: "The pro must take their profile photo in the Pro app first." };
+      if (!b.docsChecked || !b.photo) return { error: "Tick that the original documents were checked and the profile photo matches the person." };
       if (!["strong", "acceptable", "concern"].includes(b.pastWork)) return { error: "Say how the past-work discussion went." };
       const passed = r.quizPassed && b.pastWork !== "concern";
       o.inperson = { passed, docsChecked: true, photo: true, pastWork: b.pastWork, pastWorkNote: String(b.note || "").slice(0, 500), quiz: r.correct, at: Date.now(), by };
+      if (passed && p.data.profileNew?.status === "pending") approvePhoto(p, by); // checked face to face at the meeting
       if (!passed) return reject(p, !r.quizPassed ? `trade quiz not passed (${r.correct}/${r.of}${r.safetyMissed.length ? ", a safety question wrong" : ""})` : "concerns about past work", by);
       await tell(p, `Well done ${first(p)}! You passed your meeting-day check (trade quiz ${r.correct}/${r.of}). Last step: the induction and agreement in your Pro app: ${config.baseUrl}/pro`);
       break;
@@ -171,7 +207,7 @@ export async function teamStep(p, b, by) {
   }
   const said = { docs: b.result === "accepted" ? "documents accepted" : `asked for more: ${o.docs.note}`, refs: `referee ${b.ref === "r1" ? 1 : 2} ${b.result}`,
     slot: `meeting booked for ${o.slot?.when} at ${o.slot?.where}`, open: "quiz and questionnaire opened on the pro's phone", retake: "one quiz retake allowed",
-    inperson: `meeting-day check passed: documents checked, photo taken, quiz ${o.assessment?.result?.correct}/${o.assessment?.result?.of}, past work ${o.inperson?.pastWork}` }[b.step];
+    inperson: `meeting-day check passed: documents checked, profile photo matches, quiz ${o.assessment?.result?.correct}/${o.assessment?.result?.of}, past work ${o.inperson?.pastWork}` }[b.step];
   savePro(p); logEvent(null, "onboarding", `${p.name}: ${said} (${by}).`);
   return { ok: true };
 }

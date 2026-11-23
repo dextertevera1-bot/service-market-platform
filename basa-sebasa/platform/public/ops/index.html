@@ -27,6 +27,7 @@ main { max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; gap: 14p
 .kpi.hot { border-color: var(--bad); background: var(--bad-bg); }
 .grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: start; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.pface { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: var(--sunk, #eef); border: 2px solid var(--line); } .pface.big { width: 88px; height: 88px; }
 section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
 h2 { margin: 0; font-size: 16px; display: flex; gap: 8px; align-items: baseline; } h2 small { color: var(--muted); font-weight: 400; font-size: 13px; }
 .empty { color: var(--muted); font-size: 14px; }
@@ -105,14 +106,14 @@ function meetingStep(p, o, ob) {
   const as = ob.assessment, r = as?.result, t = o.trust;
   if (!ob.slot) return `<b>Step 6 · Book the meeting</b> <small>about 30 minutes; any quiet place</small><div class="row"><input class="s" type="datetime-local" id="sw${p.id}" min="${new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16)}" style="width:200px"><input class="s" id="sp${p.id}" placeholder="Place, e.g. Basa office, 12 Samora Machel Ave" list="venues" style="width:280px"><button class="btn" data-step="${p.id}" data-s="slot">Book and tell the pro</button></div>`;
   const head = `<b>Step 6 · Meeting day</b> ${esc(ob.slot.when)} at ${esc(ob.slot.where)} · ${ob.slot.confirmed ? "pro confirmed ✓" : "waiting for the pro to confirm"}`;
-  if (!as) return head + `<div class="small">On the day: check every original document against the uploads, take the profile photo, then open the quiz on the pro's phone.</div><div class="row"><button class="btn" data-step="${p.id}" data-s="open">Start the quiz on the pro's phone</button></div>`;
+  if (!as) return head + `<div class="small">On the day: check every original document against the uploads, check the pro's face against their profile photo, then open the quiz on the pro's phone.</div><div class="row"><button class="btn" data-step="${p.id}" data-s="open">Start the quiz on the pro's phone</button></div>`;
   if (!r) return head + `<div class="small">● The pro is answering the trade quiz (10 questions) and questionnaire (12 statements) in the Pro app…</div>`;
   const pass = r.quizPassed;
   return head + `<div style="display:grid;gap:4px"><div><b>Trade quiz:</b> ${r.correct}/${r.of} ${pass ? `<span class="tag done">passed</span>` : `<span class="tag bad">not passed</span>`}${r.safetyMissed.length ? `<br><small style="color:var(--bad)">Safety question(s) wrong: ${r.safetyMissed.map(esc).join(" · ")}</small>` : ""}</div>
       <div><b>Questionnaire:</b> ${r.attitudeGood}/${r.attitudeOf}${r.flags.length ? `<br><small style="color:var(--warn)">Talk these through: ${r.flags.map(esc).join(" · ")}</small>` : " · no concerns"}</div>
       ${!pass ? `<div class="small" style="color:var(--bad)"><b>Not passed:</b> ${r.safetyMissed.length ? "every safety question must be right, whatever the score" : `below the pass mark of 7`}. Use <b>Allow one retake</b> to let the pro try again now, or record the result to close the application.</div>` : ""}
       <div class="small" ${pass ? "" : "hidden"}>Starting Trust Score if approved: <b>${t.total}</b> = base ${t.parts.base} + documents ${t.parts.documents} (once ticked) + references ${t.parts.references} + quiz ${t.parts.quiz}/25 + questionnaire ${t.parts.attitude}/15${t.parts.certificate ? ` + certificate ${t.parts.certificate}` : ""}</div></div>
-    <div class="row"><label class="row" style="gap:4px"><input type="checkbox" id="dc${p.id}"> All original documents checked against the uploads</label><label class="row" style="gap:4px"><input type="checkbox" id="ph${p.id}"> Profile photo taken</label><label class="btn q" style="cursor:pointer">Upload photo<input type="file" accept="image/*" capture="user" data-photo="${p.id}" hidden></label></div>
+    <div class="row"><label class="row" style="gap:4px"><input type="checkbox" id="dc${p.id}"> All original documents checked against the uploads</label>${p.data.profile || p.data.profileNew?.status === "pending" ? `<label class="row" style="gap:6px"><img class="pface" data-img="${p.id}/${p.data.profileNew?.status === "pending" ? "profilePending" : "profile"}" alt=""><input type="checkbox" id="ph${p.id}"> Profile photo is clear and matches the person</label>` : `<span class="small" style="color:var(--bad)">Waiting for the pro to take their profile photo in the Pro app (compulsory).</span>`}</div>
     <div class="row">Past work discussion <select class="s" id="pw${p.id}" style="width:auto"><option value="">Choose…</option><option value="strong">Strong</option><option value="acceptable">Acceptable</option><option value="concern">Concern</option></select><input class="s" id="pn${p.id}" placeholder="Notes: jobs discussed, anything to watch" style="width:300px"></div>
     <div class="row"><button class="btn" data-step="${p.id}" data-s="inperson">Record result</button>${!pass && (as.tries || 1) < 2 ? `<button class="btn q" data-step="${p.id}" data-s="retake">Allow one retake</button>` : ""}</div>`;
 }
@@ -151,6 +152,25 @@ function partsSection() {
     ${P.requests.length ? `<section><h2>Part requests <small>latest first</small></h2>${reqs}</section>` : ""}`;
 }
 
+// Profile photos: shown as thumbnails (fetched with the ops log-in, kept for this page).
+const imgCache = {};
+async function loadImgs() {
+  for (const el of document.querySelectorAll("img[data-img]")) {
+    const k = el.dataset.img; if (imgCache[k]) { el.src = imgCache[k]; continue; }
+    imgCache[k] = "loading";
+    try { const r = await fetch("/api/ops/file/" + k, { headers: { Authorization: "Bearer " + token } }); if (r.ok) { imgCache[k] = URL.createObjectURL(await r.blob()); document.querySelectorAll(`img[data-img="${k}"]`).forEach((x) => (x.src = imgCache[k])); } else delete imgCache[k]; } catch { delete imgCache[k]; }
+  }
+}
+function photosSection() {
+  const list = D.pros.filter((p) => p.data?.profileNew?.status === "pending");
+  if (!list.length) return "";
+  return `<section><h2>Profile photos to check <small>compulsory; customers see this photo before the pro arrives</small></h2>${list.map((p) => `<div class="row" style="align-items:center;border-top:1px dashed var(--line);padding-top:8px">
+    <img class="pface big" data-img="${p.id}/profilePending" alt="New profile photo of ${esc(p.name)}">
+    <div style="display:grid;gap:4px;flex:1"><b>${esc(p.name)}</b><small>${esc(p.status === "verified" ? "verified pro" : "applicant")} · ${esc(p.trade)} · ${esc(p.suburb)}${p.data.profile ? " · replacing an approved photo" : ""}</small>
+      <small>Clear face, no sunglasses or cap, same person as ${p.data.files?.selfie ? `<a href="#" data-file="${p.id}/selfie">the selfie with ID</a>` : "the ID"}${p.data.profile ? ` and <a href="#" data-file="${p.id}/profile">the current photo</a>` : ""}?</small>
+      <div class="row"><button class="btn" data-pphoto="${p.id}" data-r="approved">Approve photo</button><button class="btn q" data-pphoto="${p.id}" data-r="redo">Ask for a new one</button></div></div></div>`).join("")}</section>`;
+}
+
 function render() {
   const app = $("#app");
   if (!token) { const u0 = $("#u")?.value || "", p0 = $("#p")?.value || "";
@@ -168,6 +188,7 @@ function render() {
      <div class="kpi"><b>${D.pros.filter((p) => p.status === "verified" && p.online).length} / ${D.pros.filter((p) => p.status === "verified").length}</b><small>Pros online / verified</small></div>
      <div class="kpi ${D.pending.length ? "hot" : ""}"><b>${D.pending.length}</b><small>EcoCash pending</small></div><div class="kpi ${dueSoon ? "hot" : ""}"><b>${D.payouts.length}</b><small>Payouts due (${usd(D.payouts.reduce((a, p) => a + p.amount, 0))})</small></div><div class="kpi"><b>${apps.length}</b><small>Applications</small></div>${D.outbox && (D.outbox.failed24h || D.outbox.oldestQueuedSec > 120) ? `<div class="kpi hot"><b>${D.outbox.failed24h}</b><small>WhatsApp messages failed (24 h)${D.outbox.queued ? ` · ${D.outbox.queued} waiting` : ""}</small></div>` : ""}</div>
    <div class="grid"><div style="display:grid;gap:14px">
+    ${photosSection()}
     <section><h2>Alerts <small>Harare admin acts; Dex watches. Security concern: call the police immediately.</small></h2>${alertsView()}</section>
     <section><h2>Live jobs</h2><div class="wrap">${live.length ? `<table><tr><th>Job</th><th>Stage</th><th>Pro</th><th>Where</th><th class="n">Paid</th><th>Updated</th></tr>${live.map((j) => `<tr><td><a href="#" data-job="${j.id}">${j.id}</a><br><small>${esc(j.service)}</small></td><td>${stageTag(j.stage, j.label)}${j.tracking ? "<br><small>📍 tracking</small>" : ""}</td><td>${esc(j.pro || "-")}</td><td>${esc(j.suburb)}<br><small>${esc(j.when)}</small></td><td class="n">${usd(j.paid)}</td><td>${ago(j.updated)}</td></tr>`).join("")}</table>` : `<p class="empty">No live jobs.</p>`}</div></section>
     <section><h2>Recent jobs</h2><div class="wrap"><table><tr><th>Job</th><th>Outcome</th><th>Pro</th><th class="n">Paid</th><th class="n">Pro gets</th></tr>${D.jobs.filter((j) => !live.includes(j)).slice(0, 20).map((j) => `<tr><td><a href="#" data-job="${j.id}">${j.id}</a></td><td>${stageTag(j.stage, j.label)}</td><td>${esc(j.pro || "-")}</td><td class="n">${usd(j.paid)}</td><td class="n">${j.stage === "paid" ? usd(j.payout) : "-"}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">None yet.</td></tr>`}</table></div></section>
@@ -183,6 +204,7 @@ function render() {
     <section><h2>Activity</h2><div class="log">${D.events.map((e) => `<div><time>${tm(e.at)}</time><i>${esc(e.tag)}</i><span>${e.job_id ? `<a href="#" data-job="${e.job_id}">${e.job_id}</a> ` : ""}${esc(e.text)}</span></div>`).join("")}</div></section>
    </div></div></main>`;
   Object.entries(keep).forEach(([id, v]) => { const el = document.getElementById(id); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; }); if (focus && document.getElementById(focus)) document.getElementById(focus).focus();
+  loadImgs();
 }
 
 async function showJob(id) {
@@ -224,7 +246,7 @@ document.addEventListener("click", async (e) => {
         if (!$("#sp" + id).value.trim()) return alert("Type the place."); body.when = dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + ", " + dt.toTimeString().slice(0, 5); body.where = $("#sp" + id).value;
         try { const vs = JSON.parse(localStorage.getItem("basa-venues") || "[]"); if (body.where && !vs.includes(body.where)) localStorage.setItem("basa-venues", JSON.stringify([body.where, ...vs].slice(0, 6))); } catch {} }
       if (d.s === "inperson") { body.docsChecked = $("#dc" + id).checked; body.photo = $("#ph" + id).checked; body.pastWork = $("#pw" + id).value; body.note = $("#pn" + id).value;
-        if (!body.docsChecked || !body.photo) return alert("Tick that the original documents were checked and the profile photo was taken.");
+        if (!body.docsChecked || !body.photo) return alert("Tick that the original documents were checked and the profile photo matches the person.");
         if (!body.pastWork) return alert("Choose how the past-work discussion went.");
         const failing = body.pastWork === "concern" || /not passed/.test(t.closest(".nextstep").textContent);
         if (failing && !confirm("This result ends the application (the pro may reapply after 3 months). Continue?")) return; }
@@ -239,6 +261,11 @@ document.addEventListener("click", async (e) => {
     else if (d.sck) { const [id, check, v] = d.sck.split("/"); await api(`/api/ops/supplier/${id}/check`, { check, value: v === "1" }); await refresh(); }
     else if (d.sverify) { if (confirm("Verify this supplier? Pros nearby will start getting their prices.")) { await api(`/api/ops/supplier/${d.sverify}/verify`, {}); await refresh(); } }
     else if (d.ssuspend) { const note = prompt("Why are you suspending this supplier?"); if (note != null) { await api(`/api/ops/supplier/${d.ssuspend}/suspend`, { note }); await refresh(); } }
+    else if (d.pphoto) {
+      const body = { result: d.r };
+      if (d.r === "redo") { body.note = prompt("What's wrong with the photo? (sent to the pro, e.g. face not clear, wearing sunglasses)"); if (!body.note) return; }
+      await api(`/api/ops/pro/${d.pphoto}/profile`, body); await refresh();
+    }
     else if (d.refund) { await api(`/api/ops/job/${d.refund}/refunded`, { ref: $("#rf" + d.refund).value }); await refresh(); }
     else if (d.pcall) { await api(`/api/ops/job/${d.pcall}/probation-call`, { note: $("#pc" + d.pcall).value }); await refresh(); }
     else if (d.suspend) { const note = prompt("Why are you suspending this pro?"); if (note != null) { await api(`/api/ops/pro/${d.suspend}/suspend`, { note }); await refresh(); } }

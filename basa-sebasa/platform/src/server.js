@@ -83,7 +83,7 @@ async function serveStatic(res, path) {
 async function savePhotos(id, b) {
   const dir = join(config.uploadDir, `pro-${id}`); await mkdir(dir, { recursive: true });
   const files = {};
-  for (const k of ["idFront", "idBack", "selfie", "certificate"]) {
+  for (const k of ["idFront", "idBack", "selfie", "certificate", "profile"]) {
     const v = String(b[k] || ""); const mm = v.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/); if (!mm) continue;
     const name = `pro-${id}/${k}-${Date.now().toString(36)}.${mm[1] === "jpeg" ? "jpg" : mm[1]}`; await writeFile(join(config.uploadDir, name), Buffer.from(mm[2], "base64")); files[k] = name;
   }
@@ -113,6 +113,7 @@ function proState(pro) {
         payout: lastPayout && { amount: lastPayout.amount, paid: !!lastPayout.paid_at, ref: lastPayout.ref } } },
     rules: { checkinMinutes: RULES.checkinMinutes, payoutHours: RULES.payoutHours, noShowWaitMinutes: RULES.noShowWaitMinutes },
     onboarding: pro.status === "verified" ? null : OB.onboardingView(pro),
+    profile: OB.profileView(pro),
     probation: pro.data?.probation || null, level: pro.data?.level || null,
     now: Date.now(),
   };
@@ -252,6 +253,13 @@ async function route(req, res) {
     const pro = getPro(Number(s.ref)); if (!pro || !["verified", "applied"].includes(pro.status)) return send(res, 403, { error: "Your account is paused. Please contact Basa seBasa." });
     const b = method === "POST" ? json(await readBody(req, path.endsWith("/docs") ? 12e6 : 1e6)) : {};
     if (path === "/api/pro/state") return send(res, 200, proState(pro));
+    if (path === "/api/pro/profile-photo" && method === "POST") {
+      const v = String(b.image || ""), mm = v.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
+      if (!mm) return send(res, 400, { error: "Take a photo (JPEG or PNG)." });
+      if (mm[2].length * 0.75 < OB.PHOTO_MIN_BYTES) return send(res, 400, { error: "That photo is too small or blurry. Take a clear selfie in good light." });
+      const files = await savePhotos(pro.id, { profile: v }); const r = OB.submitProfilePhoto(getPro(pro.id), files.profile);
+      return send(res, 200, { ...r, state: proState(getPro(pro.id)) });
+    }
     if ((m = path.match(/^\/api\/pro\/onboarding\/(ack|practice|sign|confirm-slot|docs|assessment)$/))) {
       let r;
       if (m[1] === "assessment") { r = OB.submitAssessment(pro, b.answers, b.attitude); return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) }); }
@@ -263,6 +271,7 @@ async function route(req, res) {
       return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) });
     }
     if (pro.status !== "verified") return send(res, 403, { error: "Finish your onboarding steps first." });
+    if (path === "/api/pro/online" && b.on && !pro.data.profile) return send(res, 409, { error: pro.data.profileNew?.status === "pending" ? "Your profile photo is being checked. You can go online once it's approved." : "Take your profile photo first. Customers need to see who is coming." });
     if (path === "/api/pro/online") { pro.online = b.on ? 1 : 0; savePro(pro); logEvent(null, "app", `${pro.name} is ${b.on ? "online" : "offline"}.`); return send(res, 200, proState(pro)); }
     if ((m = path.match(/^\/api\/pro\/offer\/(BSB-\d+)\/(accept|decline)$/))) {
       const r = await withLock("job:" + m[1], () => m[2] === "accept" ? J.proAccept(pro, m[1]) : J.proDecline(pro, m[1]));
@@ -330,6 +339,10 @@ async function route(req, res) {
       const r = m[2] === "step" ? await OB.teamStep(p, b, by) : m[2] === "approve" ? await OB.approve(p, by) : await OB.reject(p, String(b.note || "not approved"), by);
       return send(res, r.error ? 409 : 200, r);
     }
+    if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/profile$/))) {
+      const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
+      const r = await OB.reviewProfilePhoto(p, b.result === "approved", b.note, by); return send(res, r.error ? 409 : 200, r);
+    }
     if ((m = path.match(/^\/api\/ops\/pro\/(\d+)\/photo$/))) {
       const p = getPro(Number(m[1])); if (!p) return send(res, 404, { error: "No such pro" });
       const files = await savePhotos(p.id, { selfie: b.image }); if (!files.selfie) return send(res, 400, { error: "Send a JPEG or PNG photo." });
@@ -389,7 +402,7 @@ async function route(req, res) {
       res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="payouts-due-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "no-store" });
       return res.end("\ufeff" + csv);
     }
-    if ((m = path.match(/^\/api\/ops\/file\/(\d+)\/(idFront|idBack|selfie|certificate)$/))) {
+    if ((m = path.match(/^\/api\/ops\/file\/(\d+)\/(idFront|idBack|selfie|certificate|profile|profilePending)$/))) {
       const p = getPro(Number(m[1])); const f = p?.data?.files?.[m[2]] && join(config.uploadDir, p.data.files[m[2]]);
       if (!f || !existsSync(f)) return send(res, 404, "Not found");
       res.writeHead(200, { "Content-Type": "image/" + (extname(f) === ".png" ? "png" : "jpeg"), "Cache-Control": "no-store" }); return res.end(await readFile(f));
@@ -425,6 +438,8 @@ export function startServer({ port = config.port, dbPath = config.dbPath } = {})
   if (!isDev && !simulated.whatsapp && !config.whatsapp.appSecret) throw new Error("Set WHATSAPP_APP_SECRET so webhook messages can be verified.");
   if (!isDev && config.payments.mode === "sim" && process.env.ALLOW_TEST_MODE !== "1") throw new Error("PAYMENT_MODE=sim isn't allowed in production. Use manual or paynow (or set ALLOW_TEST_MODE=1 on a test server).");
   openDb(dbPath);
+  // The profile photo is compulsory: a verified pro without an approved one can't stay online.
+  run("UPDATE pros SET online = 0 WHERE status = 'verified' AND online = 1 AND json_extract(data,'$.profile') IS NULL");
   const server = createServer((req, res) => route(req, res).catch((e) => { console.error(req.method, req.url, e); logEvent(null, "error", `${req.method} ${req.url}: ${e.message}`); if (!res.headersSent) send(res, 500, { error: "Something went wrong. Please try again." }); }));
   let sweeping = false; // never two sweeps at once if one runs long
   const timer = setInterval(() => { if (sweeping) return; sweeping = true; J.sweep().catch((e) => { console.error("sweep", e); logEvent(null, "error", `Sweep: ${e.message}`); }).finally(() => { sweeping = false; }); pollPending().catch(() => {}); }, 15e3);

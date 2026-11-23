@@ -20,6 +20,7 @@ function answersFor(phone, { wrong = [], flagged = [] } = {}) {
 let server, base, opsToken; const tokens = {};
 const CUST = "263771234567";
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const SELFIE = "data:image/jpeg;base64," + Buffer.alloc(30000, 7).toString("base64"); // stands in for a real 800 px selfie
 const api = async (path, body, token) => {
   const r = await fetch(base + path, { method: body ? "POST" : "GET", headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined });
   return { status: r.status, body: await r.json().catch(() => ({})) };
@@ -70,6 +71,11 @@ async function makePro(name, phone, suburb, pin, duress) {
   const ovA = (await api("/api/ops/overview", null, opsToken)).body.pros.find((x) => x.id === id).onboarding;
   assert.equal(ovA.ob.assessment.result.correct, 10); assert.equal(ovA.ob.assessment.result.flags.length, 1);
   assert.equal(ovA.ob.assessment.perms, undefined, "answer order not sent to the ops desk either");
+  let r0 = await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "strong" });
+  assert.equal(r0.status, 409); assert.match(r0.body.error, /profile photo/, "the profile photo is compulsory");
+  assert.equal((await api("/api/pro/profile-photo", { image: PNG }, token)).status, 400, "a tiny or blurry photo is refused");
+  r0 = await api("/api/pro/profile-photo", { image: SELFIE }, token);
+  assert.equal(r0.status, 200); assert.equal(r0.body.state.profile.pending.status, "pending");
   assert.equal((await step({ step: "inperson", docsChecked: false, photo: true, pastWork: "strong" })).status, 409, "documents must be checked");
   await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "strong", note: "Showed 3 fridge jobs" });
   // Induction in the app: every rule, both PINs practised, agreement signed.
@@ -87,6 +93,7 @@ async function makePro(name, phone, suburb, pin, duress) {
   st = (await api("/api/pro/state", null, token)).body;
   assert.equal(st.onboarding, null); assert.equal(st.level, "Bronze"); assert.equal(st.probation.left, 5);
   assert.equal(st.pro.trust, 94); // 35 + documents 10 + references 10 + quiz 25 + questionnaire 14 (11 of 12)
+  assert.ok(st.profile.approved, "the profile photo was approved face to face at the meeting"); assert.equal(st.profile.pending, null);
   await api("/api/pro/online", { on: true }, token);
   return token;
 }
@@ -243,6 +250,7 @@ test("a failed in-person check ends the application", async () => {
   await step({ step: "retake" }); // one retake allowed
   await api("/api/pro/onboarding/assessment", answersFor("0773555111", { wrong: [safeIdx] }), T);
   assert.equal((await step({ step: "retake" })).status, 409, "only one retake");
+  await api("/api/pro/profile-photo", { image: SELFIE }, T);
   const r = await step({ step: "inperson", docsChecked: true, photo: true, pastWork: "acceptable" });
   assert.equal(r.body.rejected, true, "a wrong safety answer fails whatever the score");
   const l = await api("/api/pro/login", { phone: "0773555111" });
@@ -318,4 +326,31 @@ test("webhook verification and signature check", async () => {
   assert.equal(await r.text(), "42");
   const bad = await fetch(`${base}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=42`);
   assert.equal(bad.status, 403);
+});
+
+test("profile photo is compulsory: no photo, no going online; the team checks every new photo", async () => {
+  const { run: dbrun, getPro } = await import("../src/db.js");
+  const now = Date.now();
+  dbrun("INSERT INTO pros (id, phone, name, trade, suburb, lat, lng, status, online, trust, data, created_at, updated_at) VALUES (77,'263772777777','Farai Photo','elec','Avondale',-17.795,31.04,'verified',0,80,'{}',?,?)", now, now);
+  dbrun("INSERT INTO sessions (token, role, ref, expires) VALUES ('tok-77','pro','77',?)", now + 864e5);
+  const ops = (await api("/api/ops/login", { user: "dex", password: "test-pass" })).body.token;
+  let r = await api("/api/pro/online", { on: true }, "tok-77");
+  assert.equal(r.status, 409); assert.match(r.body.error, /profile photo/);
+  await api("/api/pro/profile-photo", { image: SELFIE }, "tok-77");
+  r = await api("/api/pro/online", { on: true }, "tok-77");
+  assert.equal(r.status, 409); assert.match(r.body.error, /being checked/);
+  assert.ok((await api("/api/ops/overview", null, ops)).body.pros.find((p) => p.id === 77).data.profileNew, "shown on the ops desk to check");
+  assert.equal((await api("/api/ops/file/77/profilePending", null, ops)).status, 200, "the team can open the new photo");
+  assert.equal((await api("/api/ops/pro/77/profile", { result: "redo" }, ops)).status, 409, "a reason is needed");
+  await api("/api/ops/pro/77/profile", { result: "redo", note: "wearing sunglasses" }, ops);
+  assert.equal((await api("/api/pro/state", null, "tok-77")).body.profile.pending.note, "wearing sunglasses");
+  await api("/api/pro/profile-photo", { image: SELFIE }, "tok-77");
+  assert.equal((await api("/api/ops/pro/77/profile", { result: "approved" }, ops)).status, 200);
+  assert.equal((await api("/api/pro/online", { on: true }, "tok-77")).status, 200);
+  assert.ok(getPro(77).data.photo, "customers now see this photo");
+  assert.equal((await fetch(base + "/media/pro/77")).status, 200);
+  // A later change keeps the approved photo live until the new one is checked, and the pro stays online.
+  await api("/api/pro/profile-photo", { image: SELFIE }, "tok-77");
+  const before = getPro(77).data.photo; const st = (await api("/api/pro/state", null, "tok-77")).body;
+  assert.ok(st.profile.approved); assert.equal(st.profile.pending.status, "pending"); assert.equal(st.pro.online, true); assert.equal(getPro(77).data.photo, before);
 });

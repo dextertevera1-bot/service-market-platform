@@ -1,5 +1,6 @@
 # Changelog (platform)
 
+- 23 Nov 2026: compulsory profile selfie. The pro takes it in the Pro app (front camera, square, minimum size); the team approves it or asks for a new one (with a reason) on the ops desk, or confirms it face to face at the meeting. No approved photo: no approval and no going online; existing pros without one are set offline. A new photo stays hidden from customers until approved. 36 tests.
 - 23 Nov 2026 (Parts Network Phase 1): verified parts suppliers (ops adds and checks them); the pro asks the nearest 6 for a price; suppliers answer on a private link; the customer chooses one of up to 3 options, nearest first, with price, condition, warranty, shop, suburb, distance and total; the pro collects and fits it; the customer pays it at cost after testing. 8 new tests (35 in total).
 - 23 Nov 2026 (audit): payment after cancellation becomes a refund, failed payments can be retried, "back" restarts a booking, 14 mandate scenarios added as tests (27 tests in total).
 

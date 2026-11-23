@@ -22,7 +22,11 @@ button, input, textarea { font: inherit; color: inherit; }
 .brand b { font-size: 16px; } .brand b span { font-weight: 400; color: var(--pale); }
 .brand .pill { margin-left: auto; font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; color: var(--navy); background: var(--yellow); border-radius: 5px; padding: 5px 7px; }
 .who { display: flex; align-items: center; gap: 10px; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-weight: 800; flex: none; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-weight: 800; flex: none; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.face { display: flex; gap: 14px; align-items: center; } .face img, .face .ph { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: none; border: 3px solid var(--yellow); background: var(--sunk); }
+.face .ph { display: grid; place-items: center; font-size: 38px; }
+.rules { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 2px; }
 .who small { display: block; color: var(--pale); font-size: 13px; }
 .trust { margin-left: auto; text-align: center; } .trust b { display: block; font-size: 26px; line-height: 1; color: var(--yellow); } .trust small { font-size: 10px; letter-spacing: .08em; color: var(--pale); }
 .status { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border-radius: 12px; padding: 8px 10px; font-size: 14px; }
@@ -132,20 +136,37 @@ function header() {
   const status = ob ? `Application: ${done} of ${ob.steps.length} steps done` : S.offer ? "New job offer" : j ? `${j.id} · ${j.label}` : p.online ? "Online · waiting for jobs" : "Offline";
   const right = ob ? "" : j && j.safety.tracking && !j.safety.needsCheckout ? `<button class="sos" data-a="sos">SOS</button>` : !j && !S.offer ? `<button class="toggle ${p.online ? "" : "off"}" data-a="online">${p.online ? "Go offline" : "Go online"}</button>` : "";
   return `<header class="top"><div class="brand"><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa</b><span class="pill">PRO</span></div>
-    <div class="who"><span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span>${ob ? `<span class="trust"><small>APPLICANT</small></span>` : `<span class="trust"><b>${p.trust}</b><small>TRUST${S.level ? " · " + esc(S.level.toUpperCase()) : ""}</small></span>`}</div>
+    <div class="who"><span class="avatar">${S.profile?.approved && p.status === "verified" ? `<img src="/media/pro/${p.id}?v=${S.profile.approved.at}" alt="">` : esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span>${ob ? `<span class="trust"><small>APPLICANT</small></span>` : `<span class="trust"><b>${p.trust}</b><small>TRUST${S.level ? " · " + esc(S.level.toUpperCase()) : ""}</small></span>`}</div>
     <div class="status"><span class="dot ${p.online || j || ob ? "on" : ""}"></span><span>${esc(status)}</span>${right}</div>
     ${j && !home ? `<div class="tabs"><button data-tab="job" aria-pressed="${tab === "job"}">Job</button><button data-tab="chat" aria-pressed="${tab === "chat"}">Chat with customer${j.unread ? `<span class="n">${j.unread}</span>` : ""}</button></div>` : ""}</header>`;
 }
 
+// ---------- profile photo (compulsory; customers see it before the pro arrives) ----------
+let myPhoto = null; // preview of the photo just taken on this phone
+function photoCard(where) {
+  const P = S.profile || {}, pend = P.pending, approved = !!P.approved, p = S.pro;
+  const pic = myPhoto && pend?.status === "pending" ? `<img src="${myPhoto}" alt="Your new photo">` : approved && p.status === "verified" ? `<img src="/media/pro/${p.id}?v=${P.approved.at}" alt="Your profile photo">` : `<span class="ph">🙂</span>`;
+  const take = (label) => `<label class="btn gold" style="cursor:pointer">${label}<input type="file" accept="image/*" capture="user" data-selfie="1" hidden></label>`;
+  const rules = `<ul class="rules"><li>Your face only, looking at the camera</li><li>Good light, face fully visible: no sunglasses, cap or mask</li><li>Plain background; no filters</li></ul>`;
+  if (approved && !pend) return where === "home" ? `<div class="card"><span class="eyebrow">Profile photo</span><div class="face">${pic}<span class="small">✓ Approved. Customers see this photo on WhatsApp before you arrive.</span></div>${take("Change photo")}</div>` : "";
+  if (pend?.status === "pending") return where === "home" ? "" : `<div class="card"><span class="eyebrow">Profile photo</span><div class="face">${pic}<span class="small"><b>Photo sent ✓</b><br>The team checks it matches you${p.status === "verified" ? "" : " (at the latest at your meeting)"}.${approved ? " Customers keep seeing your current photo until then." : ""}</span></div></div>`;
+  if (where === "home") return "";
+  const redo = pend?.status === "redo";
+  return `<div class="card offer"><span class="eyebrow">Your turn · compulsory</span><h3>${redo ? "Please take a new profile photo" : "Take your profile photo"}</h3>
+    ${redo ? `<p class="small err" style="margin:0">The team said: ${esc(pend.note)}</p>` : `<p class="small" style="margin:0">Customers see this photo on WhatsApp before you arrive, so they know who is at their gate.${p.status === "verified" && !approved ? " <b>You can't go online until it's approved.</b>" : ""}</p>`}
+    <div class="face">${pic}${rules}</div>${take(redo ? "Take a new selfie" : "Take selfie")}</div>`;
+}
+
 function homeView() {
   const h = S.home, p = S.pro;
-  return `<div class="card hero"><span class="eyebrow">Home</span><h2>Hi ${esc(p.name.split(" ")[0])}, ${p.online ? "you're online" : "you're offline"}</h2><p class="muted" style="margin:0">Day jobs only (07:00–18:00). You choose which jobs to accept.</p>
+  return photoCard("top") + `<div class="card hero"><span class="eyebrow">Home</span><h2>Hi ${esc(p.name.split(" ")[0])}, ${p.online ? "you're online" : "you're offline"}</h2><p class="muted" style="margin:0">Day jobs only (07:00–18:00). You choose which jobs to accept.</p>
       <table class="split"><tr><td>Jobs completed today</td><td>${h.jobsToday}</td></tr><tr class="you"><td>Earned today</td><td>${usd(h.earnedToday)}</td></tr></table></div>`
     + (S.probation && !S.probation.result ? `<div class="card"><span class="eyebrow">Probation</span><b>${5 - S.probation.left} of 5 probation jobs done</b><div class="bar"><i style="width:${(5 - S.probation.left) * 20}%"></i></div><span class="muted small">We call each customer to check quality. Keep an average of 4.5★ or more to become a full pro.</span></div>`
       : S.probation?.result === "passed" ? `<div class="card"><span class="eyebrow">Full pro</span><span class="small">✓ Probation passed with an average of ${S.probation.avg}★.</span></div>` : "")
     + (h.last ? `<div class="card"><span class="eyebrow">Last job</span><b>${esc(h.last.id)} · ${esc(h.last.service)} · ${esc(h.last.suburb)}</b><span class="muted small">${esc(h.last.label)}${h.last.payout ? ` · ${usd(h.last.payout.amount)} ${h.last.payout.paid ? `paid to your EcoCash, ref ${esc(h.last.payout.ref)}` : `on its way to your EcoCash within ${S.rules.payoutHours} hours`}` : ""}${h.last.rating ? ` · rated ${"★".repeat(h.last.rating)}` : ""}</span></div>` : "")
     + (p.online ? `<div class="card center"><div class="spin" style="width:30px;height:30px"></div><h3>Waiting for jobs</h3><p class="muted small" style="margin:0">When a customer books on WhatsApp, the job appears here and your phone buzzes.</p></div>`
-      : `<div class="card center"><h3>You're offline</h3><p class="muted small" style="margin:0">Go online to receive jobs near you.</p><button class="btn gold" data-a="online">Go online</button></div>`);
+      : `<div class="card center"><h3>You're offline</h3><p class="muted small" style="margin:0">Go online to receive jobs near you.</p><button class="btn gold" data-a="online" ${S.profile?.approved ? "" : "disabled"}>Go online</button>${S.profile?.approved ? "" : `<p class="small err" style="margin:0">Needs an approved profile photo.</p>`}</div>`)
+    + photoCard("home");
 }
 
 function offerView() {
@@ -243,6 +264,7 @@ const OB_WORD = { done: "Done", now: "In progress", action: "Your turn", failed:
 function onboardingView() {
   const ob = S.onboarding, done = ob.steps.filter((x) => x.state === "done").length, indStep = ob.steps.find((x) => x.key === "induction");
   let out = `<div class="card hero"><span class="eyebrow">Your application</span><h2>${done === ob.steps.length - 1 ? "Almost there" : `Step ${Math.min(done + 1, ob.steps.length)} of ${ob.steps.length}`}</h2><div class="bar" style="background:rgba(255,255,255,.2)"><i style="width:${done / ob.steps.length * 100}%"></i></div><p class="muted" style="margin:0">We'll message you on WhatsApp at every step. You can check here any time.</p></div>`;
+  out += photoCard("onboarding") || `<div class="card"><span class="small ok">✓ Profile photo approved</span></div>`;
   if (ob.docsNote) out += `<div class="card offer"><span class="eyebrow">Your turn</span><h3>We need one more thing</h3><p style="margin:0">${esc(ob.docsNote)}</p>
     <div class="field"><label for="dkind">Which photo is it?</label><select id="dkind" style="border:1.5px solid var(--line);border-radius:10px;padding:10px;background:var(--card)"><option value="idFront">ID, front</option><option value="idBack">ID, back</option><option value="selfie">Selfie holding your ID</option><option value="certificate">Trade certificate</option></select></div>
     <div class="field"><input type="file" id="dfile" accept="image/*"></div><button class="btn gold" data-a="sendocs">Send photo</button></div>`;
@@ -342,9 +364,24 @@ document.addEventListener("click", async (e) => {
   } catch (err) { if (a === "sendcode" || a === "verifycode") { const el = $("#loginerr"); if (el) el.textContent = err.message; } }
 });
 document.addEventListener("change", async (e) => {
+  if (e.target.dataset?.selfie) {
+    const f = e.target.files[0]; if (!f) return;
+    try { const data = await squareSelfie(f); await act("/api/pro/profile-photo", { image: data }, "Photo sent. The team will check it."); myPhoto = data; render(); }
+    catch (err) { toast(err.message); }
+    return;
+  }
   const id = e.target.dataset?.ack; if (!id) return;
   try { await act("/api/pro/onboarding/ack", { id }); } catch { e.target.checked = false; }
 });
+// A centred square, up to 800 px, so the face fills the circle customers see.
+function squareSelfie(file) {
+  return new Promise((resolve, reject) => { const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => { URL.revokeObjectURL(url); const side = Math.min(img.width, img.height);
+      if (side < 400) return reject(new Error("That photo is too small. Use your phone's camera, close up, in good light."));
+      const out = Math.min(800, side), c = document.createElement("canvas"); c.width = c.height = out;
+      c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, out, out); resolve(c.toDataURL("image/jpeg", 0.88)); };
+    img.onerror = () => reject(new Error("That photo couldn't be read.")); img.src = url; });
+}
 function shrink(file) {
   return new Promise((resolve, reject) => { const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => { const k = Math.min(1, 1400 / Math.max(img.width, img.height)), c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); resolve(c.toDataURL("image/jpeg", 0.82)); };
