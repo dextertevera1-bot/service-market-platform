@@ -24,6 +24,8 @@ button, input, textarea { font: inherit; color: inherit; }
 .who { display: flex; align-items: center; gap: 10px; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--yellow); color: var(--navy); display: grid; place-items: center; font-weight: 800; flex: none; overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.avatar.tap { cursor: pointer; position: relative; overflow: visible; } .avatar.tap img { border-radius: 50%; }
+.avatar .cam { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; background: var(--yellow); display: grid; place-items: center; font-size: 10px; box-shadow: 0 0 0 2px var(--blue); }
 .face { display: flex; gap: 14px; align-items: center; } .face img, .face .ph { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: none; border: 3px solid var(--yellow); background: var(--sunk); }
 .face .ph { display: grid; place-items: center; font-size: 38px; }
 .timer { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--yellow); border-radius: 12px; padding: 8px 12px; }
@@ -141,7 +143,7 @@ function header() {
   const status = ob ? `Application: ${done} of ${ob.steps.length} steps done` : S.offer ? "New job offer" : j ? `${j.id} · ${j.label}` : p.online ? "Online · waiting for jobs" : "Offline";
   const right = ob ? "" : j && j.safety.tracking && !j.safety.needsCheckout ? `<button class="sos" data-a="sos">SOS</button>` : !j && !S.offer ? `<button class="toggle ${p.online ? "" : "off"}" data-a="online">${p.online ? "Go offline" : "Go online"}</button>` : "";
   return `<header class="top"><div class="brand"><img src="/assets/logo-64.png" alt=""><b>Basa<span>se</span>Basa</b><span class="pill">PRO</span></div>
-    <div class="who"><span class="avatar">${S.profile?.approved && p.status === "verified" ? `<img src="/media/pro/${p.id}?v=${S.profile.approved.at}" alt="">` : esc(p.name.split(" ").map((x) => x[0]).join(""))}</span><span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span>${ob ? `<span class="trust"><small>APPLICANT</small></span>` : `<span class="trust"><b>${p.trust}</b><small>TRUST${S.level ? " · " + esc(S.level.toUpperCase()) : ""}</small></span>`}</div>
+    <div class="who">${p.status === "verified" ? `<label class="avatar tap" title="Change your profile photo" aria-label="Change your profile photo">${S.profile?.approved ? `<img src="/media/pro/${p.id}?v=${S.profile.approved.at}" alt="">` : esc(p.name.split(" ").map((x) => x[0]).join(""))}<span class="cam">📷</span><input type="file" accept="image/*" capture="user" data-selfie="1" hidden></label>` : `<span class="avatar">${esc(p.name.split(" ").map((x) => x[0]).join(""))}</span>`}<span><b>${esc(p.name)}</b><small>${esc(p.trade)} · ${esc(p.suburb)}${p.rating ? ` · ★${p.rating}` : ""}</small></span>${ob ? `<span class="trust"><small>APPLICANT</small></span>` : `<span class="trust"><b>${p.trust}</b><small>TRUST${S.level ? " · " + esc(S.level.toUpperCase()) : ""}</small></span>`}</div>
     <div class="status"><span class="dot ${p.online || j || ob ? "on" : ""}"></span><span>${esc(status)}</span>${right}</div>
     ${j && !home ? `<div class="tabs"><button data-tab="job" aria-pressed="${tab === "job"}">Job</button><button data-tab="chat" aria-pressed="${tab === "chat"}">Chat with customer${j.unread ? `<span class="n">${j.unread}</span>` : ""}</button></div>` : ""}</header>`;
 }
@@ -153,7 +155,7 @@ function photoCard(where) {
   const pic = myPhoto && pend?.status === "pending" ? `<img src="${myPhoto}" alt="Your new photo">` : approved && p.status === "verified" ? `<img src="/media/pro/${p.id}?v=${P.approved.at}" alt="Your profile photo">` : `<span class="ph">🙂</span>`;
   const take = (label) => `<label class="btn gold" style="cursor:pointer">${label}<input type="file" accept="image/*" capture="user" data-selfie="1" hidden></label>`;
   const rules = `<ul class="rules"><li>Your face only, looking at the camera</li><li>Good light, face fully visible: no sunglasses, cap or mask</li><li>Plain background; no filters</li></ul>`;
-  if (approved && !pend) return where === "home" ? `<div class="card"><span class="eyebrow">Profile photo</span><div class="face">${pic}<span class="small">✓ Approved. Customers see this photo on WhatsApp before you arrive.</span></div>${take("Change photo")}</div>` : "";
+  if (approved && !pend) return ""; // to change it, the pro taps their photo at the top of the screen
   if (pend?.status === "pending") return where === "home" ? "" : `<div class="card"><span class="eyebrow">Profile photo</span><div class="face">${pic}<span class="small"><b>Photo sent ✓</b><br>The team checks it matches you${p.status === "verified" ? "" : " (at the latest at your meeting)"}.${approved ? " Customers keep seeing your current photo until then." : ""}</span></div></div>`;
   if (where === "home") return "";
   const redo = pend?.status === "redo";
