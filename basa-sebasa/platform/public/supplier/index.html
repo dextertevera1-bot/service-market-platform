@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F4E9C">
+<meta name="robots" content="noindex">
+<title>Basa seBasa Supplier</title>
+<link rel="icon" href="/assets/logo-64.png">
+<style>
+:root { --blue: #1F4E9C; --navy: #0E2A5C; --yellow: #F5B700; --pale: #DDE3F2;
+  --bg: #F2F5FB; --card: #FFFFFF; --ink: #0F1B33; --muted: #56627A; --line: #D3DBEA; --sunk: #EBF0F9;
+  --good: #1E7A4A; --good-bg: #E2F3E9; --bad: #B3261E; --bad-bg: #FBE4E2; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0B1838; --card: #12234A; --ink: #F2F5FB; --muted: #AEBBD8; --line: #2B427A; --sunk: #1A2F5C; --good: #7FD3A4; --good-bg: #143A2A; --bad: #F4948C; --bad-bg: #3D1B1A; color-scheme: dark; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.top { background: var(--blue); color: #fff; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; display: flex; align-items: center; gap: 8px; }
+.top img { width: 28px; height: 28px; border-radius: 6px; }
+.top b span { font-weight: 400; color: var(--pale); }
+.top .pill { margin-left: auto; font: 700 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; color: var(--navy); background: var(--yellow); border-radius: 5px; padding: 5px 7px; }
+main { padding: 14px 16px 32px; display: grid; gap: 12px; max-width: 520px; margin: 0 auto; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--blue); }
+@media (prefers-color-scheme: dark) { .eyebrow { color: var(--yellow); } }
+h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+.muted { color: var(--muted); } .small { font-size: 14px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 15px; } .facts dt { color: var(--muted); } .facts dd { margin: 0; font-weight: 600; }
+.field { display: grid; gap: 4px; } .field label { font-weight: 600; font-size: 14px; }
+.field input, .field select, .field textarea { width: 100%; border: 1.5px solid var(--line); background: var(--card); border-radius: 10px; padding: 11px; font-size: 16px; }
+.money { position: relative; } .money span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); } .money input { padding-left: 26px; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg label { border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 4px; text-align: center; font-weight: 600; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg input:checked + span { color: var(--navy); } .seg label:has(input:checked) { background: var(--yellow); border-color: var(--yellow); color: var(--navy); }
+.btn { display: block; width: 100%; border: 2px solid var(--blue); background: transparent; color: var(--blue); padding: 13px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; }
+@media (prefers-color-scheme: dark) { .btn { border-color: var(--pale); color: var(--pale); } }
+.btn.gold { background: var(--yellow); border-color: var(--yellow); color: var(--navy); box-shadow: 0 2px 0 #C99600; }
+.btn:disabled { opacity: .5; }
+.note { border-radius: 12px; padding: 12px; font-size: 15px; } .note.ok { background: var(--good-bg); color: var(--good); } .note.err { background: var(--bad-bg); color: var(--bad); }
+</style>
+</head>
+<body>
+<header class="top"><img src="/assets/logo-64.png" alt=""><b>Basa seBasa <span>Supplier</span></b><span class="pill">PARTS</span></header>
+<main id="app"><div class="card"><p class="muted">Loading…</p></div></main>
+<script>
+const t = new URLSearchParams(location.search).get("t") || "";
+const app = document.getElementById("app");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const usd = (n) => "$" + Number(n).toFixed(2);
+const when = (ms) => new Date(ms).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Harare" });
+let v = null, msg = null;
+
+async function load() {
+  const r = await fetch("/api/supplier/quote?t=" + encodeURIComponent(t));
+  v = r.ok ? await r.json() : null; render();
+}
+async function post(body) {
+  const r = await fetch("/api/supplier/quote?t=" + encodeURIComponent(t), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) { msg = { err: j.error }; render(); return; }
+  v = j.view; msg = { ok: body.action === "decline" ? "Thanks, we've noted you don't have it." : "Price sent. The customer sees it with up to two other options, nearest shop first. If they choose yours, we'll message you here on WhatsApp." }; render();
+}
+
+function render() {
+  if (!v) { app.innerHTML = `<div class="card"><h1>Link not valid</h1><p class="muted">Please use the latest link Basa seBasa sent you on WhatsApp.</p></div>`; return; }
+  const q = v.quote, status = { invited: null, quoted: "Your price is in.", declined: "You said you don't have it.", offered: "Your price was sent to the customer.", chosen: "The customer chose your price. A Basa pro will collect it.", collected: "Collected by the Basa pro. Thank you!", not_chosen: "The customer chose another option this time.", expired: "This request has closed.", withdrawn: "The pro withdrew this request." }[v.status];
+  app.innerHTML = `
+  <div class="card">
+    <div class="eyebrow">Part request · ${esc(v.trade)}</div>
+    <h1>${esc(v.part)}</h1>
+    <dl class="facts">
+      <dt>Your shop</dt><dd>${esc(v.shop)}</dd>
+      <dt>Job in</dt><dd>${esc(v.suburb)} · ${v.km} km from you</dd>
+      <dt>Reply by</dt><dd>${when(v.closesAt)}</dd>
+    </dl>
+    <p class="small muted">A verified Basa pro is at the customer's home now. The customer sees up to 3 prices, nearest shop first, and chooses one. If they choose yours, the pro collects it and pays you directly.</p>
+  </div>
+  ${msg ? `<div class="note ${msg.err ? "err" : "ok"}">${esc(msg.err || msg.ok)}</div>` : ""}
+  ${status && !v.open ? `<div class="card"><b>${esc(status)}</b>${q ? `<p class="muted small">Your price: ${usd(q.price)}, ${esc(v.conditions[q.condition] || "")}, ${q.warrantyDays}-day warranty.</p>` : ""}</div>` : ""}
+  ${v.open ? `
+  <form class="card" id="f">
+    <div class="eyebrow">${q ? "Update your price" : "Your price"}</div>
+    <div class="field"><label for="price">Price in US dollars (what the pro pays you)</label><div class="money"><span>$</span><input id="price" inputmode="decimal" required value="${q ? q.price : ""}" placeholder="0.00"></div></div>
+    <div class="field"><label>Condition</label><div class="seg">${Object.entries(v.conditions).map(([k, n]) => `<label><input type="radio" name="cond" value="${k}" ${(q ? q.condition : "new") === k ? "checked" : ""}><span>${n}</span></label>`).join("")}</div></div>
+    <div class="field"><label for="w">Warranty (days)</label><input id="w" inputmode="numeric" value="${q ? q.warrantyDays : 30}"></div>
+    <div class="field"><label for="n">Note (brand, model, in stock now?)</label><input id="n" maxlength="200" value="${esc(q ? q.note : "")}" placeholder="e.g. Schneider, in stock"></div>
+    <p class="small muted">Your price holds for ${v.priceValidHours} hours.</p>
+    <button class="btn gold" type="submit">${q ? "Update price" : "Send price"}</button>
+    <button class="btn" type="button" id="no">I don't have this part</button>
+  </form>` : ""}`;
+  const f = document.getElementById("f");
+  if (f) {
+    f.onsubmit = (e) => { e.preventDefault(); post({ action: "quote", price: document.getElementById("price").value, condition: f.querySelector("input[name=cond]:checked")?.value, warrantyDays: document.getElementById("w").value, note: document.getElementById("n").value }); };
+    document.getElementById("no").onclick = () => post({ action: "decline" });
+  }
+}
+load();
+</script>
+</body>
+</html>

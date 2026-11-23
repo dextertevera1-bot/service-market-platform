@@ -5,6 +5,7 @@
 - EcoCash only, USD, no cash; EcoCash charges on the customer; manual payouts within 24 h.
 - Diagnosis valid 30 days; original pro 24 h first refusal.
 - Day jobs only; pros are independent; Harare admin + Dex monitor; security concern → Harare admin calls police.
+- Parts Network Phase 1 (23 Nov 2026): approved. Up to 3 supplier options with price and location, nearest first; the customer chooses; the pro buys the part; the customer pays after the work is done (no upfront part payment, no money through Basa for parts); suppliers are for transparency.
 - Onboarding: meeting day with original documents, trade quiz + attitude questionnaire in the app (weighs heavily in the starting Trust Score), past work discussed; no tools check.
 
 ## Conflicts to resolve (mandate of 23 Nov 2026 vs what is built)
@@ -20,3 +21,9 @@
 - Past-work "concern" ending the application (currently ends it).
 - Quiz questions: drafts, to be checked by a qualified technician.
 - See FEATURE_BACKLOG.md.
+
+
+## Parts: still to confirm
+- Supplier checks before going live (built as recommended, provisional): ID, shop photo, EcoCash name, one visit. Founder gave no preference.
+- Safety-critical parts (breakers, gas, inverters, batteries): new only? Not enforced; condition is shown to the customer.
+- Returns of faulty parts (supplier replaces, pro refits, Basa decides disputes): not built; needs a decision and a lawyer check.

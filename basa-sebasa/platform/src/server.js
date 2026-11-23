@@ -17,6 +17,7 @@ import { hashPin, weakPin, LADDERS, ALERT_NAME, stepAlert, closeAlert, openAlert
 import { RULES, serviceById, SERVICES, usd, money, r2 } from "./rules.js";
 import { SUBURBS, findSuburb } from "./places.js";
 import * as OB from "./onboarding.js";
+import * as PARTS from "./parts.js";
 import { withLock } from "./lock.js";
 import { dispatch, outboxStats } from "./whatsapp.js";
 import { getDb, closeDb, backupTo, metaGet, dbPath as openDbPath } from "./db.js";
@@ -104,7 +105,7 @@ function proState(pro) {
     offer: offer && {
       id: offer.id, service: serviceById(offer.service).name, suburb: offer.data.suburb, desc: offer.data.desc, when: offer.data.when, km: offer.data.offer.km,
       expires: offer.data.offer.expires, earnings: offer.data.resumed ? (() => { const m = J.jobMoney(offer); return offer.data.firstPro === pro.id ? r2(m.payout - m.calloutShare) : m.payout; })() : money({ km: offer.data.offer.km }).calloutShare,
-      saved: offer.data.resumed ? { labour: offer.data.quote.labour, parts: offer.data.quote.parts, note: offer.data.quote.note, yours: offer.data.firstPro === pro.id } : null,
+      saved: offer.data.resumed ? { labour: offer.data.quote.labour, parts: offer.data.quote.parts, partToChoose: !!(offer.data.quote.options && !offer.data.quote.chosen), note: offer.data.quote.note, yours: offer.data.firstPro === pro.id } : null,
     },
     job: job && proJobView(job),
     home: { jobsToday: today.length, earnedToday: r2(today.reduce((a, p) => a + p.amount, 0)),
@@ -119,7 +120,7 @@ function proState(pro) {
 function proJobView(job) {
   const m = J.jobMoney(job), sf = job.data.safety || {};
   return {
-    id: job.id, stage: job.stage, label: J.STAGE_LABEL[job.stage], service: serviceById(job.service).name,
+    id: job.id, stage: job.stage, label: J.STAGE_LABEL[job.stage], service: serviceById(job.service).name, resumed: !!job.data.resumed,
     suburb: job.data.suburb, landmark: job.data.landmark, desc: job.data.desc, when: job.data.when, km: job.data.km,
     lat: job.data.lat, lng: job.data.lng, exactPin: !!job.data.exact,
     customer: `Customer in ${job.data.suburb}`, // name and number stay private
@@ -128,6 +129,9 @@ function proJobView(job) {
     thread: (job.data.thread || []).slice(-60), unread: job.data.proUnread || 0,
     safety: { tracking: !!sf.tracking, checkDue: sf.checkDue || null, firstDone: !!sf.firstDone, needsCheckout: J.CLOSED.includes(job.stage) && !!sf.tracking },
     rating: job.data.rating || null, checks: serviceById(job.service).checks,
+    parts: ["diagnosing", "quote_sent"].includes(job.stage) ? PARTS.partsForPro(job) : null,
+    part: job.data.part || null,
+    partsRules: { maxOptions: RULES.parts.maxOptions },
   };
 }
 
@@ -157,7 +161,7 @@ function opsOverview() {
     WHERE j.stage = 'cancelled' AND json_extract(j.data,'$.refundDone') IS NULL AND NOT EXISTS (SELECT 1 FROM payouts o WHERE o.job_id = j.id) GROUP BY j.id ORDER BY j.updated_at DESC LIMIT 200`);
   const savedRepairs = all("SELECT id FROM jobs WHERE stage = 'deferred' AND json_extract(data,'$.expired') IS NULL ORDER BY json_extract(data,'$.deferredAt') LIMIT 100").map((r) => getJob(r.id))
     .map((j) => ({ id: j.id, service: serviceById(j.service).name, suburb: j.data.suburb, customer: j.customer, pro: j.data.pro?.name, toPay: J.jobMoney(j).pay2, until: J.savedUntil(j), reminders: j.data.reminders || [] }));
-  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, outbox: outboxStats(), mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
+  return { jobs, alerts, pending, payouts, pros, events, refunds, probationCalls, savedRepairs, parts: PARTS.partsOverview(), trades: SERVICES.map((x) => ({ id: x.id, name: x.name })), suburbs: Object.keys(SUBURBS), outbox: outboxStats(), mode: { whatsapp: simulated.whatsapp ? "simulated" : "live", payments: config.payments.mode }, now: Date.now() };
 }
 
 // ---------- routes ----------
@@ -268,13 +272,16 @@ async function route(req, res) {
       const [, id, act] = m; let r;
       if (act === "sos" || act === "uneasy") { r = J.proSafetyAlert(pro, id, act); return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) }); } // never waits
       if ((act === "checkin" || act === "checkout") && limited("pin:" + pro.id, 8, 10 * 60e3)) return tooMany(res);
-      if (!["trip", "arrive", "verify", "noshow", "quote", "complete", "checkin", "checkout", "location", "message", "read"].includes(act)) return send(res, 404, { error: "Unknown action" });
+      if (!["trip", "arrive", "verify", "noshow", "quote", "complete", "checkin", "checkout", "location", "message", "read", "partrequest", "partcollected"].includes(act)) return send(res, 404, { error: "Unknown action" });
+      if (act === "partrequest" && limited("partreq:" + pro.id, 10, 3600e3)) return tooMany(res);
       r = await withLock("job:" + id, async () => {
       if (act === "trip") return J.proTrip(pro, id);
       if (act === "arrive") return J.proArrive(pro, id);
       if (act === "verify") return J.proVerify(pro, id, b.code);
       if (act === "noshow") return J.proNoShow(pro, id);
       if (act === "quote") return J.proQuote(pro, id, b);
+      if (act === "partrequest") return J.proRequestPart(pro, id, b.part);
+      if (act === "partcollected") return J.proPartCollected(pro, id);
       if (act === "complete") return J.proComplete(pro, id, Array.isArray(b.checks) ? b.checks.map(String).slice(0, 6) : []);
       if (act === "checkin") return J.proCheckin(pro, id, b.pin, "checkin");
       if (act === "checkout") return J.proCheckin(pro, id, b.pin, "checkout");
@@ -285,6 +292,14 @@ async function route(req, res) {
       return send(res, r.error ? 409 : 200, r.error ? r : { ...r, state: proState(getPro(pro.id)) });
     }
     return send(res, 404, { error: "Not found" });
+  }
+
+  // ----- parts suppliers: a private link per request, no log-in -----
+  if (path === "/api/supplier/quote") {
+    if (limited("sup:" + ipOf(req), 60, 15 * 60e3)) return tooMany(res);
+    const t = url.searchParams.get("t");
+    if (method === "GET") { const v = PARTS.supplierView(t); return v ? send(res, 200, v) : send(res, 404, { error: "This link isn't valid." }); }
+    if (method === "POST") { const r = PARTS.supplierRespond(t, json(await readBody(req))); return send(res, r.error ? 409 : 200, r.error ? r : { ok: true, view: PARTS.supplierView(t) }); }
   }
 
   // ----- ops desk -----
@@ -353,6 +368,12 @@ async function route(req, res) {
         await wa.text(j.customer, `Basa seBasa: your refund for ${j.id} has been sent to your EcoCash, ref ${b.ref}.`); return { ok: true }; });
       return send(res, out.error ? 409 : 200, out);
     }
+    // Parts suppliers
+    if (path === "/api/ops/supplier" && method === "POST") { const r = PARTS.addSupplier({ ...b, phone: normPhone(b.phone) }, by); return send(res, r.error ? 400 : 200, r); }
+    if ((m = path.match(/^\/api\/ops\/supplier\/(\d+)\/(check|verify|suspend)$/))) {
+      const r = m[2] === "check" ? PARTS.setSupplierCheck(Number(m[1]), b.check, !!b.value, by) : await PARTS.setSupplierStatus(Number(m[1]), m[2] === "verify" ? "verified" : "suspended", by, b.note || "");
+      return send(res, r.error ? 409 : 200, r);
+    }
     // A full copy of the database to download and keep somewhere safe.
     if (path === "/api/ops/backup") {
       const f = join(tmpdir(), `basa-backup-${Date.now()}.db`); backupTo(f);
@@ -392,7 +413,7 @@ async function route(req, res) {
 
   if (method === "GET") {
     if (path === "/sim" || path.startsWith("/sim/")) { if (!simulated.whatsapp) return send(res, 404, "Not found"); }
-    if (path === "/pro" || path === "/ops" || path === "/join" || path === "/sim") return send(res, 301, "", { Location: path + "/" });
+    if (path === "/pro" || path === "/ops" || path === "/join" || path === "/sim" || path === "/supplier") return send(res, 301, "", { Location: path + "/" });
     return serveStatic(res, path);
   }
   return send(res, 404, { error: "Not found" });

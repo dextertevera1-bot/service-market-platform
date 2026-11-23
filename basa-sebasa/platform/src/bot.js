@@ -3,7 +3,7 @@ import { one, run, all, getJob, logEvent } from "./db.js";
 import { wa } from "./whatsapp.js";
 import { SERVICES, serviceById, RULES, money, usd, isDayTime } from "./rules.js";
 import { findSuburb, nearestSuburb, SUBURBS, CBD, haversine, LAUNCH_RADIUS_KM } from "./places.js";
-import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney } from "./jobs.js";
+import { customerRetryPayment, activeJobForCustomer, createJob, customerQuote, customerConfirm, customerRate, customerCancel, relay, STAGE_LABEL, savedRepairFor, customerResume, savedUntil, hDate, jobMoney, savedPriceText } from "./jobs.js";
 import { raiseAlert } from "./safety.js";
 import { withLock } from "./lock.js";
 
@@ -59,7 +59,7 @@ async function handleOne(msg) {
     return wa.buttons(phone, `Welcome back! 👋 You have a saved repair: *${serviceById(saved.service).name}* (${saved.id}), diagnosed by ${String(saved.data.pro?.name || "your pro").split(" ")[0]}.
 ${saved.data.quote.note ? `"${saved.data.quote.note}"
 ` : ""}
-To pay after it's fixed and tested: *${usd(jobMoney(saved).pay2)}*. No new call-out. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
+To pay after it's fixed and tested: *${savedPriceText(saved)}*. No new call-out. Saved until ${hDate(savedUntil(saved))}.`, [{ id: `resume:${saved.id}`, title: "Go ahead with repair" }, { id: "new", title: "Book something else" }]);
   }
 
   if (["menu", "restart", "start again", "start over", "back"].includes(text) && c.state.startsWith("ask_")) {
@@ -139,6 +139,8 @@ function askWhen(phone, d) {
 async function onActiveJob(job, msg, text, reply, c) {
   const phone = job.customer;
   if (reply === "quote:approve") return customerQuote(job, true);
+  if (reply.startsWith("quote:opt:")) return customerQuote(job, true, Number(reply.slice(10)));
+  if (job.stage === "quote_sent" && job.data.quote?.options && /^[1-3]$/.test(text)) return customerQuote(job, true, Number(text));
   if (reply === "quote:later") return customerQuote(job, false);
   if (reply === "work:yes") return customerConfirm(job, true);
   if (reply === "work:no") return customerConfirm(job, false);

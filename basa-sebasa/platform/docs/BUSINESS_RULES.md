@@ -12,6 +12,7 @@ Source of truth for prices in code: `src/rules.js`. Change only with founder app
 | Payouts | Manual, due within 24 h of the customer paying | `RULES.payoutHours` |
 | Quote | Customer approves before any work | `src/jobs.js` |
 | Saved diagnosis | Valid 30 days; reminders day 7 and 25; original pro 24 h first refusal | `RULES.diagnosisValidDays`, `RULES.firstRefusalHours` |
+| Parts (Phase 1) | Customer chooses 1 of up to 3 verified-supplier prices, nearest first. Pro buys and fits; customer pays the part at cost in the balance after testing. No commission and no parts fee on parts (fee setting OFF). Supplier prices hold 48 h; suppliers have 30 min to reply. | `RULES.parts`, `src/parts.js` |
 | Hours | Day jobs only, 07:00–18:00 Harare | `RULES.dayStart/dayEnd` |
 | Safety | Check-in 15 min into each visit and at check-out (PIN); duress PIN; Harare admin calls police | `src/safety.js` |
 | Maids | $5 / $6 / $8 per hour | `RULES.maidRates` (not yet in a booking flow) |

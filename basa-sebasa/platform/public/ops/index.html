@@ -132,6 +132,25 @@ function onboardingSection(apps) {
       ${next ? `<div class="nextstep">${next}</div>` : ""}</div>`; }).join("");
   return `<section><h2>Onboarding <small>8 steps; the pro follows along in the Pro app</small></h2>${body || `<p class="empty">No applications in progress.</p>`}</section>`;
 }
+// ---------- parts network (Phase 1): verified suppliers and part requests ----------
+const QST = { invited: "asked", quoted: "priced", declined: "doesn't have it", offered: "sent to customer", chosen: "chosen ✓", not_chosen: "not chosen", collected: "collected ✓", expired: "no reply", withdrawn: "withdrawn" };
+function partsSection() {
+  const P = D.parts; if (!P) return "";
+  const sup = P.suppliers.map((s) => `<tr><td><b>${esc(s.shop)}</b><br><small>${esc(s.name)} · <a href="tel:+${esc(s.phone)}">+${esc(s.phone)}</a> · ${esc(s.suburb)}</small><br><small>${s.trades.map((t) => esc(D.trades.find((x) => x.id === t)?.name || t)).join(", ")}</small></td>
+    <td>${esc(s.status)}${s.status !== "verified" ? `<div class="row" style="flex-wrap:wrap;gap:4px;margin-top:4px">${P.checks.map((c) => `<button class="btn q" data-sck="${s.id}/${c.id}/${s.checks[c.id] ? 0 : 1}">${s.checks[c.id] ? "✓" : "○"} ${esc(c.name)}</button>`).join("")}</div>` : ""}</td>
+    <td>${s.status === "verified" ? `<button class="btn q" data-ssuspend="${s.id}">Suspend</button>` : `<button class="btn" data-sverify="${s.id}">Verify</button>`}</td></tr>`).join("");
+  const reqs = P.requests.slice(0, 15).map((r) => `<div style="border-top:1px dashed var(--line);padding-top:6px"><a href="#" data-job="${r.job_id}">${r.job_id}</a> · <b>${esc(r.description)}</b> <small>(${esc(r.trade)} · ${esc(r.status)} · ${ago(r.created_at)} ago)</small>
+    <div><small>${r.quotes.map((q) => `${esc(q.shop)} (${esc(q.suburb)}, ${q.km} km): ${q.price != null ? usd(q.price) + " " + esc(q.condition) : ""} <i>${esc(QST[q.status] || q.status)}</i>`).join(" · ") || "no suppliers"}</small></div></div>`).join("");
+  return `<section><h2>Parts suppliers <small>verified shops quote prices; the customer picks; no money passes through Basa</small></h2>
+    <div class="wrap"><table><tr><th>Shop</th><th>Checks</th><th></th></tr>${sup || `<tr><td colspan="3" class="empty">No suppliers yet. Add one after visiting the shop.</td></tr>`}</table></div>
+    <div style="display:grid;gap:6px;border-top:1px solid var(--line);padding-top:8px"><b>Add a supplier</b>
+      <div class="row" style="flex-wrap:wrap"><input class="s" id="supshop" placeholder="Shop name"><input class="s" id="supname" placeholder="Contact person"><input class="s" id="supphone" placeholder="WhatsApp number" inputmode="tel">
+      <select id="supsub" class="s"><option value="">Suburb</option>${D.suburbs.map((x) => `<option>${esc(x)}</option>`).join("")}</select></div>
+      <div class="row" style="flex-wrap:wrap">${D.trades.map((t) => `<label><input type="checkbox" id="suptr_${t.id}"> ${esc(t.name)}</label>`).join(" ")}</div>
+      <button class="btn" data-do="addsup">Add supplier</button></div></section>
+    ${P.requests.length ? `<section><h2>Part requests <small>latest first</small></h2>${reqs}</section>` : ""}`;
+}
+
 function render() {
   const app = $("#app");
   if (!token) { const u0 = $("#u")?.value || "", p0 = $("#p")?.value || "";
@@ -159,6 +178,7 @@ function render() {
     ${D.refunds.length ? `<section><h2>Refunds to review</h2>${D.refunds.map((j) => `<div class="row"><a href="#" data-job="${j.id}">${j.id}</a> cancelled after paying ${usd(j.paid)} · customer +${esc(j.customer)}<input class="s" id="rf${j.id}" placeholder="EcoCash ref"><button class="btn" data-refund="${j.id}">Refund sent</button></div>`).join("")}</section>` : ""}
     ${onboardingSection(apps)}
     ${D.probationCalls.length ? `<section><h2>Probation calls <small>call the customer after each of a new pro's first 5 jobs</small></h2>${D.probationCalls.map((c) => `<div class="row"><a href="#" data-job="${c.id}">${c.id}</a> ${esc(c.pro)} · customer <a href="tel:+${esc(c.customer)}">+${esc(c.customer)}</a>${c.rating ? ` · rated ${"★".repeat(c.rating)}` : ""}<input class="s" id="pc${c.id}" placeholder="What they said"><button class="btn" data-pcall="${c.id}">Logged</button></div>`).join("")}</section>` : ""}
+    ${partsSection()}
     <section><h2>Pros</h2><div class="wrap"><table><tr><th>Name</th><th>Trade</th><th>Status</th><th class="n">Trust</th><th></th></tr>${D.pros.filter((p) => p.status !== "applied").map((p) => `<tr><td>${p.online ? "🟢" : "⚪"} ${esc(p.name)}<br><small>+${esc(p.phone)}</small></td><td>${esc(p.trade)}<br><small>${esc(p.suburb)}</small></td><td>${esc(p.status)}</td><td class="n">${p.trust}${p.rating_n ? `<br><small>★${(p.rating_sum / p.rating_n).toFixed(1)} · ${p.jobs_done} jobs</small>` : ""}</td><td>${p.status === "verified" ? `<button class="btn q" data-suspend="${p.id}">Suspend</button>` : p.status === "suspended" ? `<button class="btn q" data-reinstate="${p.id}">Reinstate</button>` : ""}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">No verified pros yet.</td></tr>`}</table></div></section>
     <section><h2>Activity</h2><div class="log">${D.events.map((e) => `<div><time>${tm(e.at)}</time><i>${esc(e.tag)}</i><span>${e.job_id ? `<a href="#" data-job="${e.job_id}">${e.job_id}</a> ` : ""}${esc(e.text)}</span></div>`).join("")}</div></section>
    </div></div></main>`;
@@ -169,6 +189,7 @@ async function showJob(id) {
   const d = await api("/api/ops/job/" + id), j = d.job, m = j.money;
   $("#dlgbody").innerHTML = `<h2>${esc(j.id)} · ${esc(j.label)}</h2><p>${esc(j.data.desc)}<br>📍 ${esc(j.data.suburb)}${j.data.landmark ? ` · ${esc(j.data.landmark)}` : ""} · ${esc(j.data.when)}<br>Customer +${esc(j.customer)} · Pro ${esc(j.data.pro?.name || "-")}</p>
     <table><tr><td>Call-out (customer)</td><td class="n">${usd(m.pay1)}</td></tr><tr><td>Balance (customer)</td><td class="n">${usd(m.pay2)}</td></tr><tr><td>Pro gets</td><td class="n">${usd(m.payout)}</td></tr><tr><td>Basa keeps</td><td class="n">${usd(m.platform)}</td></tr></table>
+    ${j.data.part ? `<h3>Part</h3><div>${esc(j.data.quote?.part || "")}: option ${j.data.quote?.chosen}, ${esc(j.data.part.shop)} (${esc(j.data.part.suburb)}, ${j.data.part.km} km), ${usd(j.data.part.price)} · order ${esc(j.data.part.code)} · ${j.data.part.status === "collected" ? "collected" : "to collect"}</div>` : ""}
     <h3>Payments</h3>${d.payments.map((p) => `<div>${esc(p.kind)} ${usd(p.amount)} · ${esc(p.status)} · ${esc(p.ref || "")}</div>`).join("") || "<p class='empty'>None</p>"}
     <h3>Messages (contacts removed)</h3>${(j.data.thread || []).map((t) => `<div><b>${esc(t.from)}</b> ${tm(t.at)}: ${esc(t.text)}</div>`).join("") || "<p class='empty'>None</p>"}
     <h3>Log</h3><div class="log">${d.events.map((e) => `<div><time>${tm(e.at)}</time><i>${esc(e.tag)}</i><span>${esc(e.text)}</span></div>`).join("")}</div>
@@ -210,6 +231,14 @@ document.addEventListener("click", async (e) => {
       if (d.s === "open" && !confirm("Open the quiz on the pro's phone now? Do this only when you're with them.")) return;
       await api(`/api/ops/pro/${id}/step`, body); await refresh();
     }
+    else if (d.do === "addsup") {
+      const trades = D.trades.filter((x) => $("#suptr_" + x.id).checked).map((x) => x.id);
+      await api("/api/ops/supplier", { shop: $("#supshop").value, name: $("#supname").value, phone: $("#supphone").value, suburb: $("#supsub").value, trades });
+      ["supshop", "supname", "supphone", "supsub"].forEach((k) => ($("#" + k).value = "")); D.trades.forEach((x) => ($("#suptr_" + x.id).checked = false)); await refresh();
+    }
+    else if (d.sck) { const [id, check, v] = d.sck.split("/"); await api(`/api/ops/supplier/${id}/check`, { check, value: v === "1" }); await refresh(); }
+    else if (d.sverify) { if (confirm("Verify this supplier? Pros nearby will start getting their prices.")) { await api(`/api/ops/supplier/${d.sverify}/verify`, {}); await refresh(); } }
+    else if (d.ssuspend) { const note = prompt("Why are you suspending this supplier?"); if (note != null) { await api(`/api/ops/supplier/${d.ssuspend}/suspend`, { note }); await refresh(); } }
     else if (d.refund) { await api(`/api/ops/job/${d.refund}/refunded`, { ref: $("#rf" + d.refund).value }); await refresh(); }
     else if (d.pcall) { await api(`/api/ops/job/${d.pcall}/probation-call`, { note: $("#pc" + d.pcall).value }); await refresh(); }
     else if (d.suspend) { const note = prompt("Why are you suspending this pro?"); if (note != null) { await api(`/api/ops/pro/${d.suspend}/suspend`, { note }); await refresh(); } }

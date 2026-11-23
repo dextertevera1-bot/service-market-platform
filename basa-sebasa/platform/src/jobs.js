@@ -14,6 +14,7 @@ import { scrub } from "./scrub.js";
 import { raiseAlert, checkPin, closeAlert, URGENT } from "./safety.js";
 import { config } from "./config.js";
 import { probationJobDone } from "./onboarding.js";
+import * as PARTS from "./parts.js";
 
 export const ACTIVE = ["searching", "offered", "await_callout", "ready", "travelling", "arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
 export const ONSITE = ["arrived", "diagnosing", "quote_sent", "working", "confirm", "await_final"];
@@ -230,11 +231,14 @@ export async function proVerify(pro, jobId, code) {
     if (job.data.codeTries >= 3) { raiseAlert(job.id, pro.id, "code"); await wa.text(job.customer, `The code ${first(pro.name)} entered didn't match three times. Our Harare admin will call you now. Please don't let anyone in until then.`); }
     return { error: "That code doesn't match. Ask the customer to read it from WhatsApp." };
   }
-  job.stage = job.data.resumed ? "working" : "diagnosing"; job.data.codeOk = Date.now();
+  const resourcePart = job.data.resumed && job.data.quote?.options && !job.data.quote.chosen;
+  job.stage = job.data.resumed && !resourcePart ? "working" : "diagnosing"; job.data.codeOk = Date.now();
   job.data.safety = { ...job.data.safety, visitAt: Date.now(), checkDue: Date.now() + RULES.checkinMinutes * 60e3, firstDone: false };
   saveJob(job);
   logEvent(job.id, "trust", `Basa Code confirmed at the gate. Safety check-in due in ${RULES.checkinMinutes} min.`);
-  await wa.text(job.customer, job.data.resumed
+  await wa.text(job.customer, resourcePart
+    ? `✅ Basa Code confirmed. ${first(pro.name)} is getting today's supplier prices for the part. Labour stays at ${usd(job.data.quote.labour)} as quoted, and you'll choose the part before anything is bought.`
+    : job.data.resumed
     ? `✅ Basa Code confirmed. ${first(pro.name)} is starting the repair you approved: labour ${usd(job.data.quote.labour)}, parts ${usd(job.data.quote.parts)}.`
     : `✅ Basa Code confirmed. ${first(pro.name)} is checking the problem now. You'll get a full quote before any repair starts.`);
   return { ok: true };
@@ -251,11 +255,24 @@ export async function proNoShow(pro, jobId) {
   return { ok: true };
 }
 
-export async function proQuote(pro, jobId, { labour, parts, note }) {
+export async function proQuote(pro, jobId, { labour, parts, note, partOptions }) {
   const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "diagnosing") return { error: "Not diagnosing." };
   labour = r2(Number(labour)); parts = r2(Number(parts || 0));
+  // A saved repair keeps the labour price the customer was given.
+  if (job.data.resumed && job.data.quote?.labour != null) labour = job.data.quote.labour;
   if (!(labour > 0) || labour > 2000 || parts < 0 || parts > 5000) return { error: "Check the labour and parts amounts." };
-  job.data.quote = { labour, parts, note: String(note || "").slice(0, 400), at: Date.now() };
+  note = String(note || "").slice(0, 400);
+  if (Array.isArray(partOptions)) {
+    // Part prices from verified suppliers: the customer chooses one.
+    const pick = PARTS.pickOptions(job, partOptions); if (pick.error) return pick;
+    job.data.quote = { labour, parts: 0, note, at: Date.now(), part: pick.request.description, requestId: pick.request.id, options: pick.options.map((o, i) => ({ ...o, n: i + 1 })) };
+    job.stage = "quote_sent"; saveJob(job);
+    PARTS.markOffered(pick.request.id, pick.options.map((o) => o.quoteId));
+    logEvent(job.id, "app", `Quote sent: labour ${usd(labour)}, part "${pick.request.description}" with ${pick.options.length} supplier option${pick.options.length > 1 ? "s" : ""}.`);
+    await sendOptionsQuote(job);
+    return { ok: true };
+  }
+  job.data.quote = { labour, parts, note, at: Date.now() };
   job.stage = "quote_sent"; saveJob(job);
   const m = jobMoney(job);
   logEvent(job.id, "app", `Quote sent: labour ${usd(labour)}, parts ${usd(parts)}.`);
@@ -263,27 +280,86 @@ export async function proQuote(pro, jobId, { labour, parts, note }) {
   return { ok: true };
 }
 
-export async function customerQuote(job, approve) {
+// The total the customer pays after testing if they pick this option (part at cost, no commission on it).
+export const optionTotal = (job, o) => money({ travel: job.data.travel ?? 0, labour: job.data.quote.labour, parts: o.price }).pay2;
+const optionLine = (job, o) => `*${o.n}.* ${usd(o.price)} · ${o.conditionName} · ${o.warrantyDays ? `${o.warrantyDays}-day warranty` : "no warranty"}\n    ${o.shop}, ${o.suburb} (${o.km} km)\n    Total after it's fixed and tested: *${usd(optionTotal(job, o))}*`;
+
+async function sendOptionsQuote(job) {
+  const q = job.data.quote;
+  const body = `*Quote for ${job.id}*\n${scrub(q.note).text || "Repair as diagnosed."}\n\nLabour: ${usd(q.labour)}\nPart needed: *${q.part}*\n\nPrices from Basa-verified suppliers, nearest first:\n${q.options.map((o) => optionLine(job, o)).join("\n")}\n\nTotals include EcoCash charges. You pay only after it's fixed and tested; parts are charged at the supplier's price. Nothing is bought until you choose.`;
+  await wa.list(job.customer, body, "Choose a part", [
+    ...q.options.map((o) => ({ id: `quote:opt:${o.n}`, title: `Option ${o.n} · ${usd(o.price)}`, description: `${o.conditionName}, ${o.shop}, ${o.suburb} (${o.km} km)` })),
+    { id: "quote:later", title: "Not now", description: "Save this diagnosis for 30 days" },
+  ]);
+}
+
+export async function customerQuote(job, approve, optionN = null) {
   if (job.stage !== "quote_sent") return;
-  const pro = getPro(job.pro_id);
+  const pro = getPro(job.pro_id), q = job.data.quote;
+  if (approve && q.options && !q.chosen) {
+    const o = q.options.find((x) => x.n === Number(optionN));
+    if (!o) return sendOptionsQuote(job); // "approve" without a choice: show the options again
+    if (o.validUntil < Date.now()) {
+      job.stage = "diagnosing"; job.data.quote = { labour: q.labour, note: q.note, expiredOptions: true }; saveJob(job);
+      logEvent(job.id, "parts", `Customer picked option ${o.n}, but that price had expired. Back to ${pro.name} for fresh prices.`);
+      await wa.text(pro.phone, `Basa seBasa: the supplier prices for ${job.id} have expired. Please open the Pro app and ask again.`);
+      return wa.text(job.customer, `Sorry, that supplier price has expired. ${first(pro.name)} is getting fresh prices now; you'll choose again before anything is bought.`);
+    }
+    q.parts = o.price; q.chosen = o.n; q.approvedAt = Date.now();
+    job.data.part = { quoteId: o.quoteId, shop: o.shop, suburb: o.suburb, km: o.km, price: o.price, status: "to_collect", code: `P-${o.quoteId}` };
+    job.stage = "working"; saveJob(job);
+    const sup = one("SELECT s.phone, s.name FROM part_quotes x JOIN suppliers s ON s.id = x.supplier_id WHERE x.id = ?", o.quoteId);
+    job.data.part.supplierPhone = sup?.phone || null; job.data.part.supplierName = sup?.name || null; saveJob(job);
+    logEvent(job.id, "wa", `Customer chose option ${o.n}: ${o.shop}, ${o.suburb}, ${usd(o.price)}. Quote approved.`);
+    await PARTS.settleQuotes(q.requestId, o.quoteId, job, pro);
+    await wa.text(job.customer, `Approved ✓ Option ${o.n}: ${q.part} from ${o.shop}, ${o.suburb}, ${usd(o.price)}.\n${first(pro.name)} will collect the part and fit it. You pay *${usd(optionTotal(job, o))}* only once it's fixed and tested.`);
+    return;
+  }
   if (approve) {
     job.stage = "working"; job.data.quote.approvedAt = Date.now(); saveJob(job);
     logEvent(job.id, "wa", "Customer approved the quote.");
     await wa.text(job.customer, `Approved ✓. ${first(pro.name)} is starting the repair. You pay the rest only once it's fixed and tested.`);
   } else {
-    job.stage = "deferred"; job.data.deferredAt = Date.now(); saveJob(job);
+    // A saved repair put on hold again keeps its original 30 days, and the call-out share was already paid out.
+    const again = !!job.data.resumed;
+    job.stage = "deferred"; if (!again) job.data.deferredAt = Date.now();
+    if (again) job.data.resumed = null; // the pro on site keeps the job until they check out; first refusal stays with data.firstPro
+    saveJob(job);
+    if (q.options && !q.chosen) await PARTS.settleQuotes(q.requestId, null, job, pro);
     const m = jobMoney(job);
-    run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, m.calloutShare, Date.now() + RULES.payoutHours * 3600e3);
+    if (!again) run("INSERT INTO payouts (job_id, pro_id, amount, due_at) VALUES (?,?,?,?)", job.id, pro.id, m.calloutShare, Date.now() + RULES.payoutHours * 3600e3);
     logEvent(job.id, "wa", `Customer chose to repair later. Diagnosis valid ${RULES.diagnosisValidDays} days; ${pro.name} gets ${RULES.firstRefusalHours} h first refusal.`);
-    await wa.buttons(job.customer, `No problem. Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.
+    await wa.buttons(job.customer, `No problem. Your diagnosis and quote are saved until *${hDate(savedUntil(job))}*, so you won't pay another call-out to go ahead before then.${q.options && !q.chosen ? `\n\nLabour stays at ${usd(q.labour)}. Supplier prices change, so you'll choose the part again from fresh prices when you go ahead.` : ""}
 
 When you're ready, just message us here and tap *Go ahead with repair*. We'll send a reminder before it expires.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }]);
   }
 }
 
+// What a saved repair will cost, in words (a part still to be chosen is priced on the day).
+export function savedPriceText(job) {
+  const q = job.data.quote || {};
+  return q.options && !q.chosen ? `${usd(jobMoney(job).pay2)} for labour, plus the part at the supplier's price on the day` : usd(jobMoney(job).pay2);
+}
+
+// The pro has the part in hand (bought from the chosen supplier).
+export async function proPartCollected(pro, jobId) {
+  const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "working" || job.data.part?.status !== "to_collect") return { error: "No part waiting to be collected." };
+  job.data.part.status = "collected"; job.data.part.collectedAt = Date.now(); saveJob(job);
+  PARTS.markCollected(job.data.part.quoteId);
+  logEvent(job.id, "parts", `${pro.name} collected the part from ${job.data.part.shop} (order ${job.data.part.code}).`);
+  await wa.text(job.customer, `🔧 ${first(pro.name)} has collected your part from ${job.data.part.shop} and is fitting it now.`);
+  return { ok: true };
+}
+
+export async function proRequestPart(pro, jobId, description) {
+  const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "diagnosing") return { error: "You can ask for parts while diagnosing." };
+  return PARTS.requestPart(job, pro, description);
+}
+
 export async function proComplete(pro, jobId, checks = []) {
   const job = getJob(jobId); if (!proOwns(pro, job) || job.stage !== "working") return { error: "Work isn't in progress." };
   if (checks.length < 2) return { error: "Tick the safety and test checks first." };
+  if (job.data.part?.status === "to_collect") return { error: "Confirm you've collected the part first." };
   job.stage = "confirm"; job.data.completedAt = Date.now(); job.data.checks = checks; saveJob(job);
   logEvent(job.id, "app", `${pro.name} finished and tested: ${checks.join("; ")}.`);
   await wa.buttons(job.customer, `${first(pro.name)} says the repair is done and tested.\nPlease check it now. Is it working?`, [{ id: "work:yes", title: "Yes, it works" }, { id: "work:no", title: "Not yet" }]);
@@ -408,7 +484,7 @@ export async function sweep() {
     for (const d of [7, 25]) if (days >= d && !rm.includes(d)) {
       rm.push(d); job.data.reminders = rm; saveJob(job);
       // Outside WhatsApp's 24-hour window this must be an approved template (see README).
-      await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${usd(jobMoney(job).pay2)} as quoted, no new call-out, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
+      await wa.buttons(job.customer, `Hi from Basa seBasa 👋 Your saved ${serviceById(job.service).name.toLowerCase()} repair (${job.id}) is still waiting: ${savedPriceText(job)} as quoted, no new call-out, until *${hDate(savedUntil(job))}*.`, [{ id: `resume:${job.id}`, title: "Go ahead with repair" }, { id: "saved:later", title: "Not yet" }]);
       logEvent(job.id, "wa", `Saved-repair reminder sent (day ${d}).`);
     }
   });
@@ -417,6 +493,7 @@ export async function sweep() {
   }
   // Simulated payments confirm on a timer; if the server restarted in between, finish them here.
   if (config.payments.mode === "sim") for (const p of all("SELECT id FROM payments WHERE status = 'pending' AND provider = 'sim' AND created_at < ?", now - config.payments.simDelayMs - 5000)) markPaid(p.id, `SIM${String(now).slice(-6)}`, "sim");
+  PARTS.sweepParts(now);
   housekeeping(now);
   metaSet("lastSweep", now);
 }

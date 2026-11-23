@@ -154,7 +154,7 @@ function offerView() {
     return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">${o.saved.yours ? "Your saved repair" : "Saved repair"}</span><b>${h ? h + " h " : ""}${mnt} min left</b></div>
     <h3>${esc(o.service)} · ${esc(o.suburb)}</h3><p style="margin:0">${o.saved.yours ? "The customer wants to go ahead with the repair you diagnosed. You have first refusal." : "Another pro diagnosed this; the customer approved the quote."}</p>
     ${o.saved.note ? `<p class="muted small" style="margin:0">"${esc(o.saved.note)}"</p>` : ""}
-    <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Labour / parts (approved)</td><td>${usd(o.saved.labour)} / ${usd(o.saved.parts)}</td></tr><tr class="you"><td>You get</td><td>${usd(o.earnings)}</td></tr></table>
+    <table class="split"><tr><td>When</td><td>${esc(o.when)}</td></tr><tr><td>Labour / parts (approved)</td><td>${usd(o.saved.labour)} / ${o.saved.partToChoose ? "today's price" : usd(o.saved.parts)}</td></tr><tr class="you"><td>You get</td><td>${usd(o.earnings)}</td></tr></table>
     <p class="muted small" style="margin:0">No call-out this time: it was paid at the first visit. Bring the parts.</p>
     <div class="two"><button class="btn" data-a="decline">Decline</button><button class="btn gold" data-a="accept">Accept</button></div></div>`; }
   return `<div class="card offer"><div style="display:flex;justify-content:space-between"><span class="eyebrow">New job</span><b id="count">${left}s</b></div><div class="bar"><i id="bar" style="width:${Math.min(100, left / 60 * 100)}%"></i></div>
@@ -190,9 +190,9 @@ function jobView(j) {
     case "arrived": { const waited = Math.floor((S.now - j.arrivedAt) / 60e3), left = S.rules.noShowWaitMinutes - waited;
       body = head("At the gate", "Ask the customer for their 4-digit Basa Code. Don't go in without it.") + `<div class="card"><div class="field"><label for="code">Basa Code</label><input id="code" class="code" inputmode="numeric" maxlength="4" autocomplete="off"></div><div id="codeerr" class="err">${j.codeTries ? `${j.codeTries} wrong ${j.codeTries === 1 ? "try" : "tries"}. After 3, our Harare admin calls the customer.` : ""}</div><button class="btn gold" data-a="verify">Confirm code</button></div>`
         + `<div class="card"><span class="muted small">Nobody home? Message them in the Chat tab. ${left > 0 ? `You can close the visit in ${left} min and keep your call-out share.` : "You can close the visit now and keep your call-out share."}</span><button class="btn danger" data-a="noshow" ${left > 0 ? "disabled" : ""}>Customer not home: close visit</button></div>`; break; }
-    case "diagnosing": body = head("Diagnose and quote", "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine."></textarea></div><div class="two"><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal"></div><div class="field"><label for="qparts">Parts ($)</label><input id="qparts" inputmode="decimal" value="0"></div></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p><button class="btn gold" data-a="quote">Send quote</button></div>`; break;
-    case "quote_sent": body = head("Quote sent", "Waiting for the customer to approve on WhatsApp. Don't start yet.", `<div class="wait"><span class="spin"></span>Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}</div>`) + pay; break;
-    case "working": body = head("Repair approved ✓", "Do the work, test it, then tick the checks.") + `<div class="card"><h3>Before you finish</h3>${j.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}" value="${esc(c)}"> ${esc(c)}</label>`).join("")}<button class="btn gold" data-a="complete">Finished and tested</button></div>` + pay; break;
+    case "diagnosing": body = head("Diagnose and quote", j.resumed ? "Saved repair: labour stays as quoted. Get today's part prices, then send the quote." : "Find the fault, then send a full quote. Nothing starts until the customer approves.") + `<div class="card"><div class="field"><label for="qnote">What's wrong and what you'll do</label><textarea id="qnote" rows="3" placeholder="e.g. Start relay burnt out. Replace relay; compressor is fine.">${j.resumed && j.quote?.note ? esc(j.quote.note) : ""}</textarea></div><div class="field"><label for="qlab">Labour ($)</label><input id="qlab" inputmode="decimal" ${j.resumed && j.quote?.labour ? `value="${j.quote.labour}" disabled` : ""}></div><p class="muted small" style="margin:0">Basa's fee is 15% of labour only. Parts are paid back to you in full.</p></div>` + partsCard(j) + `<button class="btn gold" data-a="quote">Send quote</button>`; break;
+    case "quote_sent": body = head("Quote sent", "Waiting for the customer to approve on WhatsApp. Don't start yet.", `<div class="wait"><span class="spin"></span>${j.quote.options ? `Labour ${usd(j.quote.labour)} · customer choosing between ${j.quote.options.length} part option${j.quote.options.length > 1 ? "s" : ""}` : `Labour ${usd(j.quote.labour)} · parts ${usd(j.quote.parts)}`}</div>`) + (j.quote.options ? `<div class="card"><span class="eyebrow">Part options sent</span>${j.quote.options.map((o) => optionRow(o, false)).join("")}</div>` : "") + pay; break;
+    case "working": body = head("Repair approved ✓", j.part?.status === "to_collect" ? `The customer chose option ${j.quote.chosen}. Collect the part, then do the work.` : "Do the work, test it, then tick the checks.") + collectCard(j) + `<div class="card"><h3>Before you finish</h3>${j.checks.map((c, i) => `<label class="tick"><input type="checkbox" id="ck${i}" value="${esc(c)}"> ${esc(c)}</label>`).join("")}<button class="btn gold" data-a="complete">Finished and tested</button></div>` + pay; break;
     case "confirm": body = head("Customer is checking", "They're confirming it works on WhatsApp.", `<div class="wait"><span class="spin"></span>Waiting for the customer</div>`) + pay; break;
     case "await_final": body = head("Waiting for payment", "The customer is paying the balance on EcoCash.", `<div class="wait"><span class="spin"></span>Almost done</div>`) + pay; break;
     case "paid": body = head("Paid. Well done", j.rating ? `The customer rated you ${"★".repeat(j.rating)}.` : "Waiting for the customer's rating.") + pay; break;
@@ -203,6 +203,32 @@ function jobView(j) {
   }
   return safetyStrip(j) + (pinFor === "checkin" ? pinCard("checkin") : "") + body
     + (j.safety.needsCheckout ? pinCard("checkout") : "");
+}
+
+// ---------- parts: prices from verified suppliers, nearest first ----------
+function optionRow(o, pickable, i = 0, max = 3) {
+  return `<label class="tick" style="align-items:flex-start;border-top:1px dashed var(--line);padding-top:8px">${pickable ? `<input type="checkbox" id="po${o.quoteId}" value="${o.quoteId}" data-po="1" ${i < max ? "checked" : ""}>` : `<b style="width:20px">${o.n || ""}</b>`}
+    <span style="flex:1"><b>${usd(o.price)}</b> · ${esc(o.conditionName)} · ${o.warrantyDays ? o.warrantyDays + "-day warranty" : "no warranty"}<br><span class="muted small">${esc(o.shop)}, ${esc(o.suburb)} · ${o.km} km from the job${o.note ? ` · "${esc(o.note)}"` : ""}</span></span></label>`;
+}
+function partsCard(j) {
+  const P = j.parts, max = j.partsRules.maxOptions;
+  const ask = (label) => `<div class="field"><label for="ppart">${label}</label><input id="ppart" placeholder="e.g. 30A double-pole breaker, Schneider" autocomplete="off"></div><button class="btn" data-a="partask">Get prices from verified suppliers</button>`;
+  if (!P) return `<div class="card"><span class="eyebrow">Replacement part</span>${ask("Need a part? Describe it")}<p class="muted small" style="margin:0">We ask the nearest Basa-verified suppliers. The customer sees up to ${max} prices, nearest first, and chooses one.</p>
+    <div class="field"><label for="qparts">Or: parts you already have ($)</label><input id="qparts" inputmode="decimal" value="0"></div></div>`;
+  const waiting = P.status === "open" && P.waiting > 0, left = Math.max(0, Math.round((P.closesAt - S.now) / 60e3));
+  return `<div class="card"><span class="eyebrow">Replacement part</span><b>${esc(P.part)}</b>
+    <span class="muted small">${P.asked} supplier${P.asked > 1 ? "s" : ""} asked · ${P.options.length} price${P.options.length === 1 ? "" : "s"} in${waiting ? ` · ${P.waiting} still to reply (${left} min left)` : ""}${P.declined ? ` · ${P.declined} don't have it` : ""}</span>
+    ${P.options.length ? `<p class="small" style="margin:0">Tick up to ${max} that fit (nearest first). The customer chooses one.</p>${P.options.map((o, i) => optionRow(o, true, i, max)).join("")}` : waiting ? `<div class="wait"><span class="spin"></span>Waiting for prices…</div>` : `<p class="small err" style="margin:0">No prices came in. Ask again with a different description, or enter the price yourself.</p><div class="field"><label for="qparts">Parts price ($)</label><input id="qparts" inputmode="decimal" value="0"></div>`}
+    <div style="border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px"><span class="muted small">Wrong part? Ask again (this replaces the request above).</span>${ask("Part needed")}</div></div>`;
+}
+function collectCard(j) {
+  const p = j.part; if (!p) return "";
+  if (p.status === "collected") return `<div class="card"><span class="small ok">✓ Part collected from ${esc(p.shop)} (order ${esc(p.code)}).</span></div>`;
+  return `<div class="card offer"><span class="eyebrow">Collect the part</span><h3>${esc(j.quote.part)} · ${usd(p.price)}</h3>
+    <table class="split"><tr><td>Shop</td><td>${esc(p.shop)}</td></tr><tr><td>Where</td><td>${esc(p.suburb)} · ${p.km} km from the job</td></tr>${p.supplierName ? `<tr><td>Ask for</td><td>${esc(p.supplierName)}</td></tr>` : ""}<tr><td>Order code</td><td>${esc(p.code)}</td></tr></table>
+    ${p.supplierPhone ? `<a class="btn" href="tel:+${esc(p.supplierPhone)}">Call the shop</a>` : ""}
+    <p class="muted small" style="margin:0">Pay the shop the price above. The customer pays it back to you in full in the balance (no Basa fee on parts). Keep the receipt.</p>
+    <button class="btn gold" data-a="partgot">I've collected the part</button></div>`;
 }
 
 function chatView(j) {
@@ -285,7 +311,14 @@ document.addEventListener("click", async (e) => {
     else if (a === "arrive") await act(`${J}/arrive`);
     else if (a === "verify") { try { await act(`${J}/verify`, { code: $("#code").value }, "Code confirmed ✓"); } catch (err) { const el = $("#codeerr"); if (el) el.textContent = err.message; } }
     else if (a === "noshow") { if (confirm("Close this visit as customer not home?")) await act(`${J}/noshow`); }
-    else if (a === "quote") await act(`${J}/quote`, { labour: $("#qlab").value, parts: $("#qparts").value || 0, note: $("#qnote").value }, "Quote sent to the customer.");
+    else if (a === "quote") {
+      const picked = [...document.querySelectorAll("[data-po]:checked")].map((c) => Number(c.value)), max = j.partsRules.maxOptions;
+      if (picked.length > max) return toast(`Tick up to ${max} part options.`);
+      const body = { labour: $("#qlab").value, note: $("#qnote").value, ...(picked.length ? { partOptions: picked } : { parts: $("#qparts")?.value || 0 }) };
+      await act(`${J}/quote`, body, picked.length ? `Quote sent with ${picked.length} part option${picked.length > 1 ? "s" : ""}.` : "Quote sent to the customer.");
+    }
+    else if (a === "partask") { const v = $("#ppart").value; await act(`${J}/partrequest`, { part: v }, "Asking the nearest verified suppliers…"); const el = $("#ppart"); if (el) el.value = ""; }
+    else if (a === "partgot") await act(`${J}/partcollected`, {}, "Part collected ✓");
     else if (a === "complete") await act(`${J}/complete`, { checks: [...document.querySelectorAll("[id^=ck]:checked")].map((c) => c.value) });
     else if (a === "checkopen") { pinFor = "checkin"; render(); $("#pin")?.focus(); }
     else if (a === "checkin" || a === "checkout") {

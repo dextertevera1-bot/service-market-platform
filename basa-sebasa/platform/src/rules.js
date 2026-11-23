@@ -14,6 +14,19 @@ export const RULES = {
   dayStart: 7, dayEnd: 18, // day jobs only, 07:00-18:00 Harare time
   diagnosisValidDays: 30, firstRefusalHours: 24,
   maidRates: { standard: 5, verified: 6, premium: 8 },
+  // Parts network, Phase 1 (approved 23 Nov 2026): the pro asks verified suppliers for prices, the customer
+  // picks one of up to 3 options (nearest first), the pro buys and fits it, the customer pays it in the
+  // balance after testing, at cost. Commission never applies to parts.
+  parts: {
+    askSuppliers: 6,        // ask up to the 6 nearest verified suppliers for the trade
+    maxOptions: 3,          // the customer sees up to 3 options
+    replyMinutes: 30,       // suppliers have 30 minutes to reply
+    priceValidHours: 48,    // a supplier's price holds for 48 hours
+    feeEnabled: false,      // a parts fee is OFF; switching it on is a founder decision (RED)
+    feePercent: 3,          // only used if feeEnabled is ever turned on (not wired into money() yet)
+    // Supplier checks before going live. PROVISIONAL: recommended, awaiting the founder's confirmation.
+    supplierChecks: ["id", "shop", "ecocash", "visit"],
+  },
 };
 
 export const SERVICES = [

@@ -40,6 +40,17 @@ export function openDb(path = config.dbPath) {
     CREATE TABLE IF NOT EXISTS outbox (id INTEGER PRIMARY KEY, to_phone TEXT, payload TEXT, status TEXT, error TEXT, at INTEGER);
     CREATE TABLE IF NOT EXISTS seen (wamid TEXT PRIMARY KEY, at INTEGER);
     CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
+    -- Parts network (Phase 1: job-linked sourcing, for transparency; no money passes through Basa for parts).
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY, phone TEXT UNIQUE, name TEXT, shop TEXT, suburb TEXT, lat REAL, lng REAL,
+      trades TEXT, status TEXT DEFAULT 'pending', checks TEXT DEFAULT '{}', note TEXT, created_at INTEGER, updated_at INTEGER);
+    CREATE TABLE IF NOT EXISTS part_requests (
+      id INTEGER PRIMARY KEY, job_id TEXT, pro_id INTEGER, trade TEXT, description TEXT, status TEXT DEFAULT 'open',
+      created_at INTEGER, closes_at INTEGER);
+    CREATE TABLE IF NOT EXISTS part_quotes (
+      id INTEGER PRIMARY KEY, request_id INTEGER, supplier_id INTEGER, token TEXT UNIQUE, km REAL, price REAL,
+      condition TEXT, warranty_days INTEGER, note TEXT, valid_until INTEGER, status TEXT DEFAULT 'invited',
+      quoted_at INTEGER, created_at INTEGER);
   `);
   // Columns added after launch (safe to run every start).
   const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
@@ -60,6 +71,9 @@ export function openDb(path = config.dbPath) {
     CREATE INDEX IF NOT EXISTS outbox_queue ON outbox(status, next_at);
     CREATE INDEX IF NOT EXISTS outbox_to ON outbox(to_phone, id);
     CREATE INDEX IF NOT EXISTS pros_match ON pros(status, online, trade);
+    CREATE INDEX IF NOT EXISTS part_requests_job ON part_requests(job_id, status);
+    CREATE INDEX IF NOT EXISTS part_quotes_request ON part_quotes(request_id, status);
+    CREATE INDEX IF NOT EXISTS suppliers_status ON suppliers(status);
   `);
   db.exec("PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;");
   return db;

@@ -1,5 +1,6 @@
 # Changelog (platform)
 
+- 23 Nov 2026 (Parts Network Phase 1): verified parts suppliers (ops adds and checks them); the pro asks the nearest 6 for a price; suppliers answer on a private link; the customer chooses one of up to 3 options, nearest first, with price, condition, warranty, shop, suburb, distance and total; the pro collects and fits it; the customer pays it at cost after testing. 8 new tests (35 in total).
 - 23 Nov 2026 (audit): payment after cancellation becomes a refund, failed payments can be retried, "back" restarts a booking, 14 mandate scenarios added as tests (27 tests in total).
 
 - 23 Nov 2026: onboarding step 3 wording matches what the system checks; project records added (this folder).
